@@ -1,0 +1,45 @@
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'legacy/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test engine
+        run: node test/smoke.js
+      - name: Build web app
+        run: |
+          node build.js
+          mkdir -p android/app/src/main/assets/www
+          cp dist/index.html android/app/src/main/assets/www/index.html
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build signed app
+        run: gradle -p android assembleRelease --no-daemon --stacktrace
+      - name: Rename
+        run: cp android/app/build/outputs/apk/release/app-release.apk trikaal.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: trikaal-${{ github.run_number }}
+          name: Trikaal for Android (build ${{ github.run_number }})
+          body: Download trikaal.apk on your phone and open it to install or update.
+          files: trikaal.apk
+          make_latest: true
