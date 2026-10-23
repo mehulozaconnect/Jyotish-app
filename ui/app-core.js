@@ -1,5 +1,5 @@
 /* Trikaal app: state, storage, bridge, routing, people */
-var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB);
+var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB), S = makeSimple(A, C, J, KB, N, PLAIN);
 var PN = J.PNAME, SG = J.SIGNS, SG3 = J.SG3, nth = N.nth;
 var PCOL = { Su: '#C9762A', Mo: '#5C7CA8', Ma: '#B03A2E', Me: '#2D7A52', Ju: '#B38A1E', Ve: '#8E5BA8', Sa: '#3D4A6B', Ra: '#55525C', Ke: '#7A7680', La: '#B94E1A' };
 var AVCOL = ['#26254A', '#B94E1A', '#2D7A52', '#8E5BA8', '#B38A1E', '#5C7CA8', '#B03A2E', '#3D4A6B'];
@@ -155,7 +155,16 @@ function whoCard(p, extra) { return '<div class="who"><div style="min-width:0"><
 function vchip(q, label) { var m = { good: 'g', mixed: 'm', bad: 'b', neutral: 'n' }; return '<span class="vc ' + (m[q] || 'n') + '">' + esc(label || cap(q)) + '</span>'; }
 function pg(code, size) { return '<span class="pg" style="background:' + PCOL[code] + (size ? ';width:' + size + 'px;height:' + size + 'px' : '') + '">' + code + '</span>'; }
 function sel(name, opts, cur, attrs) { return '<select class="inp" ' + (attrs || '') + ' data-ch="' + name + '">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'; }
-function whyBox(lines) { lines = (lines || []).filter(Boolean); return lines.length ? '<div class="why">' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>' : ''; }
+function whyBox(lines, open) { lines = (lines || []).filter(Boolean); return lines.length ? '<details class="whyd"' + (open ? ' open' : '') + '><summary>Why</summary><div class="why">' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div></details>' : ''; }
+var VLABEL = { good: 'Good', mixed: 'Mixed', bad: 'Difficult', neutral: 'Info' };
+/* plain answer card: o = {verdict, label, headline, meaning, rows: [[title, [lines], kind]]} */
+function answerCard(o) {
+  var h = '<div class="ans ' + (o.verdict || 'mixed') + '"><div class="row"><span class="lbl">' + esc(o.label || 'In simple words') + '</span>' + (o.chip !== false ? vchip(o.verdict === 'neutral' ? 'neutral' : o.verdict, o.chipText || VLABEL[o.verdict] || 'Mixed') : '') + '</div>';
+  h += '<div class="ah">' + esc(o.headline) + '</div>' + (o.meaning ? '<p class="am">' + esc(o.meaning) + '</p>' : '');
+  (o.rows || []).forEach(function (r) { var ls = (r[1] || []).filter(Boolean); if (!ls.length) return; h += '<div class="ar ' + (r[2] || '') + '"><b>' + esc(r[0]) + '</b><div>' + ls.map(function (l) { return '<div>' + esc(cap(l)) + '</div>'; }).join('') + '</div></div>'; });
+  return h + '</div>';
+}
+function techBlock(title, inner, open) { return '<details class="tech"' + (open ? ' open' : '') + '><summary>' + esc(title || 'Show the astrology behind this') + '</summary><div class="techin">' + inner + '</div></details>'; }
 function logic(lines) { return '<div class="logic">' + lines.map(function (l, i) { return '<div><i>' + (i + 1) + '</i><span>' + l + '</span></div>'; }).join('') + '</div>'; }
 function durStr(ms) { var d = ms / 864e5, y = Math.floor(d / 365.25), m = Math.floor((d - y * 365.25) / 30.4375), dd = Math.round(d - y * 365.25 - m * 30.4375); return (y ? y + 'y ' : '') + (m ? m + 'm ' : '') + (y ? '' : dd + 'd'); }
 function emptyState(t, s, btn) { return '<div class="empty"><h2>' + t + '</h2><p>' + s + '</p>' + (btn || '') + '</div>'; }

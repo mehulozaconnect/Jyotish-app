@@ -96,12 +96,10 @@ function PrashnaView() {
   var h = '<div class="pad"><div class="card"><h3>KP horary (1 to 249)</h3><div class="mut" style="font-size:12.5px;margin:-4px 0 10px">Hold the question in mind, then pick a number from 1 to 249 without thinking. The chart is cast for now at ' + esc(L.name) + '.</div>' +
     '<div class="grid2"><label class="field"><span>NUMBER</span><input class="inp mono" type="number" min="1" max="249" inputmode="numeric" data-in="pnum" value="' + esc(n) + '"></label><div class="field"><span>QUESTION</span>' + sel('pm', Object.keys(N.KP_MATTERS).map(function (x) { return [x, N.KP_MATTERS[x].l]; }), mk) + '</div></div><button class="btn acc wide" data-act="prashna">Judge</button></div>';
   if (U.pres) {
-    var r = U.pres, hk = r.hk, hr = r.hr;
-    h += '<div class="card dark"><div class="lbl">Prashna · number ' + r.n + ' · ' + N.dmyt(r.at) + '</div><div style="font:600 16.5px/1.35 var(--sans);margin-top:4px">' + esc(N.KP_MATTERS[r.mk].l) + ': ' + N.VERD[r.jm.main.level][0] + '</div><p style="margin-top:4px">Ascendant ' + SG[hk.ascSign] + ' ' + hk.ascDegs + ' · sign ' + PN[hk.ascKP.sign] + ', star ' + PN[hk.ascKP.star] + ', sub ' + PN[hk.ascKP.sub] + '</p></div>';
+    var r = U.pres, hk = r.hk, sk = r.sk;
+    h += answerCard({ verdict: sk.verdict, label: 'Answer · number ' + r.n + ' · ' + N.dmyt(r.at), headline: sk.q + ' ' + sk.headline, meaning: sk.meaning, rows: [['When', sk.when, 'when'], ['Do', sk.do, 'do'], ['Avoid', sk.avoid, 'avoid']] });
     var rows = [{ h: 1, code: 'Asc', deg: hk.ascDeg, cls: 'asc' }].concat(hk.planets.map(function (x) { return { h: x.bhava, code: x.code, deg: J.dm(x.lon), r: x.retro && x.code !== 'Ra' && x.code !== 'Ke', cls: x.code === 'Mo' ? 'mo' : '' }; }));
-    h += '<div class="card" style="padding:10px"><div class="ctitle">Horary chart (bhava)</div>' + Charts.north(rows, hk.cusps.map(function (x) { return x.sign; })) + '</div>';
-    h += kpJudgeHtml(r.jm, r.rp, r.at);
-    h += '<div class="card"><h3>Ruling planets at judgement</h3><p>' + r.rp.list.map(function (x) { return x.role + ': <b>' + PN[x.lord] + '</b>'; }).join(' · ') + '</p></div>';
+    h += techBlock('Show the KP working', '<div class="card"><p>Ascendant ' + SG[hk.ascSign] + ' ' + hk.ascDegs + ' · sign lord ' + PN[hk.ascKP.sign] + ', star ' + PN[hk.ascKP.star] + ', sub ' + PN[hk.ascKP.sub] + '</p></div><div class="card" style="padding:10px"><div class="ctitle">Horary chart (bhava)</div>' + Charts.north(rows, hk.cusps.map(function (x) { return x.sign; })) + '</div>' + kpJudgeHtml(r.jm, r.rp, r.at) + '<div class="card"><h3>Ruling planets at judgement</h3><p>' + r.rp.list.map(function (x) { return x.role + ': <b>' + PN[x.lord] + '</b>'; }).join(' · ') + '</p></div>');
   }
   return h + '</div>';
 }
@@ -111,7 +109,9 @@ ACT.prashna = function () {
   var n = parseInt(U.pnum, 10); if (!(n >= 1 && n <= 249)) return toast('Pick a number from 1 to 249');
   var L = DB.settings.loc, at = new Date(), hr = J.horary(n), mk = U.pm || 'job';
   var hk = J.kundli(at, L.lat, L.lon, { ayan: 'kp', ascLon: hr.start + 1 / 3600 }), sig = J.kpSignificators(hk), maha = J.dashas(at, hk.P.Mo.lon), rp = J.rulingPlanets(at, L.lat, L.lon, locOff(), 'kp');
-  U.pres = { n: n, mk: mk, at: at, hr: hr, hk: hk, jm: N.judgeMatter(sig, mk, maha, at, 2, rp.set), rp: rp };
+  var jm = N.judgeMatter(sig, mk, maha, at, 2, rp.set), short = mk === 'health' || mk === 'legal' || mk === 'money';
+  var wins = S.kpWindows(sig, jm.m, maha, at, short ? 6 : 24, short ? 4 : 3, rp.set);
+  U.pres = { n: n, mk: mk, at: at, hr: hr, hk: hk, jm: jm, rp: rp, sk: S.kp(jm, mk, wins, at) };
   rerender(true);
 };
 

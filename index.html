@@ -215,6 +215,37 @@ details summary{font:600 12px var(--sans);color:var(--lavI);cursor:pointer}
 details[open] summary{margin-bottom:6px}
 .kchart .nat{fill:#9A96A2;font-style:italic} .kchart .bad{fill:var(--bad)} .kchart .bad .pd{fill:var(--bad)}
 body.asking #app{padding-bottom:150px}
+
+/* plain answers */
+.ans{border-radius:18px;padding:15px 15px 13px;background:#fff;box-shadow:0 0 0 1.5px var(--line);margin-bottom:12px;border-left:6px solid var(--warn)}
+.ans.good{border-left-color:var(--good)} .ans.bad{border-left-color:var(--bad)} .ans.neutral{border-left-color:var(--indigo)}
+.ans .ah{font:600 18px/1.35 var(--sans);margin:6px 0 4px;color:var(--ink)}
+.ans .am{font:400 14px/1.55 var(--sans);color:#35323C;margin-bottom:4px}
+.ar{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:9px 0 2px;border-top:1px solid var(--line);margin-top:8px;font:400 13.8px/1.5 var(--sans);color:#35323C}
+.ar>b{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;padding-top:3px;color:var(--indigo)}
+.ar>div>div+div{margin-top:5px}
+.ar.do>b{color:var(--good)} .ar.avoid>b{color:var(--bad)} .ar.when>b{color:var(--acc)}
+details.whyd{margin:0 0 8px 22px;background:none;padding:0}
+details.whyd summary{font:600 11.5px var(--sans);color:var(--lavI);list-style:none;display:inline-block;padding:2px 9px;border-radius:999px;background:var(--lav)}
+details.whyd summary::-webkit-details-marker{display:none}
+details.whyd[open] summary{margin-bottom:5px}
+details.whyd .why{margin:0}
+details.tech{margin:4px 0 12px;background:#fff;border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:11px 14px}
+details.tech>summary{font:600 13.5px var(--sans);color:var(--lavI);cursor:pointer}
+details.tech[open]>summary{margin-bottom:10px}
+details.tech .techin .card{box-shadow:0 0 0 1px var(--line)}
+.pl{border-top:1px solid var(--line);padding:9px 0 3px;font:400 13.6px/1.5 var(--sans);color:#35323C}
+.pl b{display:block;font:700 10.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:1px}
+.sumrow{display:grid;grid-template-columns:12px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.sumrow:first-of-type{border-top:0}
+.sumrow .d{width:10px;height:10px;border-radius:50%;margin-top:6px}
+.sumrow b{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.sumrow p{font:400 14px/1.5 var(--sans);color:#2E2C35;margin-top:1px}
+.msg.bot .pa{padding:2px 0 2px 10px;margin-bottom:4px}
+.msg.bot .pah,.pah{font:600 15px/1.45 var(--sans);color:var(--ink)}
+.msg.bot .pa p+p{margin-top:4px}
+.msg.bot h4.do{color:var(--good)} .msg.bot h4.avoid{color:var(--bad)} .msg.bot h4.when{color:var(--acc)}
+.msg.bot h4{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--indigo);margin:11px 0 3px}
 </style>
 </head>
 <body>
@@ -1626,6 +1657,276 @@ function makeAnalysis(A, C, J, KB) {
 if (typeof module !== 'undefined') module.exports = makeAnalysis;
 
 ;
+/* src/plain.js */
+/* Trikaal plain-language layer: everyday words for houses, planets and outcomes, for readers who know no astrology. */
+var PLAIN = (function () {
+  var AREA = [null, 'body, health & confidence', 'money in hand, family & speech', 'effort, courage, siblings & short trips', 'home, mother, property & peace of mind',
+    'children, studies, ideas & investments', 'illness, loans, rivals & daily work', 'spouse, business partners & clients', 'sudden events, chronic illness & hidden matters',
+    'luck, father, mentors & long travel', 'career, status & reputation', 'income, gains & friends', 'expenses, losses, sleep & foreign lands'];
+  var AREA_SHORT = [null, 'health', 'money & family', 'efforts & siblings', 'home & peace of mind', 'children & investments', 'illness & debts',
+    'marriage & partners', 'sudden events', 'luck & father', 'career', 'income & gains', 'expenses & sleep'];
+  var PLANET = { Su: 'authority, father, government and vitality', Mo: 'mind, mother, emotions and sleep', Ma: 'energy, courage, property, blood and accidents', Me: 'communication, business, nerves and skin',
+    Ju: 'wisdom, children, wealth and the liver', Ve: 'marriage, comforts, vehicles and kidneys', Sa: 'hard work, delays, discipline, bones and joints', Ra: 'ambition, confusion, foreign lands and sudden ups and downs', Ke: 'detachment, spirituality, sudden cuts and mysterious illness' };
+  var NATURE = { yogakaraka: 'your best planet: it brings success and support', benefic: 'a helpful planet', neutral: 'neither a big helper nor a troublemaker', malefic: 'a difficult planet: it creates problems in the areas it touches', mixed: 'a planet of mixed results', node: 'a shadow planet: it gives the results of the sign and planets it is linked to' };
+  var NATURE_SHORT = { yogakaraka: 'your best planet', benefic: 'helpful for you', neutral: 'neutral for you', malefic: 'difficult for you', mixed: 'mixed for you', node: 'a shadow planet' };
+  var EFFECT = {
+    Su: { good: 'support from seniors and government; confidence up', mixed: 'ego clashes possible; stay humble', bad: 'friction with seniors, low energy, body heat' },
+    Mo: { good: 'calm mind; people support you', mixed: 'mood swings', bad: 'worry and poor sleep' },
+    Ma: { good: 'energy and wins; act boldly', mixed: 'energy, but impatience', bad: 'anger, accidents, cuts and acidity' },
+    Me: { good: 'talks, deals and paperwork go well', mixed: 'mix-ups in talks or documents', bad: 'miscommunication and errors in papers' },
+    Ju: { good: 'growth, blessings and good advice', mixed: 'growth, but with spending', bad: 'expenses, worry, wrong advice' },
+    Ve: { good: 'comfort, love and good purchases', mixed: 'comfort, but overspending', bad: 'relationship friction and overspending' },
+    Sa: { good: 'hard work pays; steady gains', mixed: 'slow progress', bad: 'delays, tiredness and pressure' },
+    Ra: { good: 'bold moves succeed; foreign or tech gains', mixed: 'restless and unclear', bad: 'confusion, false promises and anxiety' },
+    Ke: { good: 'insight and inner strength', mixed: 'detached, low interest', bad: 'sudden cuts, confusion, small health niggles' } };
+  var DO = { Su: 'meet seniors and government officers', Mo: 'spend time with family and rest well', Ma: 'start physical or property work; compete', Me: 'negotiate, sign, sell and write', Ju: 'start important work; take expert advice', Ve: 'buy, celebrate and improve relationships', Sa: 'push long-term work with discipline', Ra: 'take calculated bold moves', Ke: 'meditate, research and finish pending work' };
+  var AVOID = { Su: 'ego clashes with your boss or father', Mo: 'emotional decisions late at night', Ma: 'arguments, rash driving, sharp tools and fried food', Me: 'signing anything without reading it twice', Ju: 'lending money and over-promising', Ve: 'luxury spending and flirting', Sa: 'big risky bets and skipping sleep', Ra: 'shortcuts, unknown people and speculation', Ke: 'decisions taken in confusion; ignoring small symptoms' };
+  var HEALTH = [null, ['Head & overall energy', 'sleep 7 hours, take morning sunlight and walk; yearly full-body check-up'], ['Face, eyes, teeth & throat', 'eye and dental check-ups; avoid very cold or very spicy food'],
+    ['Shoulders, arms & breathing', 'daily pranayama; avoid strain on shoulders'], ['Chest, heart & lungs', 'check BP and cholesterol; pranayama; no smoking'], ['Stomach, liver & sugar', 'regular meals, less sugar and oil; check liver and sugar levels'],
+    ['Digestion & immunity', 'light, timely meals; no fried food; drink enough water'], ['Kidneys & lower back', 'drink enough water; kidney and urine tests; core exercises'], ['Chronic & hidden problems', 'do not ignore small symptoms; regular check-ups'],
+    ['Hips, thighs & liver', 'stretching and walking; watch weight and fat intake'], ['Knees, joints & bones', 'calcium and vitamin D; knee-friendly exercise'], ['Calves, ankles & circulation', 'walk daily; avoid standing too long'], ['Feet, sleep & eyes', 'fixed sleep routine; foot care; less screen time at night']];
+  /* how the houses read for a health or accident event */
+  var EVH = { 1: 'your body', 6: 'illness and injury', 8: 'sudden or serious trouble', 12: 'hospital stays', 5: 'recovery', 11: 'relief' };
+  var MATTER = {
+    job: { q: 'Will the job or promotion happen?', yes: 'Yes, it is likely.', mixed: 'Yes, but with delay or extra effort.', no: 'Not right now. The chart does not support it at present.', go: 'Apply and push for it in the dates above.', wait: 'Keep working on skills; try again in the better period above.' },
+    business: { q: 'Will the deal or contract succeed?', yes: 'Yes, the deal is likely to go through.', mixed: 'Likely, but with delay, changes or negotiation.', no: 'Unlikely as it stands. Expect it to stall or fall through.', go: 'Close it in the dates above.', wait: 'Do not depend on it; keep other options open.' },
+    money: { q: 'Will the money come?', yes: 'Yes, money gain is shown.', mixed: 'Yes, but slowly or in parts.', no: 'Not now. Expect delays or a smaller amount.', go: 'Follow up firmly in the dates above.', wait: 'Avoid fresh risk until the better period.' },
+    marriage: { q: 'Will the marriage happen?', yes: 'Yes, marriage is shown.', mixed: 'Yes, but with delay or obstacles from family or circumstances.', no: 'Not clearly shown right now.', go: 'Fix the dates within the period above.', wait: 'Be patient; the better period is above.' },
+    property: { q: 'Will the property purchase happen?', yes: 'Yes, the purchase is likely.', mixed: 'Likely, but with paperwork or money delays.', no: 'Not now. The deal may not complete.', go: 'Register in the period above.', wait: 'Check documents carefully; wait for the better period.' },
+    vehicle: { q: 'Will the vehicle purchase happen?', yes: 'Yes, you will buy it.', mixed: 'Yes, after some delay.', no: 'Not now.', go: 'Buy in the period above, on a good muhurat day.', wait: 'Wait for the period above.' },
+    foreign: { q: 'Will the foreign travel or move happen?', yes: 'Yes, foreign travel is shown.', mixed: 'Yes, but with visa or timing delays.', no: 'Not now. Expect hurdles.', go: 'Apply in the period above.', wait: 'Prepare documents; try in the better period.' },
+    child: { q: 'Will there be a child?', yes: 'Yes, childbirth is shown.', mixed: 'Yes, with some delay; medical help may be needed.', no: 'Not clearly shown right now; consult a doctor.', go: 'The period above is the most likely.', wait: 'Keep up medical guidance; the better period is above.' },
+    study: { q: 'Will the exam or admission succeed?', yes: 'Yes, success is shown.', mixed: 'Yes, but it needs extra effort.', no: 'Difficult this time.', go: 'Results favour the period above.', wait: 'Prepare well; the next attempt in the period above is better.' },
+    health: { q: 'Will the illness be cured?', yes: 'Yes, recovery is shown.', mixed: 'Recovery will come, but slowly, with ups and downs.', no: 'Not a quick recovery. The illness may drag on.', go: 'Clear improvement is expected in the dates above.', wait: 'Continue treatment and consider a second medical opinion.' },
+    legal: { q: 'Will I win the case or dispute?', yes: 'Yes, the result favours you.', mixed: 'Partly in your favour, or a compromise.', no: 'The result is unlikely to favour you now.', go: 'Push the matter in the dates above.', wait: 'Try to settle; avoid escalating now.' } };
+  function list(a) { a = a.filter(Boolean); return a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function areas(houses, short) { var a = houses.map(function (h) { return (short ? AREA_SHORT : AREA)[h]; }); return short ? list(a) : a.join(' and your '); }
+  /* what each house means for a specific question (KP) */
+  var QH = {
+    job: { 2: 'income', 6: 'getting the job', 10: 'career rise', 11: 'the wish being fulfilled', 1: 'things staying as they are', 5: 'loss of the job', 9: 'obstacles to the job' },
+    business: { 2: 'money', 7: 'the other party agreeing', 10: 'business', 11: 'success', 5: 'the deal breaking', 8: 'obstacles', 12: 'loss' },
+    money: { 2: 'money coming in', 6: 'getting your dues', 11: 'gain', 5: 'loss', 8: 'obstacles', 12: 'expenses' },
+    marriage: { 2: 'the family growing', 7: 'marriage', 11: 'the wish being fulfilled', 1: 'staying single', 6: 'separation', 10: 'obstacles' },
+    property: { 4: 'getting the property', 11: 'gain', 12: 'spending on it', 3: 'paperwork trouble', 10: 'obstacles' },
+    vehicle: { 4: 'getting the vehicle', 11: 'gain', 12: 'spending on it', 3: 'paperwork trouble', 10: 'obstacles' },
+    foreign: { 3: 'short travel', 9: 'long travel', 12: 'living abroad', 2: 'staying with family', 4: 'staying at home', 11: 'gains at home' },
+    child: { 2: 'the family growing', 5: 'childbirth', 11: 'the wish being fulfilled', 1: 'obstacles', 4: 'obstacles', 10: 'obstacles' },
+    study: { 4: 'education', 9: 'higher studies', 11: 'success', 3: 'a break in studies', 8: 'obstacles', 12: 'failure' },
+    health: { 1: 'your body recovering', 5: 'the illness ending', 11: 'relief from it', 6: 'the illness continuing', 8: 'complications', 12: 'hospital stay' },
+    legal: { 1: 'you', 6: 'winning over the opponent', 11: 'success', 5: 'losing', 7: 'the opponent', 12: 'loss' } };
+  return { EVH: EVH, QH: QH, AREA: AREA, AREA_SHORT: AREA_SHORT, PLANET: PLANET, NATURE: NATURE, NATURE_SHORT: NATURE_SHORT, EFFECT: EFFECT, DO: DO, AVOID: AVOID, HEALTH: HEALTH, MATTER: MATTER, list: list, areas: areas };
+})();
+if (typeof module !== 'undefined') module.exports = PLAIN;
+
+;
+/* src/simple.js */
+/* Trikaal simple answers: turns every analysis into a plain verdict, meaning, timing and action for a reader who knows no astrology. */
+function makeSimple(A, C, J, KB, N, P) {
+  var PN = J.PNAME, SG = J.SIGNS, nth = N.nth, DAY = C.DAY, dmy = N.dmy;
+  var W = { Su: 1, Mo: 0.5, Ma: 1.5, Me: 1, Ju: 3, Ve: 1, Sa: 3, Ra: 2, Ke: 1 };
+  var LVLP = { Mahadasha: 'main period', Antardasha: 'sub-period', Pratyantar: 'short period', Sookshma: 'period of a few days', Prana: 'period of hours' };
+  var RETRO = { Me: 're-check documents, messages and payments', Ve: 'old relationships or pending deals come back', Ma: 'old disputes or repairs resurface', Ju: 'growth slows; review plans and investments', Sa: 'old pending work and responsibilities return' };
+  function hit(a, s) { return a.filter(function (x) { return s.indexOf(x) >= 0; }); }
+  function uniq(a) { var o = []; a.forEach(function (x) { if (x != null && o.indexOf(x) < 0) o.push(x); }); return o; }
+  function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+  function codeByName(n) { var o = null; Object.keys(PN).forEach(function (k) { if (PN[k] === n) o = k; }); return o; }
+  function kind(c, code) { if (code === 'Ra' || code === 'Ke') return c.func[J.RULER[c.k.P[code].sign]].kind; var f = c.func[code].kind; return f === 'mixed' ? 'mixed' : f; }
+  function isLL(c, code) { return J.lordOfHouse(c.k.ascSign, 1) === code; }
+  function verdictOf(c, code) { var k = kind(c, code); return isLL(c, code) || k === 'benefic' || k === 'yogakaraka' ? 'good' : k === 'malefic' ? 'bad' : 'mixed'; }
+  function natureShort(c, code) { if (isLL(c, code)) return 'your own planet (lagna lord)'; if (code === 'Ra' || code === 'Ke') return 'a shadow planet that acts like ' + PN[J.RULER[c.k.P[code].sign]] + ' (' + P.NATURE_SHORT[kind(c, code)] + ')'; return P.NATURE_SHORT[c.func[code].kind]; }
+
+  /* ---------- strength ---------- */
+  function strength(c, code) {
+    var p = c.k.P[code], s = 0, why = [];
+    var dg = { 'Exalted': 2, 'Moolatrikona': 2, 'Own sign': 1.5, 'Friendly sign': 0.5, 'Neutral sign': 0, 'Enemy sign': -1, 'Debilitated': -2 }[p.dignity] || 0;
+    s += dg; why.push(p.dignity === 'Exalted' ? 'at its highest strength (exalted)' : p.dignity === 'Debilitated' ? 'at its weakest (debilitated)' : p.dignity === 'Own sign' || p.dignity === 'Moolatrikona' ? 'in its own sign' : p.dignity === 'Enemy sign' ? 'in an unfriendly sign' : p.dignity === 'Friendly sign' ? 'in a friendly sign' : 'in a neutral sign');
+    if (c.av.bav[code]) { var b = c.av.bav[code][p.sign]; s += b >= 5 ? 1 : b <= 3 ? -1 : 0; why.push(b + ' of 8 support points'); }
+    if (p.combust) { s -= 1; why.push('too close to the Sun (combust)'); }
+    if ([1, 4, 5, 7, 9, 10].indexOf(p.house) >= 0) { s += 0.5; why.push('well placed'); } else if ([6, 8, 12].indexOf(p.house) >= 0) { s -= 0.5; why.push('in a difficult house'); }
+    var v9 = J.dignity(code, J.varga(p.lon, 9).sign * 30 + 1); if (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(v9) >= 0) { s += 0.5; why.push('strong in the Navamsha'); } else if (v9 === 'Debilitated') { s -= 0.5; why.push('weak in the Navamsha'); }
+    return { score: s, word: s >= 2 ? 'Strong' : s >= 0 ? 'Average' : 'Weak', why: why };
+  }
+
+  /* ---------- one planet ---------- */
+  function planet(c, code, now) {
+    var k = c.k, p = k.P[code], L = k.ascSign, rules = J.lordsOf(L, code), st = strength(c, code), nat = verdictOf(c, code), out = { code: code, lines: [], do: [], avoid: [] };
+    var sentence = KB.IN_HOUSE[code][p.house], placeGood = [1, 2, 4, 5, 7, 9, 10, 11].indexOf(p.house) >= 0, dus = [6, 8, 12].indexOf(p.house) >= 0, v, head;
+    if (nat === 'good') { if (st.word === 'Weak') { v = 'mixed'; head = PN[code] + ' is on your side, but too weak to give its full results.'; } else if (dus) { v = 'mixed'; head = PN[code] + ' is on your side, but sits in a difficult house, so its help is limited.'; } else { v = 'good'; head = 'In your birth chart, ' + PN[code] + ' works in your favour.'; } }
+    else if (nat === 'bad') { if (dus) { v = 'mixed'; head = PN[code] + ' is a difficult planet for you, but it sits in a hidden house, so its harm is limited.'; } else if (placeGood && st.word === 'Strong') { v = 'mixed'; head = PN[code] + ' gives good results through its placement, but as a difficult planet for your lagna it also brings problems.'; } else { v = 'bad'; head = 'In your birth chart, ' + PN[code] + ' causes trouble for you.'; } }
+    else { v = 'mixed'; head = 'In your birth chart, ' + PN[code] + ' gives mixed results: neither a big help nor a big problem.'; }
+    out.verdict = v; out.nature = nat; out.strength = st;
+    out.headline = head;
+    out.meaning = 'It is ' + natureShort(c, code) + ' and ' + (st.word === 'Strong' ? 'strong' : st.word === 'Weak' ? 'weak' : 'of average strength') + ' in your chart. Its effect on you: ' + sentence + '.';
+    if (code === 'Ra' || code === 'Ke') out.lines.push(['Its role', PN[code] + ' owns no sign. It works like ' + PN[J.RULER[p.sign]] + ', the lord of the sign it sits in, and brings ' + P.PLANET[code] + '.']);
+    else out.lines.push(['Its role', 'It controls your ' + P.areas(rules) + '. ' + (isLL(c, code) ? 'As your lagna lord it is your own planet: it protects you.' : 'For your lagna it is ' + P.NATURE[c.func[code].kind] + '.')]);
+    out.lines.push(['Where it sits', 'In your ' + P.AREA[p.house] + ' area: ' + sentence + '.']);
+    out.lines.push(['How strong', st.word + ': ' + P.list(st.why) + '.']);
+    var tr = N.transitAt(c, now).filter(function (x) { return x.code === code; })[0];
+    if (tr && code !== 'Mo') { var nx = J.nextIngress(code === 'Ke' ? 'Ra' : code, now, 1500); out.lines.push(['Right now', 'Moving through your ' + P.AREA_SHORT[tr.h] + ' area: ' + P.EFFECT[code][tr.verdict] + (nx ? ' (until ' + dmy(nx) + ')' : '') + '.']); out.transit = tr; }
+    var ch = J.dashaChain(c.maha, now, 3), role = null;
+    ch.forEach(function (x, i) { if (!role && x.lord === code) role = 'It is running your ' + ['main period', 'sub-period', 'short period'][i] + ' until ' + dmy(x.end) + ', so its results are active now.'; });
+    if (!role && ch[0]) { var nextAd = J.subPeriods(ch[0]).filter(function (a) { return a.lord === code && a.start > now; })[0]; if (nextAd) role = 'Its next sub-period: ' + dmy(nextAd.start) + ' to ' + dmy(nextAd.end) + '. Its results will be strongest then.'; else { var nm = c.maha.filter(function (m) { return m.lord === code && m.start > now; })[0]; if (nm) role = 'Its main period starts ' + dmy(nm.start) + '.'; } }
+    if (role) out.lines.push(['Its time', role]);
+    var ms = KB.MANTRA[code][0], day = KB.DAAN[code][1];
+    if (nat === 'good' && st.word === 'Strong') out.do.push('No remedy needed. Use its strength: ' + P.DO[code] + '.');
+    else if (nat === 'good') out.do.push('Strengthen it: chant ' + ms + ' 108 times on ' + day + 's.');
+    if (nat === 'good' && code !== 'Ra' && code !== 'Ke' && !dus && !c.func[code].maraka) out.do.push('Gemstone: ' + KB.GEM[code][0] + ' suits you (' + KB.GEM[code][1] + ').');
+    if (nat === 'bad') { out.do.push('Calm it: donate ' + KB.DAAN[code][0] + ' on ' + day + 's and chant ' + ms + '.'); if (code !== 'Ra' && code !== 'Ke') out.avoid.push('wearing ' + KB.GEM[code][0]); }
+    if (nat === 'mixed' && role && /running/.test(role)) out.do.push('While its period runs: chant ' + ms + ' on ' + day + 's.');
+    if (!out.do.length) out.do.push('No special remedy needed.');
+    if (nat === 'bad' || (tr && tr.verdict === 'bad')) out.avoid.push(P.AVOID[code]);
+    return out;
+  }
+
+  /* ---------- a month of transits ---------- */
+  function month(c, tm) {
+    var k = c.k, score = 0, good = [], bad = [];
+    tm.tr.forEach(function (x) { var w = W[x.code]; score += (x.verdict === 'good' ? 1 : x.verdict === 'bad' ? -1 : 0) * w; if (x.verdict === 'good') good.push(x); if (x.verdict === 'bad') bad.push(x); });
+    if (tm.sade.q === 'bad') score -= 2;
+    if (tm.rulerTr) score += tm.rulerTr.verdict === 'good' ? 1.5 : tm.rulerTr.verdict === 'bad' ? -1.5 : 0;
+    var byW = function (a, b) { return W[b.code] - W[a.code]; }; good.sort(byW); bad.sort(byW);
+    var v = score >= 2 ? 'good' : score <= -3 ? 'bad' : 'mixed';
+    var gA = uniq(good.map(function (x) { return P.AREA_SHORT[x.h]; })).slice(0, 3), bA = uniq(bad.map(function (x) { return P.AREA_SHORT[x.h]; })).slice(0, 3);
+    var out = { verdict: v, score: score, word: { good: 'A good month', mixed: 'A mixed month', bad: 'A difficult month' }[v] };
+    out.meaning = (gA.length ? 'Support for ' + P.list(gA) + '. ' : '') + (bA.length ? 'Take care with ' + P.list(bA) + '.' : '') + (tm.sade.q === 'bad' ? ' In the background, Saturn’s hard position from your Moon (' + tm.sade.label.replace(/\s*\(.*\)/, '') + (tm.sade.until ? ', until ' + dmy(tm.sade.until) : '') + ') keeps pressure and tiredness up.' : '');
+    out.do = uniq(good.slice(0, 3).map(function (x) { return P.DO[x.code]; })); if (!out.do.length) out.do = ['keep a steady routine and finish pending work'];
+    out.avoid = uniq(bad.slice(0, 3).map(function (x) { return P.AVOID[x.code]; }));
+    var r = tm.ruler, rx = tm.rulerTr;
+    if (r) { var roles = []; tm.chain.forEach(function (x, i) { if (x.lord === r) roles.push(['main period', 'sub-period', 'short period', 'few-day period'][i]); });
+      out.ruler = { code: r, title: PN[r] + ' runs this month', text: PN[r] + ' is your ' + roles.join(' and ') + ' planet now and ' + natureShort(c, r) + '. ' + (rx ? 'This month it moves through your ' + P.AREA_SHORT[rx.h] + ' area, ' + (rx.verdict === 'good' ? 'a good position: ' : rx.verdict === 'bad' ? 'a hard position: ' : 'a mixed position: ') + P.EFFECT[r][rx.verdict] + '.' : '') }; }
+    out.rows = tm.tr.map(function (x) { return { code: x.code, verdict: x.verdict, title: PN[x.code] + ' · your ' + P.AREA_SHORT[x.h], text: cap(P.EFFECT[x.code][x.verdict]) + '.' + (x.next ? ' Changes on ' + dmy(x.next) + '.' : '') }; });
+    out.dates = tm.events.filter(function (e) { return e.code !== 'Mo'; }).map(function (e) {
+      if (e.type === 'ingress') { var h = J.houseFrom(k.ascSign, e.sign), m = J.houseFrom(k.P.Mo.sign, e.sign), g = KB.GOCHAR_GOOD[e.code].indexOf(m) >= 0; return { t: e.t, text: PN[e.code] + ' moves into your ' + P.AREA_SHORT[h] + ' area: ' + (g ? 'good for you' : 'needs care') + '.' }; }
+      if (e.type === 'retro') return { t: e.t, text: PN[e.code] + ' turns backward (retrograde): ' + (RETRO[e.code] || 'review before acting') + '.' };
+      return { t: e.t, text: PN[e.code] + ' moves forward again: its delays start to clear.' };
+    });
+    return out;
+  }
+
+  /* ---------- health ---------- */
+  function health(c, now) {
+    var H = N.healthAnalysis(c, now), k = c.k, ll = J.lordOfHouse(k.ascSign, 1), v = H.vital >= 2 ? 'good' : H.vital >= 0 ? 'mixed' : 'bad';
+    var out = { verdict: v, H: H };
+    out.headline = { good: 'Your basic health is strong.', mixed: 'Your basic health is average: you recover well, but some areas need care.', bad: 'Your health needs regular care and check-ups.' }[v];
+    out.weak = H.zones.filter(function (z) { return z.level !== 'good'; }).slice(0, 3).map(function (z) { return { area: P.HEALTH[z.house][0], tip: P.HEALTH[z.house][1], house: z.house, why: z.why }; });
+    out.strong = H.zones.filter(function (z) { return z.level === 'good' && z.risk < 0; }).slice(0, 2).map(function (z) { return P.HEALTH[z.house][0]; });
+    out.meaning = (out.weak.length ? 'Weak spots: ' + out.weak.map(function (w) { return w.area.toLowerCase(); }).join('; ') + '.' : 'No major weak spot.') + (out.strong.length ? ' Well protected: ' + out.strong.map(function (s) { return s.toLowerCase(); }).join('; ') + '.' : '');
+    out.now = [];
+    if (H.sade.q === 'bad') out.now.push('Until ' + dmy(H.sade.until) + ': Saturn’s hard position from your Moon brings tiredness and stress. Keep sleep and meals fixed.');
+    ['Ma', 'Sa', 'Ra'].forEach(function (code) { var s = J.signOf(C.sidereal(code, now)), h = J.houseFrom(k.ascSign, s); if ([1, 6, 8, 12].indexOf(h) >= 0) { var e = J.nextIngress(code, now, 1200); out.now.push('Until ' + dmy(e) + ': ' + PN[code] + ' is in your ' + P.AREA_SHORT[h] + ' area. Watch ' + KB.PLANET[code].body.split(',').slice(0, 2).map(function (s) { return s.trim(); }).join(' and ') + '.'); } });
+    var ch = J.dashaChain(c.maha, now, 2); ch.forEach(function (x, i) { var ls = J.lordsOf(k.ascSign, x.lord); if (ls.some(function (h) { return [6, 8].indexOf(h) >= 0; }) || [6, 8].indexOf(k.P[x.lord].house) >= 0) out.now.push('Your current ' + ['main period', 'sub-period'][i] + ' planet ' + PN[x.lord] + ' is linked to illness areas until ' + dmy(x.end) + ', so do not skip check-ups.'); });
+    var chw = H.timeline.filter(function (t) { return /Chandrashtama/.test(t.t) && t.start > now; })[0]; if (chw) out.now.push('Next low-energy days: ' + N.dmY(chw.start) + ' to ' + N.dmY(chw.end) + '. Rest more.');
+    out.better = [];
+    if (H.sade.q === 'bad' && H.sade.until) out.better.push(dmy(H.sade.until) + ': Saturn moves on and the pressure eases.');
+    H.support.filter(function (s) { return /Jupiter/.test(s); }).forEach(function (s) { var m = s.match(/^(\d+ \w+ \d{4}): Jupiter/); out.better.push(m ? m[1] + ': Jupiter moves to a position where it protects your health.' : 'Jupiter is now in a position where it protects your health.'); });
+    out.do = out.weak.map(function (w) { return w.area + ': ' + w.tip + '.'; });
+    out.do.push('Daily: chant ' + KB.MANTRA[ll][0] + ' 11 times to strengthen ' + PN[ll] + ', your lagna lord.');
+    out.avoid = ['skipping meals and sleep'];
+    var ma = J.houseFrom(k.ascSign, J.signOf(C.sidereal('Ma', now))); if ([1, 6, 8, 12].indexOf(ma) >= 0) out.avoid.push('fried food, anger and rash driving while Mars is in your ' + P.AREA_SHORT[ma] + ' area');
+    return out;
+  }
+
+  /* ---------- event ---------- */
+  function hp(hs, heal) { return P.list(uniq(hs.map(function (h) { return heal && P.EVH[h] ? P.EVH[h] : P.AREA_SHORT[h]; }))); }
+  function plainReason(c, code, w, heal) {
+    var m;
+    if ((m = w.match(/^(Mahadasha|Antardasha|Pratyantar|Sookshma|Prana) lord, linked to houses ([\d, ]+)\./))) return 'It was running your ' + LVLP[m[1]] + ', and in your chart it is linked to ' + hp(m[2].split(',').map(Number), heal) + '.';
+    if ((m = w.match(/^Transiting your (\d+)/))) return 'On that day it was moving through the part of your chart for ' + hp([+m[1]], heal) + '.';
+    if ((m = w.match(/^Transit \w+ within ([\d.]+)° of natal lagna/))) return 'On that day it passed over your ascendant, the point of your body.';
+    if ((m = w.match(/^Transit \w+ within ([\d.]+)° of natal (\w+) \(/))) { var nc = codeByName(m[2]), rl = nc ? J.lordsOf(c.k.ascSign, nc) : []; return 'On that day it passed ' + (+m[1] < 1 ? 'exactly ' : '') + 'over your birth ' + m[2] + (rl.length ? ', which controls your ' + P.areas(rl, true) : '') + '.'; }
+    if ((m = w.match(/^Aspecting your ([\dthndrs, ]+) house/))) return 'It was also aspecting the part of your chart for ' + hp(m[1].match(/\d+/g).map(Number), heal) + '.';
+    if (/^Natural significator/.test(w)) return 'By nature it rules ' + P.PLANET[code] + '.';
+    if ((m = w.match(/^Only (\d+) bindus/))) return 'Your chart gives little protection there (only ' + m[1] + ' of 8 points).';
+    return w;
+  }
+  function event(c, E, now) {
+    var m = E.main, out = { verdict: E.E.good ? 'good' : 'bad', E: E };
+    if (!m) { out.headline = 'No single planet stands out for this event.'; out.reasons = []; out.do = []; out.avoid = []; return out; }
+    var heal = !!E.E.heal;
+    var lv = [], links = [];
+    E.dasha.forEach(function (d, i) { if (d.lord === m.code && (d.evP.length || d.evK.length)) { lv.push(['main period', 'sub-period', 'short period', 'period of a few days', 'period of hours'][i]); links = links.concat(d.evP, d.evK); } });
+    out.reasons = uniq(m.why.filter(function (w) { return !/^(Mahadasha|Antardasha|Pratyantar|Sookshma|Prana) lord/.test(w); }).map(function (w) { return plainReason(c, m.code, w, heal); }).map(function (r) { return r.replace(/^It /, PN[m.code] + ' '); }));
+    if (lv.length) out.reasons.unshift(PN[m.code] + ' was running your ' + P.list(lv) + ', and in your chart it is linked to ' + hp(uniq(links).sort(function (a, b) { return a - b; }), heal) + '.');
+    function levelsOf(code) { var o = []; E.dasha.forEach(function (d, i) { if (d.lord === code) o.push(['main period', 'sub-period', 'short period', 'few-day period', 'period of hours'][i]); }); return o; }
+    out.support = E.support.map(function (s) {
+      var lv2 = levelsOf(s.code), tr = s.why.filter(function (w) { return /^Transit/.test(w); })[0];
+      return { code: s.code, text: (lv2.length ? 'it ran your ' + P.list(lv2) + ' and is linked to the same areas' : '') + (tr ? (lv2.length ? '; ' : '') + plainReason(c, s.code, tr, heal).replace(/^On that day it /, 'that day it ').replace(/\.$/, '') : '') + (!lv2.length && !tr ? plainReason(c, s.code, s.why[0], heal).replace(/^It /, 'it ').replace(/\.$/, '') : '') + '.' };
+    });
+    var transitHit = m.why.some(function (w) { return /^Transit/.test(w); }), mlv = levelsOf(m.code);
+    out.headline = (E.E.good ? 'This came mainly through ' : 'Main cause: ') + PN[m.code] + (transitHit ? ', which passed over a sensitive point in your chart that day' : mlv.length ? ', the planet running your ' + P.list(mlv) : '') + '.';
+    var rec = E.recovery && E.recovery[0], ease = transitHit ? E.outlook.filter(function (o) { return /leaves/.test(o.text); })[0] : null;
+    out.when = [];
+    if (ease) out.when.push((ease.t < now ? 'The worst eased on ' : 'The worst eases on ') + dmy(ease.t) + ', when ' + PN[m.code] + ' moved off the trigger point.');
+    if (rec) out.when.push((E.E.heal ? 'Recovery support from ' : E.E.good ? 'Results build up from ' : 'Relief from ') + dmy(rec.start) + (rec.start < now ? ' (already begun)' : '') + ': the ' + PN[rec.lord] + ' period favours ' + (E.E.heal ? 'healing' : 'improvement') + '.');
+    if (E.recovery && E.recovery[1]) out.when.push('Stronger support again from ' + dmy(E.recovery[1].start) + ' (' + PN[E.recovery[1].lord] + ' period).');
+    if (!out.when.length) out.when.push('No clear relief period in the next 18 months from the dasha; keep treatment and remedies going.');
+    out.do = [];
+    if (!E.E.good) { out.do.push('Calm ' + PN[m.code] + ': donate ' + KB.DAAN[m.code][0] + ' on ' + KB.DAAN[m.code][1] + 's and chant ' + KB.MANTRA[m.code][0] + ' 108 times.'); }
+    if (E.E.heal) { out.do.push('Chant the Maha Mrityunjaya mantra 108 times daily until recovery.'); out.do.push('Follow the doctor’s treatment fully; the dates above are support periods, not a substitute for treatment.'); }
+    if (E.E.good) out.do.push('Use the period: ' + P.DO[m.code] + '.');
+    out.avoid = E.E.good ? [] : [P.AVOID[m.code]];
+    return out;
+  }
+
+  /* ---------- KP question (natal or horary) ---------- */
+  function kpWindows(sig, m, maha, from, months, depth, rps) {
+    var to = new Date(from.getTime() + months * 30.44 * DAY), out = [];
+    function f(l) { return hit(m.fav, sig.sig[l]).length; } function n(l) { return hit(m.neg, sig.sig[l]).length; }
+    function sc(l) { return f(l) - 0.5 * n(l) + (rps && rps.indexOf(l) >= 0 ? 1.5 : 0); }
+    function walk(list, lvl, chain, relaxed) {
+      list.forEach(function (p) {
+        if (p.end <= from || p.start >= to) return;
+        var ch = chain.concat([p]);
+        if (lvl === depth) { var last = ch.slice(-2), ok = last.every(function (x) { return relaxed ? f(x.lord) > 0 : f(x.lord) > 0 && f(x.lord) >= n(x.lord); }); if (ok) out.push({ lords: ch.map(function (x) { return x.lord; }), start: p.start < from ? from : p.start, end: p.end, score: sc(last[0].lord) + sc(last[1].lord) + (f(ch[0].lord) ? 0.5 : 0), relaxed: !!relaxed }); }
+        else walk(J.subPeriods(p), lvl + 1, ch, relaxed);
+      });
+    }
+    walk(maha, 1, [], false);
+    if (!out.length) walk(maha, 1, [], true);
+    var best = out.slice().sort(function (a, b) { return b.score - a.score || a.start - b.start; }).slice(0, 4).sort(function (a, b) { return a.start - b.start; });
+    return best;
+  }
+  function kp(jm, mk, wins, now) {
+    var j = jm.main, lv = N.VERD[j.level][1], v = lv === 'good' ? 'good' : lv === 'bad' ? 'bad' : 'mixed', M = P.MATTER[mk] || P.MATTER.job;
+    var out = { verdict: v, q: M.q, headline: v === 'good' ? M.yes : v === 'bad' ? M.no : M.mixed };
+    var qh = P.QH[mk] || {}, ph = function (hs) { return P.list(uniq(hs.map(function (h) { return qh[h] || P.AREA_SHORT[h]; }))); };
+    out.meaning = 'The planet that decides this question is ' + PN[j.csl] + '. ' + (j.pf.length ? 'It shows ' + ph(j.pf) + (j.pn.length ? ', but also ' + ph(j.pn) : '') + '.' : 'It does not show ' + ph(jm.m.fav) + (j.pn.length ? '; instead it shows ' + ph(j.pn) : '') + '.');
+    out.when = [];
+    if (wins.length) { var w0 = wins[0]; out.when.push((v === 'bad' ? (mk === 'health' ? 'First chance of improvement: ' : 'Best chance: ') : 'Most likely: ') + dmy(w0.start) + ' to ' + dmy(w0.end) + (w0.relaxed ? ' (only a partial chance)' : '') + '.'); wins.slice(1, 3).forEach(function (w) { out.when.push((v === 'bad' ? 'Next chance: ' : 'Also possible: ') + dmy(w.start) + ' to ' + dmy(w.end) + '.'); }); }
+    else out.when.push('No supportive period in this time frame.');
+    out.do = [v === 'bad' ? M.wait : M.go];
+    var helper = wins.length ? wins[0].lords[wins[0].lords.length - 1] : null;
+    if (helper) out.do.push('To support it, chant ' + KB.MANTRA[helper][0] + ' 108 times on ' + KB.DAAN[helper][1] + 's (' + PN[helper] + ' rules the best period).');
+    if (mk === 'health') out.do.push('Chant the Maha Mrityunjaya mantra 108 times daily, and follow the doctor’s treatment.');
+    out.avoid = v === 'good' ? [] : ['forcing the matter before the dates above'];
+    return out;
+  }
+
+  /* ---------- whole chart in plain words ---------- */
+  function report(c, now) {
+    var k = c.k, L = k.ascSign, sec = N.report(c, now), get = function (id) { return sec.filter(function (s) { return s.id === id; })[0]; }, out = [];
+    function badgeV(s) { var p = 0, n = 0; (s.items || []).forEach(function (i) { if (i.k === 'pro') p++; if (i.k === 'con') n++; }); return p >= n + 2 ? 'good' : n >= p + 1 ? 'bad' : 'mixed'; }
+    out.push({ k: 'Nature', v: 'neutral', t: cap(KB.SIGN_TRAIT[L]) + '. At heart ' + KB.NAK_TRAIT[k.P.Mo.nak.index] + '.' });
+    var hs = health(c, now); out.push({ k: 'Health', v: hs.verdict, t: hs.headline + ' ' + hs.meaning });
+    var l10 = J.lordOfHouse(L, 10), p10 = k.P[l10], car = get('career');
+    var fields = uniq([l10].concat(k.planets.filter(function (x) { return x.house === 10; }).map(function (x) { return x.code; }))).slice(0, 2).map(function (x) { return KB.CAREER_HINT[x]; });
+    out.push({ k: 'Career', v: badgeV(car), t: 'Career rises through ' + P.AREA[p10.house] + '. Suited to ' + P.list(fields) + '.' });
+    var s11 = N.savOf(c, 11), s12 = N.savOf(c, 12), s2 = N.savOf(c, 2), dh = c.yogas.some(function (y) { return y.kind === 'dhana'; });
+    out.push({ k: 'Money', v: s11 > s12 && s2 >= 25 ? 'good' : s11 > s12 ? 'mixed' : 'bad', t: (s11 > s12 ? 'You earn more than you spend' : 'Expenses tend to eat into income') + '; savings ' + (s2 >= 28 ? 'grow well' : s2 >= 24 ? 'grow with discipline' : 'need strict discipline') + '.' + (dh ? ' Your chart has wealth combinations (Dhana yoga).' : '') });
+    var l7 = J.lordOfHouse(L, 7), p7 = k.P[l7], md = c.yogas.filter(function (y) { return /Mangal/.test(y.name); })[0], mar = get('marriage');
+    out.push({ k: 'Marriage', v: badgeV(mar), t: 'Partnership is linked to your ' + P.AREA_SHORT[p7.house] + ' area' + ([6, 8, 12].indexOf(p7.house) >= 0 ? ', so expect some friction or distance at times' : ', a supportive placement') + '.' + (md ? (md.kind === 'dosha' ? ' Mangal dosha is present: match charts before marriage.' : ' Mild Mangal dosha only.') : '') });
+    var ch = J.dashaChain(c.maha, now, 2), ss = N.sadeSati(c, now);
+    out.push({ k: 'Right now', v: verdictOf(c, ch[1] ? ch[1].lord : ch[0].lord), t: 'Main period of ' + PN[ch[0].lord] + ' (until ' + dmy(ch[0].end) + '), ' + natureShort(c, ch[0].lord) + '. Sub-period of ' + PN[ch[1].lord] + ' (until ' + dmy(ch[1].end) + '), ' + natureShort(c, ch[1].lord) + '. ' + (ss.q === 'bad' ? 'Saturn’s hard position from your Moon adds pressure until ' + dmy(ss.until) + '.' : 'No Sade Sati pressure now.') });
+    var nextAd = ch[0] ? J.subPeriods(ch[0]).filter(function (a) { return a.start > now; })[0] : null;
+    if (nextAd) out.push({ k: 'Next change', v: verdictOf(c, nextAd.lord), t: dmy(nextAd.start) + ': the sub-period of ' + PN[nextAd.lord] + ' begins. It brings ' + P.areas(uniq(J.lordsOf(L, nextAd.lord).concat([k.P[nextAd.lord].house])), true) + ' to the front; ' + PN[nextAd.lord] + ' is ' + natureShort(c, nextAd.lord) + '.' });
+    return out;
+  }
+
+  return { strength: strength, planet: planet, month: month, health: health, event: event, plainReason: plainReason, kpWindows: kpWindows, kp: kp, report: report, verdictOf: verdictOf, natureShort: natureShort };
+}
+if (typeof module !== 'undefined') module.exports = makeSimple;
+
+;
 /* ui/charts.js */
 /* North and South Indian chart renderers (SVG strings) */
 var Charts = (function () {
@@ -1731,7 +2032,7 @@ var CITIES = (function () {
 ;
 /* ui/app-core.js */
 /* Trikaal app: state, storage, bridge, routing, people */
-var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB);
+var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB), S = makeSimple(A, C, J, KB, N, PLAIN);
 var PN = J.PNAME, SG = J.SIGNS, SG3 = J.SG3, nth = N.nth;
 var PCOL = { Su: '#C9762A', Mo: '#5C7CA8', Ma: '#B03A2E', Me: '#2D7A52', Ju: '#B38A1E', Ve: '#8E5BA8', Sa: '#3D4A6B', Ra: '#55525C', Ke: '#7A7680', La: '#B94E1A' };
 var AVCOL = ['#26254A', '#B94E1A', '#2D7A52', '#8E5BA8', '#B38A1E', '#5C7CA8', '#B03A2E', '#3D4A6B'];
@@ -1887,7 +2188,16 @@ function whoCard(p, extra) { return '<div class="who"><div style="min-width:0"><
 function vchip(q, label) { var m = { good: 'g', mixed: 'm', bad: 'b', neutral: 'n' }; return '<span class="vc ' + (m[q] || 'n') + '">' + esc(label || cap(q)) + '</span>'; }
 function pg(code, size) { return '<span class="pg" style="background:' + PCOL[code] + (size ? ';width:' + size + 'px;height:' + size + 'px' : '') + '">' + code + '</span>'; }
 function sel(name, opts, cur, attrs) { return '<select class="inp" ' + (attrs || '') + ' data-ch="' + name + '">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'; }
-function whyBox(lines) { lines = (lines || []).filter(Boolean); return lines.length ? '<div class="why">' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>' : ''; }
+function whyBox(lines, open) { lines = (lines || []).filter(Boolean); return lines.length ? '<details class="whyd"' + (open ? ' open' : '') + '><summary>Why</summary><div class="why">' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div></details>' : ''; }
+var VLABEL = { good: 'Good', mixed: 'Mixed', bad: 'Difficult', neutral: 'Info' };
+/* plain answer card: o = {verdict, label, headline, meaning, rows: [[title, [lines], kind]]} */
+function answerCard(o) {
+  var h = '<div class="ans ' + (o.verdict || 'mixed') + '"><div class="row"><span class="lbl">' + esc(o.label || 'In simple words') + '</span>' + (o.chip !== false ? vchip(o.verdict === 'neutral' ? 'neutral' : o.verdict, o.chipText || VLABEL[o.verdict] || 'Mixed') : '') + '</div>';
+  h += '<div class="ah">' + esc(o.headline) + '</div>' + (o.meaning ? '<p class="am">' + esc(o.meaning) + '</p>' : '');
+  (o.rows || []).forEach(function (r) { var ls = (r[1] || []).filter(Boolean); if (!ls.length) return; h += '<div class="ar ' + (r[2] || '') + '"><b>' + esc(r[0]) + '</b><div>' + ls.map(function (l) { return '<div>' + esc(cap(l)) + '</div>'; }).join('') + '</div></div>'; });
+  return h + '</div>';
+}
+function techBlock(title, inner, open) { return '<details class="tech"' + (open ? ' open' : '') + '><summary>' + esc(title || 'Show the astrology behind this') + '</summary><div class="techin">' + inner + '</div></details>'; }
 function logic(lines) { return '<div class="logic">' + lines.map(function (l, i) { return '<div><i>' + (i + 1) + '</i><span>' + l + '</span></div>'; }).join('') + '</div>'; }
 function durStr(ms) { var d = ms / 864e5, y = Math.floor(d / 365.25), m = Math.floor((d - y * 365.25) / 30.4375), dd = Math.round(d - y * 365.25 - m * 30.4375); return (y ? y + 'y ' : '') + (m ? m + 'm ' : '') + (y ? '' : dd + 'd'); }
 function emptyState(t, s, btn) { return '<div class="empty"><h2>' + t + '</h2><p>' + s + '</p>' + (btn || '') + '</div>'; }
@@ -2002,9 +2312,12 @@ function badgeChip(b) { if (!b) return ''; var m = { Strong: 'g', Moderate: 'm',
 
 /* ---------- Report ---------- */
 TABF.report = function (p, c, now) {
-  var sec = N.report(c, now), f = U.filter;
+  var sec = N.report(c, now), f = U.filter, sum = S.report(c, now);
   var F = [['all', 'All'], ['personality', 'Nature'], ['health', 'Health'], ['career', 'Career'], ['money', 'Money'], ['marriage', 'Marriage'], ['children', 'Children'], ['now', 'Now'], ['future', 'Next 3 years']];
-  var h = '<div class="chips">' + F.map(function (x) { return '<button data-act="rfilter" data-v="' + x[0] + '" class="' + (f === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
+  var h = '<div class="pad"><div class="ans neutral"><div class="lbl">' + esc(p.name) + ' in simple words</div>';
+  sum.forEach(function (r) { var col = r.v === 'good' ? 'var(--good)' : r.v === 'bad' ? 'var(--bad)' : r.v === 'mixed' ? 'var(--warn)' : 'var(--indigo)'; h += '<div class="sumrow"><span class="d" style="background:' + col + '"></span><div><b>' + esc(r.k) + '</b><p>' + esc(r.t) + '</p></div></div>'; });
+  h += '</div><div class="lbl" style="margin:14px 2px 8px">Full reading, point by point</div></div>';
+  h += '<div class="chips">' + F.map(function (x) { return '<button data-act="rfilter" data-v="' + x[0] + '" class="' + (f === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
   sec.forEach(function (s) {
     if (f !== 'all' && s.id !== f) return;
     h += '<div class="card"><h3>' + esc(s.title) + badgeChip(s.id === 'short' || s.id === 'future' || s.id === 'personality' ? null : sectionBadge(s)) + '</h3>';
@@ -2013,8 +2326,8 @@ TABF.report = function (p, c, now) {
     if (s.note) h += '<div class="note">' + esc(s.note) + '</div>';
     h += '</div>';
   });
-  h += '<div class="note" style="margin:0 2px 14px">Every point lists the chart facts behind it. Ask follow-up questions in the Ask tab.</div></div>';
-  U.shareFn = function () { return sec.map(function (s) { return s.title.toUpperCase() + '\n' + (s.items || []).map(function (i) { return (i.k === 'pro' ? '+ ' : i.k === 'con' ? '- ' : '• ') + i.t + '\n   ' + i.why.join(' '); }).join('\n') + (s.timeline || []).map(function (t) { return N.dmy(t.t) + ': ' + t.text; }).join('\n'); }).join('\n\n'); };
+  h += '<div class="note" style="margin:0 2px 14px">Tap “Why” on any point to see the chart facts behind it. Ask follow-up questions in the Ask tab.</div></div>';
+  U.shareFn = function () { return p.name + ' in simple words\n' + sum.map(function (r) { return r.k + ': ' + r.t; }).join('\n'); };
   return h;
 };
 ACT.rfilter = function (el) { U.filter = el.dataset.v; rerender(true); };
@@ -2076,17 +2389,22 @@ ACT.planetSheet = function (el) {
 };
 
 /* ---------- Planets ---------- */
+var PVL = { good: 'On your side', mixed: 'Mixed', bad: 'Troubles you' };
+function planetPlainCard(c, code, now, compact) {
+  var x = c.k.P[code], sp = S.planet(c, code, now), items = N.planet(c, code, now);
+  var h = '<div class="card"><div class="row" style="margin-bottom:8px"><div style="display:flex;gap:10px;align-items:center">' + pg(code) + '<div><b style="font-size:15.5px">' + PN[code] + '</b><div class="mut" style="font-size:12px">' + SG[x.sign] + ' ' + x.deg + ' · ' + nth(x.house) + ' house</div></div></div>' + vchip(sp.verdict, PVL[sp.verdict]) + '</div>';
+  h += '<div style="font:600 15.5px/1.4 var(--sans);margin-bottom:4px">' + esc(sp.headline) + '</div><p style="font-size:13.8px;line-height:1.5">' + esc(sp.meaning) + '</p>';
+  sp.lines.forEach(function (l) { h += '<div class="pl"><b>' + esc(l[0]) + '</b>' + esc(l[1]) + '</div>'; });
+  h += '<div class="ar do"><b>Do</b><div>' + sp.do.map(function (d) { return '<div>' + esc(cap(d)) + '</div>'; }).join('') + '</div></div>';
+  if (sp.avoid.length) h += '<div class="ar avoid"><b>Avoid</b><div>' + sp.avoid.map(function (d) { return '<div>' + esc(cap(d)) + '</div>'; }).join('') + '</div></div>';
+  h += techBlock('Astrology details', items.map(function (i) { return '<div class="pc-row"><span class="ic i">•</span><span><b>' + esc(i.t) + '</b></span></div>' + whyBox(i.why); }).join(''));
+  return h + '</div>';
+}
 TABF.planets = function (p, c, now) {
-  var h = '<div class="pad">';
-  c.k.planets.forEach(function (x) {
-    var items = N.planet(c, x.code, now), f = N.funcWord(c, x.code);
-    h += '<div class="card"><div class="row" style="margin-bottom:6px"><div style="display:flex;gap:10px;align-items:center">' + pg(x.code) + '<div><b style="font-size:15px">' + PN[x.code] + ' · ' + SG[x.sign] + ' ' + x.deg + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + '</b><div class="mut" style="font-size:12px">' + nth(x.house) + ' house · ' + x.nak.name + ' ' + x.nak.pada + ' · ' + x.dignity + '</div></div></div>' + vchip(f === 'malefic' ? 'bad' : f === 'benefic' || f === 'yogakaraka' ? 'good' : 'neutral', cap(f)) + '</div>';
-    items.slice(1).forEach(function (i) { h += '<div class="pc-row"><span class="ic i">•</span><span><b>' + esc(i.t) + '</b></span></div>' + whyBox(i.why); });
-    h += '</div>';
-  });
+  var h = '<div class="pad"><div class="note" style="margin:0 2px 10px">Each planet in plain words: is it on your side, how strong it is, what it is doing in your life now, and what to do about it.</div>';
+  ['Sa', 'Ju', 'Ra', 'Ke', 'Ma', 'Su', 'Mo', 'Me', 'Ve'].forEach(function (code) { h += planetPlainCard(c, code, now); });
   return h + '</div>';
 };
-
 /* ---------- Dasha ---------- */
 var LVL = ['Mahadasha', 'Antardasha', 'Pratyantar', 'Sookshma', 'Prana'];
 TABF.dasha = function (p, c, now) {
@@ -2128,46 +2446,24 @@ var VWORDQ = { good: 'Good', mixed: 'Mixed', bad: 'Hard' };
 function monthStart(off) { var o = locOff(), x = new Date(Date.now() + o * 3600e3); return { y: x.getUTCFullYear() + Math.floor((x.getUTCMonth() + off) / 12), m: ((x.getUTCMonth() + off) % 12 + 12) % 12 }; }
 var MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 TABF.transit = function (p, c, now) {
-  var ms = monthStart(U.month), tm = N.transitMonth(c, ms.y, ms.m, now), k = c.k;
+  var ms = monthStart(U.month), tm = N.transitMonth(c, ms.y, ms.m, now), k = c.k, sm = S.month(c, tm);
   var h = '<div class="tabs" style="padding-bottom:10px">' + [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (o) { var x = monthStart(o); return '<button data-act="tmonth" data-v="' + o + '" class="' + (o === U.month ? 'on' : '') + '">' + MONS[x.m] + ' ' + x.y + '</button>'; }).join('') + '</div><div class="pad">';
-  var ch = tm.chain, ruler = tm.ruler, rx = tm.rulerTr, roles = [];
-  ch.forEach(function (x, i) { if (x.lord === ruler) roles.push(LVL[i].toLowerCase()); });
-  var sk = []; if (ch[2]) J.subPeriods(ch[2]).forEach(function (s) { if (s.end > tm.start && s.start < tm.end) sk.push(PN[s.lord] + ' ' + N.dmY(s.start) + '–' + N.dmY(s.end)); });
-  if (ruler) h += '<div class="card dark"><div class="lbl">Ruling this month</div><div style="font:600 17px/1.3 var(--sans);margin:4px 0 4px">' + PN[ruler] + ': your ' + roles.join(' and ') + ' lord</div><p>' + esc(PN[ruler] + ' ' + N.lordNote(c, ruler) + ' (functional ' + N.funcWord(c, ruler) + '). ') + (rx ? esc('It transits ' + SG[rx.sign] + ', your ' + nth(rx.h) + ' and ' + nth(rx.m) + ' from Moon: ' + rx.text + '.') : '') + '</p>' + (sk.length ? '<p style="margin-top:6px;font-size:12.5px">Sookshma: ' + esc(sk.join(' · ')) + '</p>' : '') + '</div>';
-  /* ruler highlight card */
-  var big = rx && rx.code !== 'Mo' ? rx : tm.tr.filter(function (x) { return x.code === 'Sa'; })[0];
-  if (big) {
-    var lines = big.why.map(esc);
-    var bigRoles = []; ch.forEach(function (x, i) { if (x.lord === big.code) bigRoles.push(LVL[i].toLowerCase() + ' lord till ' + N.dmy(x.end)); });
-    if (J.lordsOf(k.ascSign, big.code).indexOf(1) >= 0) bigRoles.unshift('lagna lord');
-    if (bigRoles.length) lines.push(PN[big.code] + ' is your <b>' + bigRoles.join(', ') + '</b>, so you feel this transit strongly.');
-    var st = tm.events.filter(function (e) { return e.code === big.code && (e.type === 'retro' || e.type === 'direct'); });
-    if (big.retro && big.code !== 'Ra' && big.code !== 'Ke') { var dirE = J.events(now, new Date(now.getTime() + 200 * 864e5), [big.code]).filter(function (e) { return e.type === 'direct'; })[0]; if (dirE) lines.push('Retrograde till <b>' + N.dmy(dirE.t) + '</b>: delays repeat before they clear.'); }
-    h += '<div class="card ' + (big.verdict === 'bad' ? 'hl' : big.verdict === 'good' ? 'hlg' : '') + '"><div class="row"><span class="lbl">' + PN[big.code] + ' · ' + SG[big.sign] + ' ' + J.dm(big.lon) + (big.retro && big.code !== 'Ra' && big.code !== 'Ke' ? ' R' : '') + '</span>' + vchip(big.verdict, VWORDQ[big.verdict]) + '</div><h4>' + PN[big.code] + ' is in ' + SG[big.sign] + ', your ' + nth(big.h) + ' house</h4><p>' + esc(cap(PN[big.code]) + ' ' + VERB[big.code] + ' ' + N.houseTopic(big.h) + '.') + '</p>' + logic(lines);
-    h += '<div class="kv" style="grid-template-columns:auto 1fr;margin-top:10px">' + (big.next ? '<dt style="color:var(--good);font-weight:700">Next</dt><dd style="font-weight:500">' + N.dmy(big.next) + ': ' + PN[big.code] + ' enters ' + SG[big.nextSign] + ', your ' + nth(J.houseFrom(k.ascSign, big.nextSign)) + ' (' + nth(J.houseFrom(k.P.Mo.sign, big.nextSign)) + ' from Moon).</dd>' : '') + '<dt style="color:var(--indigo);font-weight:700">Do</dt><dd style="font-weight:500">' + KB.DAAN[big.code][1] + 's: ' + KB.MANTRA[big.code][0] + ' (108 times); donate ' + KB.DAAN[big.code][0] + '.</dd></div></div>';
-  }
-  /* sade sati */
-  var ss = tm.sade; h += '<div class="card"><div class="row"><b>' + esc(ss.label) + '</b>' + vchip(ss.q === 'bad' ? 'bad' : 'good', ss.q === 'bad' ? 'Active' : 'Clear') + '</div><div class="mut" style="font-size:12.5px;margin-top:3px">Saturn is ' + nth(ss.house) + ' from your Moon (' + SG[k.P.Mo.sign] + ')' + (ss.until ? ' until ' + N.dmy(ss.until) : '') + '.</div></div>';
-  /* list */
-  h += '<div class="card" style="padding:4px 14px">';
-  tm.tr.forEach(function (x) {
-    var open = U.open['tr' + x.code];
-    h += '<button class="prow2" data-act="topen" data-v="' + x.code + '">' + pg(x.code) + '<div><b>' + PN[x.code] + ' · ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + ' · ' + nth(x.h) + '</b><small>' + esc(cap(VERB[x.code]) + ' your ' + N.houseTopic(x.h).split(',').slice(0, 2).join(',') + '. ' + nth(x.m) + ' from Moon: ' + x.text + '.' + (x.next ? ' ' + SG[x.nextSign] + ' on ' + N.dmy(x.next) + '.' : '')) + '</small></div>' + vchip(x.verdict, VWORDQ[x.verdict]) + '</button>';
-    if (open) h += whyBox(x.why).replace('class="why"', 'class="why" style="margin:0 0 10px 44px"');
+  var cw = J.signWindows('Mo', (k.P.Mo.sign + 7) % 12, tm.start, tm.end, 6).map(function (w) { return (w.start ? N.dmY(w.start) + ' ' + N.hm(w.start) : 'Month start') + ' to ' + (w.end ? N.dmY(w.end) + ' ' + N.hm(w.end) : 'month end') + ': low-energy days, avoid big decisions'; });
+  h += answerCard({ verdict: sm.verdict, label: MONS[ms.m] + ' ' + ms.y + ' for you', headline: sm.word + ' for you.', meaning: sm.meaning, rows: [['Do', sm.do, 'do'], ['Avoid', sm.avoid, 'avoid'], ['Go slow', cw, 'when']] });
+  if (sm.ruler) h += '<div class="card dark"><div class="lbl">Who runs this month</div><div style="font:600 17px/1.3 var(--sans);margin:4px 0 4px">' + esc(sm.ruler.title) + '</div><p>' + esc(sm.ruler.text) + '</p></div>';
+  h += '<div class="card" style="padding:4px 14px"><div class="lbl" style="padding:10px 0 2px">Each planet this month</div>';
+  sm.rows.forEach(function (r) {
+    var x = tm.tr.filter(function (t) { return t.code === r.code; })[0], open = U.open['tr' + r.code];
+    h += '<button class="prow2" data-act="topen" data-v="' + r.code + '">' + pg(r.code) + '<div><b>' + esc(r.title) + '</b><small>' + esc(r.text) + '</small></div>' + vchip(r.verdict, VWORDQ[r.verdict]) + '</button>';
+    if (open) h += '<div class="why" style="margin:0 0 10px 44px">' + x.why.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '<div>Position: ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + ', your ' + nth(x.h) + ' house, ' + nth(x.m) + ' from Moon.</div></div>';
   });
-  h += '</div><div class="note" style="margin:-4px 2px 10px">Tap a planet to see the three tests behind its verdict: position from Moon, its own Ashtakavarga points, and vedha.</div>';
-  /* events */
-  var evs = tm.events.filter(function (e) { return e.code !== 'Mo'; });
-  if (evs.length) h += '<div class="card"><h3>Changes this month</h3><div class="tl">' + evs.map(function (e) { var hh = J.houseFrom(k.ascSign, e.sign); return '<span class="d">' + N.dmY(e.t) + ' ' + N.hm(e.t) + '</span><span>' + (e.type === 'ingress' ? PN[e.code] + ' enters ' + SG[e.sign] + ', your ' + nth(hh) + (e.code === 'Ra' ? ' (Ketu enters ' + SG[(e.sign + 6) % 12] + ', your ' + nth(J.houseFrom(k.ascSign, (e.sign + 6) % 12)) + ')' : '') : PN[e.code] + ' turns ' + (e.type === 'retro' ? 'retrograde' : 'direct') + ' in ' + SG[e.sign]) + '</span>'; }).join('') + '</div></div>';
-  /* chandrashtama */
-  var cw = J.signWindows('Mo', (k.P.Mo.sign + 7) % 12, tm.start, tm.end, 6);
-  if (cw.length) h += '<div class="card"><h3>Chandrashtama days <span class="vc b">Go slow</span></h3><div class="tl">' + cw.map(function (w) { return '<span class="d">' + N.dmY(w.start || tm.start) + '</span><span>' + (w.start ? N.dmyt(w.start) : 'From month start') + ' → ' + (w.end ? N.dmyt(w.end) : 'month end') + '</span>'; }).join('') + '</div><div class="note">Moon in ' + SG[(k.P.Mo.sign + 7) % 12] + ', 8th from your Moon. Avoid big decisions and arguments.</div></div>';
-  /* gochar chart */
-  var rows = [{ h: 1, code: 'Asc', deg: k.ascDeg, cls: 'asc' }].concat(tm.tr.map(function (x) { return { h: x.h, code: x.code, deg: J.dm(x.lon), r: x.retro && x.code !== 'Ra' && x.code !== 'Ke' }; }));
+  h += '</div>';
+  if (sm.dates.length) h += '<div class="card"><h3>Key dates this month</h3><div class="tl">' + sm.dates.map(function (d) { return '<span class="d">' + N.dmY(d.t) + '</span><span>' + esc(d.text) + '</span>'; }).join('') + '</div></div>';
+  var ss = tm.sade, rows = [{ h: 1, code: 'Asc', deg: k.ascDeg, cls: 'asc' }].concat(tm.tr.map(function (x) { return { h: x.h, code: x.code, deg: J.dm(x.lon), r: x.retro && x.code !== 'Ra' && x.code !== 'Ke' }; }));
   var mo = J.kundli(tm.ref, c.p.lat, c.p.lon).P.Mo; rows.push({ h: J.houseFrom(k.ascSign, mo.sign), code: 'Mo', deg: J.dm(mo.lon), cls: 'mo' });
   var signs = []; for (var i = 0; i < 12; i++) signs.push((k.ascSign + i) % 12);
-  h += '<div class="card" style="padding:10px"><div class="ctitle">Transits on your chart · ' + N.dmy(tm.ref) + '</div>' + Charts.north(rows, signs) + '</div>';
-  U.shareFn = function () { return 'Transits ' + MONS[ms.m] + ' ' + ms.y + '\n' + tm.tr.map(function (x) { return PN[x.code] + ' in ' + SG[x.sign] + ' ' + J.dm(x.lon) + ' (your ' + nth(x.h) + ', ' + nth(x.m) + ' from Moon): ' + VWORDQ[x.verdict] + '. ' + x.text; }).join('\n'); };
+  h += techBlock('Transit chart and Sade Sati details', '<div class="card"><div class="row"><b>' + esc(ss.label) + '</b>' + vchip(ss.q === 'bad' ? 'bad' : 'good', ss.q === 'bad' ? 'Active' : 'Clear') + '</div><div class="mut" style="font-size:12.5px;margin-top:3px">Saturn is ' + nth(ss.house) + ' from your Moon (' + SG[k.P.Mo.sign] + ')' + (ss.until ? ' until ' + N.dmy(ss.until) : '') + '.</div></div><div class="card" style="padding:10px"><div class="ctitle">Transits on your chart · ' + N.dmy(tm.ref) + '</div>' + Charts.north(rows, signs) + '</div>');
+  U.shareFn = function () { return MONS[ms.m] + ' ' + ms.y + ': ' + sm.word + '. ' + sm.meaning + '\nDo: ' + sm.do.join('; ') + '\nAvoid: ' + sm.avoid.join('; ') + '\n' + sm.rows.map(function (r) { return r.title + ': ' + r.text; }).join('\n'); };
   return h + '</div>';
 };
 ACT.tmonth = function (el) { U.month = +el.dataset.v; rerender(true); };
@@ -2175,22 +2471,19 @@ ACT.topen = function (el) { var k = 'tr' + el.dataset.v; U.open[k] = !U.open[k];
 
 /* ---------- Health ---------- */
 TABF.health = function (p, c, now) {
-  var H = N.healthAnalysis(c, now), k = c.k, h = '<div class="pad">';
-  h += '<div class="card"><h3>Overall' + badgeChip(H.vital >= 2 ? 'Strong' : H.vital >= 0 ? 'Moderate' : 'Watch') + '</h3><div class="pc-row">' + itemIcon(H.vital >= 0 ? 'pro' : 'con') + '<span><b>' + esc(H.overall) + '</b></span></div>' + whyBox(H.vwhy) + '</div>';
-  h += '<div class="card"><h3>House by house</h3>';
+  var sh = S.health(c, now), H = sh.H, h = '<div class="pad">';
+  h += answerCard({ verdict: sh.verdict, label: 'Health in simple words', headline: sh.headline, meaning: sh.meaning, rows: [['Now', sh.now, 'when'], ['Better', sh.better, 'when'], ['Do', sh.do, 'do'], ['Avoid', sh.avoid, 'avoid']] });
+  h += '<div class="card"><h3>Body areas, weakest first</h3>';
   H.zones.forEach(function (z) {
-    var col = z.level === 'watch' ? 'var(--bad)' : z.level === 'care' ? 'var(--warn)' : 'var(--good)';
-    h += '<div class="zone"><span class="d" style="background:' + col + '"></span><div><b>' + nth(z.house) + ' · ' + SG[z.sign] + '</b> <em>' + z.sav + ' pts' + (z.occ.length ? ' · ' + z.occ.join(' ') : '') + '</em><small>' + esc(cap(z.body)) + '</small>' + (z.why.length ? '<small style="color:var(--mut)">' + esc(z.why.join(' ')) + '</small>' : '') + '</div></div>';
+    var col = z.level === 'watch' ? 'var(--bad)' : z.level === 'care' ? 'var(--warn)' : 'var(--good)', lab = z.level === 'watch' ? 'Needs care' : z.level === 'care' ? 'Keep an eye' : 'Good';
+    h += '<div class="zone"><span class="d" style="background:' + col + '"></span><div><b>' + esc(PLAIN.HEALTH[z.house][0]) + '</b> <em>' + lab + '</em>' + (z.level !== 'good' ? '<small>' + esc(cap(PLAIN.HEALTH[z.house][1])) + '.</small>' : '') + whyBox(z.why.concat(['House ' + z.house + ' (' + SG[z.sign] + '), ' + z.sav + ' Ashtakavarga points.'])).replace('margin:0 0 8px 22px', '') + '</div></div>';
   });
   h += '</div>';
-  if (H.timeline.length) h += '<div class="card"><h3>Next 6 months</h3><div class="tl">' + H.timeline.map(function (t) { return '<span class="d">' + N.dmY(t.start) + '</span><span>' + esc(t.t) + (t.end ? ' <span class="mut">Until ' + N.dmy(t.end) + '.</span>' : '') + '</span>'; }).join('') + '</div></div>';
-  if (H.dasha.length) h += '<div class="card"><h3>Dasha and health</h3>' + H.dasha.map(function (d) { return '<div class="pc-row">' + itemIcon('con') + '<span>' + esc(d) + '</span></div>'; }).join('') + '</div>';
-  var l6 = J.lordOfHouse(k.ascSign, 6), ll = J.lordOfHouse(k.ascSign, 1);
-  h += '<div class="card"><h3>What supports you</h3>' + H.support.map(function (s) { return '<div class="pc-row">' + itemIcon('pro') + '<span>' + esc(s) + '</span></div>'; }).join('') +
-    '<div class="pc-row">' + itemIcon('pro') + '<span>Calm the 6th lord ' + PN[l6] + ' (disease): ' + esc(KB.MANTRA[l6][0]) + ' on ' + KB.FAST[l6] + 's; donate ' + esc(KB.DAAN[l6][0]) + '.</span></div>' +
-    '<div class="pc-row">' + itemIcon('pro') + '<span>Daily: sunrise walk and fixed meal times keep the Sun (vitality) and Moon (fluids, sleep) steady.</span></div>' +
-    '<div class="note">Astrological indications only, for timing and prevention. For symptoms, see a doctor.</div></div>';
-  U.shareFn = function () { return 'Health: ' + H.overall + '\n' + H.zones.filter(function (z) { return z.level !== 'good'; }).map(function (z) { return nth(z.house) + ' (' + z.body + '): ' + z.why.join(' '); }).join('\n'); };
+  h += techBlock('Timeline and dasha details', (H.timeline.length ? '<div class="card"><h3>Next 6 months</h3><div class="tl">' + H.timeline.map(function (t) { return '<span class="d">' + N.dmY(t.start) + '</span><span>' + esc(t.t) + (t.end ? ' <span class="mut">Until ' + N.dmy(t.end) + '.</span>' : '') + '</span>'; }).join('') + '</div></div>' : '') +
+    (H.dasha.length ? '<div class="card"><h3>Dasha and health</h3>' + H.dasha.map(function (d) { return '<div class="pc-row">' + itemIcon('con') + '<span>' + esc(d) + '</span></div>'; }).join('') + '</div>' : '') +
+    '<div class="card"><h3>Overall strength</h3>' + H.vwhy.map(function (w) { return '<div class="pc-row">' + itemIcon('info') + '<span>' + esc(w) + '</span></div>'; }).join('') + '</div>');
+  h += '<div class="note" style="margin:0 2px 14px">Astrological indications for timing and prevention only. For any symptom, see a doctor.</div>';
+  U.shareFn = function () { return 'Health: ' + sh.headline + ' ' + sh.meaning + '\nNow: ' + sh.now.join(' ') + '\nDo: ' + sh.do.join(' '); };
   return h + '</div>';
 };
 
@@ -2224,35 +2517,35 @@ function eventHeadline(E, pr) {
   return PN[E.main.code] + ' is the main trigger' + (w ? ': ' + w.charAt(0).toLowerCase() + w.slice(1).replace(/\.$/, '') : '') + ', during ' + ch + '.';
 }
 function eventResult(p, c, ev) {
-  var at = evDate(p, ev.date, ev.time), E = N.eventAnalysis(c, ev.type, at), k = c.k, pr = p.gender === 'F' ? 'her' : 'his';
+  var at = evDate(p, ev.date, ev.time), E = N.eventAnalysis(c, ev.type, at), k = c.k, pr = p.gender === 'F' ? 'her' : 'his', now = new Date(), se = S.event(c, E, now);
   U.lastEvent = { p: p.id, E: E, ev: ev };
-  var h = '<div id="evres"><div class="card"><div class="grid2"><div><div class="lbl">Event</div><b style="font-size:15px">' + esc(E.E.l) + '</b></div><div><div class="lbl">When</div><b class="mono" style="font-size:14px">' + N.dmyt(at) + '</b></div></div></div>';
-  h += '<div class="card dark"><div class="lbl">Answer</div><div style="font:600 16.5px/1.35 var(--sans);margin-top:4px">' + esc(eventHeadline(E, pr)) + '</div></div>';
-  /* transit chart with natal points near transit planets */
-  var rows = [{ h: 1, code: 'Asc', deg: k.ascDeg, cls: 'asc' }];
-  var natShown = {};
+  var h = '<div id="evres">';
+  h += answerCard({ verdict: E.E.good ? 'good' : 'bad', chip: false, label: E.E.l + ' · ' + N.dmyt(at), headline: se.headline, rows: [['Why', se.reasons], ['Also', se.support.map(function (s) { return PN[s.code] + ': ' + s.text.replace(/^It /, ''); })], [E.E.heal ? 'Recovery' : 'Next', se.when, 'when'], ['Do', se.do, 'do'], ['Avoid', se.avoid, 'avoid']] });
+  /* technical */
+  var rows = [{ h: 1, code: 'Asc', deg: k.ascDeg, cls: 'asc' }], natShown = {};
   E.transits.forEach(function (t) { rows.push({ h: t.h, code: t.code, deg: J.dm(t.lon), r: t.retro && t.code !== 'Ra' && t.code !== 'Ke', cls: E.main && t.code === E.main.code ? 'bad' : t.code === 'Mo' ? 'mo' : '' }); t.conj.forEach(function (cj) { if (cj.code !== 'Lagna' && cj.code !== t.code && !natShown[cj.code]) { natShown[cj.code] = 1; rows.push({ h: J.houseFrom(k.ascSign, k.P[cj.code].sign), code: 'n' + cj.code, deg: J.dm(k.P[cj.code].lon), cls: 'nat' }); } }); });
   var signs = []; for (var i = 0; i < 12; i++) signs.push((k.ascSign + i) % 12);
-  h += '<div class="card" style="padding:10px"><div class="row" style="padding:2px 4px 6px"><b>Transit at the event, on ' + pr + ' chart</b><span class="lbl">' + SG[k.ascSign] + ' lagna</span></div>' + Charts.north(rows, signs) + '<div class="note" style="text-align:center">Natal points touched by a transit are shown in grey italics (n = natal).</div></div>';
   var steps = [];
   if (E.main) steps.push('<b>Trigger: ' + PN[E.main.code] + '</b> (' + esc(KB.PLANET[E.main.code].body.split(',').slice(0, 3).join(',')) + '). ' + esc(E.main.why.join(' ')));
   E.support.forEach(function (s) { steps.push('<b>Also: ' + PN[s.code] + '.</b> ' + esc(s.why.join(' '))); });
   steps.push('<b>Dasha:</b> ' + E.dasha.slice(0, 4).map(function (d, i) { var links = N.uniq(d.evP.concat(d.evK)).sort(function (a, b) { return a - b; }); return LVL[i] + ' ' + PN[d.lord] + (links.length ? ' (links ' + links.join(', ') + ')' : ' (no direct link)'); }).join(' › ') + '. Event houses: ' + E.E.houses.join(', ') + '.');
-  steps.push('<b>KP check:</b> ' + E.kp.map(function (x) { var hit = x.sig.filter(function (y) { return E.E.houses.indexOf(y) >= 0; }); return nth(x.house) + ' cusp sub lord ' + PN[x.csl] + ' signifies ' + x.sig.join(', ') + (hit.length ? ' (event houses ' + hit.join(', ') + ')' : ''); }).join('; ') + '. Running lords: ' + E.kpRun.map(function (r) { return PN[r.lord] + (r.ev.length ? ' → ' + r.ev.join(', ') : ' → none'); }).join(', ') + '.');
-  if (E.doubleTransit.ju || E.doubleTransit.sa) steps.push('<b>Double transit:</b> ' + (E.doubleTransit.ju && E.doubleTransit.sa ? 'both Jupiter and Saturn touch' : E.doubleTransit.sa ? 'Saturn touches' : 'Jupiter touches') + ' ' + pr + ' ' + nth(E.doubleTransit.house) + ' house or its lord.');
-  var bav8 = N.savOf(c, 8), bav6 = N.savOf(c, 6); steps.push('<b>Shield:</b> ' + pr + ' 6th house has ' + bav6 + ' and 8th house ' + bav8 + ' Ashtakavarga points.');
-  h += '<div class="card"><h3>The logic</h3>' + steps.map(function (s, i) { return '<div class="step"><i>' + (i + 1) + '</i><span>' + s + '</span></div>'; }).join('') + '</div>';
-  if (E.outlook.length) h += '<div class="card"><div class="lbl" style="margin-bottom:8px">' + (E.E.good ? 'What follows' : 'Recovery outlook') + '</div><div class="tl">' + E.outlook.map(function (o) { return '<span class="d">' + N.dmy(o.t) + '</span><span>' + esc(o.text) + '</span>'; }).join('') + '</div><div class="note">' + (E.E.heal ? 'Astrological timing only. Actual healing depends on treatment; follow the doctor.' : 'Dates are when the planetary support changes.') + '</div></div>';
-  if (E.ranked.length > 3) h += '<div class="card"><h3>All planets scored</h3><div class="tw"><table><tr><th>Planet</th><th>Score</th><th>Reasons</th></tr>' + E.ranked.map(function (r) { return '<tr><td><b>' + PN[r.code] + '</b></td><td class="mono">' + r.s.toFixed(1) + '</td><td class="w" style="font-size:12px">' + esc(r.why.join(' ')) + '</td></tr>'; }).join('') + '</table></div></div>';
-  U.shareFn = function () { return E.E.l + ' on ' + N.dmyt(at) + '\n' + eventHeadline(E, pr) + '\n' + steps.map(function (s, i) { return (i + 1) + '. ' + s.replace(/<[^>]+>/g, ''); }).join('\n') + '\n' + E.outlook.map(function (o) { return N.dmy(o.t) + ': ' + o.text; }).join('\n'); };
+  steps.push('<b>KP check:</b> ' + E.kp.map(function (x) { var hit = x.sig.filter(function (y) { return E.E.houses.indexOf(y) >= 0; }); return nth(x.house) + ' cusp sub lord ' + PN[x.csl] + ' signifies ' + x.sig.join(', ') + (hit.length ? ' (event houses ' + hit.join(', ') + ')' : ''); }).join('; ') + '.');
+  if (E.doubleTransit.ju || E.doubleTransit.sa) steps.push('<b>Double transit:</b> ' + (E.doubleTransit.ju && E.doubleTransit.sa ? 'both Jupiter and Saturn touch' : E.doubleTransit.sa ? 'Saturn touches' : 'Jupiter touches') + ' the ' + nth(E.doubleTransit.house) + ' house or its lord.');
+  steps.push('<b>Shield:</b> 6th house ' + N.savOf(c, 6) + ' and 8th house ' + N.savOf(c, 8) + ' Ashtakavarga points.');
+  var tech = '<div class="card" style="padding:10px"><div class="row" style="padding:2px 4px 6px"><b>Transit at the event, on ' + pr + ' chart</b><span class="lbl">' + SG[k.ascSign] + ' lagna</span></div>' + Charts.north(rows, signs) + '<div class="note" style="text-align:center">Red = main trigger. Grey italics = birth planets touched (n = natal).</div></div>';
+  tech += '<div class="card"><h3>The logic</h3>' + steps.map(function (s, i) { return '<div class="step"><i>' + (i + 1) + '</i><span>' + s + '</span></div>'; }).join('') + '</div>';
+  if (E.outlook.length) tech += '<div class="card"><h3>Timeline after the event</h3><div class="tl">' + E.outlook.map(function (o) { return '<span class="d">' + N.dmy(o.t) + '</span><span>' + esc(o.text) + '</span>'; }).join('') + '</div></div>';
+  if (E.ranked.length > 1) tech += '<div class="card"><h3>All planets scored</h3><div class="tw"><table><tr><th>Planet</th><th>Score</th><th>Reasons</th></tr>' + E.ranked.map(function (r) { return '<tr><td><b>' + PN[r.code] + '</b></td><td class="mono">' + r.s.toFixed(1) + '</td><td class="w" style="font-size:12px">' + esc(r.why.join(' ')) + '</td></tr>'; }).join('') + '</table></div></div>';
+  h += techBlock('Show the astrology behind this', tech);
+  if (E.E.heal) h += '<div class="note" style="margin:0 2px 12px">Astrological timing only. Healing depends on treatment; follow the doctor.</div>';
+  U.shareFn = function () { return E.E.l + ' on ' + N.dmyt(at) + '\n' + se.headline + '\nWhy: ' + se.reasons.join(' ') + '\n' + se.when.join('\n') + '\nDo: ' + se.do.join(' '); };
   return h + '</div>';
 }
-
 /* ---------- KP ---------- */
 function kpDasha(c) { if (!c._kpMaha) c._kpMaha = J.dashas(c.birth, c.kp.P.Mo.lon); return c._kpMaha; }
 TABF.kp = function (p, c, now) {
-  var S = [['cusps', 'Cusps'], ['planets', 'Planets'], ['sig', '4-step'], ['houses', 'Houses'], ['rp', 'Ruling'], ['judge', 'Judge']], seg = U.kpseg, kk = c.kp, sig = c.sig;
-  var h = '<div class="chips">' + S.map(function (x) { return '<button data-act="kpseg" data-v="' + x[0] + '" class="' + (seg === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
+  var KPS = [['cusps', 'Cusps'], ['planets', 'Planets'], ['sig', '4-step'], ['houses', 'Houses'], ['rp', 'Ruling'], ['judge', 'Judge']], seg = U.kpseg, kk = c.kp, sig = c.sig;
+  var h = '<div class="chips">' + KPS.map(function (x) { return '<button data-act="kpseg" data-v="' + x[0] + '" class="' + (seg === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
   if (seg === 'cusps') {
     h += '<div class="card"><h3>Placidus cusps <span class="pill">KP ayanamsa</span></h3><div class="tw"><table><tr><th>Cusp</th><th>Sign</th><th>Degree</th><th>Sign L</th><th>Star L</th><th>Sub L</th><th>SS L</th></tr>' + kk.cusps.map(function (x) { return '<tr><td><b>' + x.house + '</b></td><td>' + SG3[x.sign] + '</td><td class="mono">' + x.degs + '</td><td>' + x.kp.sign + '</td><td>' + x.kp.star + '</td><td><b>' + x.kp.sub + '</b></td><td>' + x.kp.ss + '</td></tr>'; }).join('') + '</table></div><div class="note">KP ayanamsa ' + J.dms(kk.ayanamsa, true) + ' (' + (Math.floor(kk.ayanamsa)) + '°). The sub lord of a cusp decides whether that house’s matters are promised.</div></div>';
   } else if (seg === 'planets') {
@@ -2274,7 +2567,9 @@ TABF.kp = function (p, c, now) {
   } else {
     var L2 = DB.settings.loc, rp2 = J.rulingPlanets(now, L2.lat, L2.lon, locOff(), 'kp'), jm = N.judgeMatter(sig, U.kpm, kpDasha(c), now, 5, rp2.set);
     h += '<div class="card"><div class="field" style="margin-bottom:0"><span>QUESTION</span>' + sel('kpm', Object.keys(N.KP_MATTERS).map(function (x) { return [x, N.KP_MATTERS[x].l]; }), U.kpm) + '</div></div>';
-    h += kpJudgeHtml(jm, rp2, now);
+    var wins = S.kpWindows(sig, jm.m, kpDasha(c), now, 36, 3, rp2.set), sk = S.kp(jm, U.kpm, wins, now);
+    h += answerCard({ verdict: sk.verdict, label: sk.q, headline: sk.headline, meaning: sk.meaning, rows: [['When', sk.when, 'when'], ['Do', sk.do, 'do'], ['Avoid', sk.avoid, 'avoid']] });
+    h += techBlock('Show the KP working', kpJudgeHtml(jm, rp2, now));
   }
   return h + '</div>';
 };
@@ -2475,12 +2770,10 @@ function PrashnaView() {
   var h = '<div class="pad"><div class="card"><h3>KP horary (1 to 249)</h3><div class="mut" style="font-size:12.5px;margin:-4px 0 10px">Hold the question in mind, then pick a number from 1 to 249 without thinking. The chart is cast for now at ' + esc(L.name) + '.</div>' +
     '<div class="grid2"><label class="field"><span>NUMBER</span><input class="inp mono" type="number" min="1" max="249" inputmode="numeric" data-in="pnum" value="' + esc(n) + '"></label><div class="field"><span>QUESTION</span>' + sel('pm', Object.keys(N.KP_MATTERS).map(function (x) { return [x, N.KP_MATTERS[x].l]; }), mk) + '</div></div><button class="btn acc wide" data-act="prashna">Judge</button></div>';
   if (U.pres) {
-    var r = U.pres, hk = r.hk, hr = r.hr;
-    h += '<div class="card dark"><div class="lbl">Prashna · number ' + r.n + ' · ' + N.dmyt(r.at) + '</div><div style="font:600 16.5px/1.35 var(--sans);margin-top:4px">' + esc(N.KP_MATTERS[r.mk].l) + ': ' + N.VERD[r.jm.main.level][0] + '</div><p style="margin-top:4px">Ascendant ' + SG[hk.ascSign] + ' ' + hk.ascDegs + ' · sign ' + PN[hk.ascKP.sign] + ', star ' + PN[hk.ascKP.star] + ', sub ' + PN[hk.ascKP.sub] + '</p></div>';
+    var r = U.pres, hk = r.hk, sk = r.sk;
+    h += answerCard({ verdict: sk.verdict, label: 'Answer · number ' + r.n + ' · ' + N.dmyt(r.at), headline: sk.q + ' ' + sk.headline, meaning: sk.meaning, rows: [['When', sk.when, 'when'], ['Do', sk.do, 'do'], ['Avoid', sk.avoid, 'avoid']] });
     var rows = [{ h: 1, code: 'Asc', deg: hk.ascDeg, cls: 'asc' }].concat(hk.planets.map(function (x) { return { h: x.bhava, code: x.code, deg: J.dm(x.lon), r: x.retro && x.code !== 'Ra' && x.code !== 'Ke', cls: x.code === 'Mo' ? 'mo' : '' }; }));
-    h += '<div class="card" style="padding:10px"><div class="ctitle">Horary chart (bhava)</div>' + Charts.north(rows, hk.cusps.map(function (x) { return x.sign; })) + '</div>';
-    h += kpJudgeHtml(r.jm, r.rp, r.at);
-    h += '<div class="card"><h3>Ruling planets at judgement</h3><p>' + r.rp.list.map(function (x) { return x.role + ': <b>' + PN[x.lord] + '</b>'; }).join(' · ') + '</p></div>';
+    h += techBlock('Show the KP working', '<div class="card"><p>Ascendant ' + SG[hk.ascSign] + ' ' + hk.ascDegs + ' · sign lord ' + PN[hk.ascKP.sign] + ', star ' + PN[hk.ascKP.star] + ', sub ' + PN[hk.ascKP.sub] + '</p></div><div class="card" style="padding:10px"><div class="ctitle">Horary chart (bhava)</div>' + Charts.north(rows, hk.cusps.map(function (x) { return x.sign; })) + '</div>' + kpJudgeHtml(r.jm, r.rp, r.at) + '<div class="card"><h3>Ruling planets at judgement</h3><p>' + r.rp.list.map(function (x) { return x.role + ': <b>' + PN[x.lord] + '</b>'; }).join(' · ') + '</p></div>');
   }
   return h + '</div>';
 }
@@ -2490,7 +2783,9 @@ ACT.prashna = function () {
   var n = parseInt(U.pnum, 10); if (!(n >= 1 && n <= 249)) return toast('Pick a number from 1 to 249');
   var L = DB.settings.loc, at = new Date(), hr = J.horary(n), mk = U.pm || 'job';
   var hk = J.kundli(at, L.lat, L.lon, { ayan: 'kp', ascLon: hr.start + 1 / 3600 }), sig = J.kpSignificators(hk), maha = J.dashas(at, hk.P.Mo.lon), rp = J.rulingPlanets(at, L.lat, L.lon, locOff(), 'kp');
-  U.pres = { n: n, mk: mk, at: at, hr: hr, hk: hk, jm: N.judgeMatter(sig, mk, maha, at, 2, rp.set), rp: rp };
+  var jm = N.judgeMatter(sig, mk, maha, at, 2, rp.set), short = mk === 'health' || mk === 'legal' || mk === 'money';
+  var wins = S.kpWindows(sig, jm.m, maha, at, short ? 6 : 24, short ? 4 : 3, rp.set);
+  U.pres = { n: n, mk: mk, at: at, hr: hr, hk: hk, jm: jm, rp: rp, sk: S.kp(jm, mk, wins, at) };
   rerender(true);
 };
 
@@ -2542,101 +2837,108 @@ function findPlanet(q) { var out = null; Object.keys(PWORDS).forEach(function (k
 function li(items) { return '<ul>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; }
 function src(t) { return '<div class="src">' + esc(t) + '</div>'; }
 
+function plainAns(o) {
+  var vcol = { good: 'var(--good)', bad: 'var(--bad)', mixed: 'var(--warn)' }[o.verdict] || 'var(--indigo)';
+  var h = '<div class="pa" style="border-left:4px solid ' + vcol + '"><p class="pah">' + esc(o.headline) + '</p>' + (o.meaning ? '<p>' + esc(o.meaning) + '</p>' : '') + '</div>';
+  (o.rows || []).forEach(function (r) { var ls = (r[1] || []).filter(Boolean); if (!ls.length) return; h += '<h4 class="' + (r[2] || '') + '">' + esc(r[0]) + '</h4>' + li(ls.map(function (l) { return esc(cap(l)); })); });
+  if (o.tech) h += '<details><summary>Astrology behind this</summary>' + o.tech + '</details>';
+  return h;
+}
 function answerLocal(p, c, q) {
   var ql = q.toLowerCase(), now = new Date(), k = c.k, pr = p.gender === 'F' ? 'her' : 'his', he = p.gender === 'F' ? 'she' : 'he';
   var dt = parseDateQ(q), ev = findWord(ql, EWORDS), pl = findPlanet(ql), kpm = findWord(ql, KPWORDS);
   /* 1. why did an event happen */
   if (ev && (dt || /why|reason|cause/.test(ql))) {
-    if (!dt) return { html: '<p>Tell me the date (and time if known) of the ' + esc(KB.EVENTS[ev].l.toLowerCase()) + ', for example “why did this accident happen on 15 Jul 2026 at 11:30”. I will find the planets that triggered it and when support returns.</p>' };
-    var at = evDate(p, dt.date, dt.time), E = N.eventAnalysis(c, ev, at);
+    if (!dt) return { html: '<p>Tell me the date (and time if known) of the ' + esc(KB.EVENTS[ev].l.toLowerCase()) + ', for example “why did this accident happen on 15 Jul 2026 at 11:30”. I will tell you the cause, the planet behind it and when things get better.</p>' };
+    var at = evDate(p, dt.date, dt.time), E = N.eventAnalysis(c, ev, at), se = S.event(c, E, now);
     U.lastEvent = { p: p.id, E: E, ev: { type: ev, date: dt.date, time: dt.time } };
     p.events = p.events || []; if (!p.events.some(function (x) { return x.type === ev && x.date === dt.date; })) { p.events.push({ type: ev, date: dt.date, time: dt.time }); save(); }
-    var h = '<p><b>' + esc(eventHeadline(E, pr)) + '</b></p>';
-    if (E.main) h += '<h4>The trigger</h4>' + li(E.main.why.map(esc));
-    if (E.support.length) h += '<h4>Supporting planets</h4>' + li(E.support.map(function (s) { return '<b>' + PN[s.code] + ':</b> ' + esc(s.why.join(' ')); }));
-    h += '<h4>Dasha at the time</h4>' + li(E.dasha.slice(0, 4).map(function (d, i) { var links = N.uniq(d.evP.concat(d.evK)).sort(function (a, b) { return a - b; }); return LVL[i] + ' <b>' + PN[d.lord] + '</b> (' + esc(N.lordNote(c, d.lord)) + ')' + (links.length ? ': links event houses ' + links.join(', ') : ''); }));
-    h += '<h4>KP check</h4>' + li(E.kp.map(function (x) { return nth(x.house) + ' cusp sub lord ' + PN[x.csl] + ' signifies ' + x.sig.join(', '); }));
-    if (E.outlook.length) h += '<h4>' + (E.E.heal ? 'Recovery outlook' : 'What follows') + '</h4>' + li(E.outlook.map(function (o) { return '<b>' + N.dmy(o.t) + ':</b> ' + esc(o.text); }));
-    return { html: h + src('Event houses ' + E.E.houses.join(', ') + ' · transits on ' + N.dmyt(at) + ' · Vimshottari · KP significators. Open the Event tab for the chart.'), text: eventHeadline(E, pr) };
+    var tech = li(E.ranked.slice(0, 3).map(function (r) { return '<b>' + PN[r.code] + '</b>: ' + esc(r.why.join(' ')); })) + li(E.kp.map(function (x) { return nth(x.house) + ' cusp sub lord ' + PN[x.csl] + ' signifies ' + x.sig.join(', '); }));
+    return { html: plainAns({ verdict: E.E.good ? 'good' : 'bad', headline: se.headline, rows: [['Why', se.reasons], ['Also', se.support.map(function (s) { return PN[s.code] + ': ' + s.text.replace(/^It /, ''); })], [E.E.heal ? 'When it gets better' : 'What follows', se.when, 'when'], ['What to do', se.do, 'do'], ['Avoid', se.avoid, 'avoid']], tech: tech }), text: se.headline + ' ' + se.when.join(' ') };
   }
   /* 2. when will it get better */
   if (/when|by when|kab/.test(ql) && /cure|recover|heal|better|normal|improve|end|over|relief|theek/.test(ql)) {
     var le = U.lastEvent && U.lastEvent.p === p.id ? U.lastEvent : null;
-    if (!le && p.events && p.events.length) { var x = p.events[p.events.length - 1]; var E2 = N.eventAnalysis(c, x.type, evDate(p, x.date, x.time)); le = { E: E2, ev: x }; }
+    if (!le && p.events && p.events.length) { var x = p.events[p.events.length - 1]; le = { E: N.eventAnalysis(c, x.type, evDate(p, x.date, x.time)), ev: x }; }
     if (le) {
-      var E3 = le.E, hl = '<p>For the <b>' + esc(E3.E.l.toLowerCase()) + '</b> of ' + esc(le.ev.date) + ':</p>' + li(E3.outlook.map(function (o) { return '<b>' + N.dmy(o.t) + ':</b> ' + esc(o.text); }));
-      var rec = E3.recovery || [];
-      if (rec.length) hl += '<p><b>Bottom line:</b> the first clear recovery period starts <b>' + N.dmy(rec[0].start) + '</b> (' + PN[rec[0].ad] + '–' + PN[rec[0].lord] + '), when the running lord signifies ' + rec[0].houses.join(', ') + ' (body, relief and fulfilment houses).' + (rec[0].start < now ? ' That window has already begun.' : '') + '</p>';
-      return { html: hl + '<p class="mut" style="font-size:12.5px">Astrological timing only; follow medical advice.</p>' + src('Dasha lords signifying recovery houses ' + E3.E.recover.join(', ') + ' · transit exits of the trigger planet.') };
+      var se2 = S.event(c, le.E, now), rec = le.E.recovery || [];
+      var head = rec.length ? 'Clear improvement from ' + N.dmy(rec[0].start) + (rec[0].start < now ? ' (that period has already begun).' : '.') : 'No clear recovery period shows in the next 18 months; keep treatment and remedies going.';
+      return { html: plainAns({ verdict: rec.length ? 'good' : 'bad', headline: head, meaning: 'For the ' + KB.EVENTS[le.ev.type].l.toLowerCase() + ' of ' + N.dmy(evDate(p, le.ev.date, le.ev.time)) + '.', rows: [['Timeline', se2.when, 'when'], ['What to do', se2.do, 'do']], tech: li(le.E.outlook.map(function (o) { return N.dmy(o.t) + ': ' + esc(o.text); })) }), text: head };
     }
-    var H = N.healthAnalysis(c, now); return { html: '<p>No event is saved yet, so here is ' + pr + ' general health timing:</p>' + li(H.timeline.map(function (t) { return N.dmY(t.start) + ' → ' + N.dmy(t.end) + ': ' + esc(t.t); })) + '<p>Ask “why did ' + he + ' have an accident on 15 Jul 2026” to analyse a specific event.</p>' };
+    var sh0 = S.health(c, now);
+    return { html: plainAns({ verdict: sh0.verdict, headline: 'No event is saved yet. Here is when ' + pr + ' health pressure eases:', rows: [['Better', sh0.better, 'when'], ['Now', sh0.now, 'when']] }) + '<p>To get exact recovery dates, ask “why did ' + he + ' fall ill on 31 Dec 2025” (use the real date).</p>' };
   }
   /* 3. which planet */
-  if (/which planet|kaun sa graha|what planet/.test(ql)) {
+  if (/which planet|kaun sa graha|what planet|which graha/.test(ql)) {
     var le2 = U.lastEvent && U.lastEvent.p === p.id ? U.lastEvent : null;
-    if (le2 && le2.E.ranked.length) return { html: '<p>For the ' + esc(le2.E.E.l.toLowerCase()) + ' of ' + esc(le2.ev.date) + ', ranked by evidence:</p>' + li(le2.E.ranked.slice(0, 4).map(function (r) { return '<b>' + PN[r.code] + '</b> (score ' + r.s.toFixed(1) + '): ' + esc(r.why.join(' ')); })) };
-    var ch = J.dashaChain(c.maha, now, 3); return { html: '<p>Right now the planets in charge are the dasha lords:</p>' + li(ch.map(function (x, i) { return LVL[i] + ' <b>' + PN[x.lord] + '</b> until ' + N.dmy(x.end) + ': ' + esc(N.lordNote(c, x.lord)) + ', functional ' + N.funcWord(c, x.lord); })) };
+    if (le2 && le2.E.main) { var se3 = S.event(c, le2.E, now); return { html: plainAns({ verdict: 'bad', headline: PN[le2.E.main.code] + ' is the main planet behind the ' + KB.EVENTS[le2.ev.type].l.toLowerCase() + '.', rows: [['Why', se3.reasons], ['Also involved', se3.support.map(function (s) { return PN[s.code] + ': ' + s.text.replace(/^It /, ''); })], ['What to do', se3.do, 'do']] }) }; }
+    var ch = J.dashaChain(c.maha, now, 2);
+    return { html: plainAns({ verdict: 'neutral', headline: 'Right now ' + PN[ch[0].lord] + ' and ' + PN[ch[1].lord] + ' run ' + pr + ' life.', rows: [['Main period', [PN[ch[0].lord] + ' until ' + N.dmy(ch[0].end) + ': ' + S.planet(c, ch[0].lord, now).headline]], ['Sub-period', [PN[ch[1].lord] + ' until ' + N.dmy(ch[1].end) + ': ' + S.planet(c, ch[1].lord, now).headline]]] }) };
   }
   /* 4. muhurat */
   if (/muhurat|muhurt|auspicious|shubh|good (date|day|time) (to|for)/.test(ql)) {
     var pur = /car|vehicle|bike/.test(ql) ? 'vehicle' : /house|flat|property|griha|pravesh/.test(ql) ? 'property' : /marr|wedding|vivah/.test(ql) ? 'marriage' : /gold|jewel/.test(ql) ? 'gold' : /travel|journey|trip/.test(ql) ? 'travel' : /treat|surgery|operation/.test(ql) ? 'treatment' : /agree|sign|contract/.test(ql) ? 'agreement' : 'business';
     var L = DB.settings.loc, list = N.muhurat(pur, todayStart(0), 60, L.lat, L.lon, locOff(), c).slice(0, 6);
-    return { html: '<p>' + esc(KB.MUHURAT[pur].l) + ' in the next 60 days, checked against ' + esc(p.name) + '’s tara and Chandrashtama:</p>' + (list.length ? li(list.map(function (m) { return '<b>' + J.VARAS[m.wd] + ' ' + N.dmy(m.rise) + '</b>' + (m.special.length ? ' (' + m.special.join(', ') + ')' : '') + ': ' + m.windows.slice(0, 2).map(function (w) { return w.name + ' ' + N.hm(w.start) + '–' + N.hm(w.end); }).join(', '); })) : '<p>No clean date in 60 days.</p>') + src('Today › Muhurat has the full list and all checks.') };
+    if (!list.length) return { html: plainAns({ verdict: 'bad', headline: 'No clean date for ' + KB.MUHURAT[pur].l.toLowerCase() + ' in the next 60 days.', rows: [['What to do', ['Check Today › Muhurat with a longer window.'], 'do']] }) };
+    var b = list[0];
+    return { html: plainAns({ verdict: 'good', headline: 'Best date: ' + J.VARAS[b.wd] + ' ' + N.dmy(b.rise) + ', ' + b.windows[0].name + ' ' + N.hm(b.windows[0].start) + '–' + N.hm(b.windows[0].end) + '.', meaning: KB.MUHURAT[pur].l + ', checked against ' + p.name + '’s stars.', rows: [['Other good dates', list.slice(1).map(function (m) { return J.VARAS[m.wd] + ' ' + N.dmy(m.rise) + ': ' + m.windows.slice(0, 2).map(function (w) { return N.hm(w.start) + '–' + N.hm(w.end); }).join(', ') + (m.special.length ? ' (' + m.special[0] + ')' : ''); }), 'when'], ['Avoid', ['Rahu Kaal on the day (' + N.hm(b.rahu.start) + '–' + N.hm(b.rahu.end) + ')'], 'avoid']] }) };
   }
   /* 5. remedies */
   if (/remed|upay|gem|stone|ratna|rudraksh|mantra|lal kitab|crystal|daan|donat|fast/.test(ql)) {
     var R = N.remedies(c, now), yes = R.gems.filter(function (g) { return g.kind === 'yes'; }), no = R.gems.filter(function (g) { return g.kind === 'no'; });
-    var hr = '<p>Chosen by ' + pr + ' ' + SG[k.ascSign] + ' lagna (functional benefics are strengthened, malefics calmed):</p>';
-    hr += '<h4>For the current period</h4>' + li(R.plan.map(function (x) { return '<b>' + PN[x.code] + '</b> (' + x.mode + '): ' + esc(x.mantra[0]) + ', 108 times; donate ' + esc(x.daan[0]) + ' on ' + x.daan[1] + '; Lal Kitab: ' + esc(x.lalkitab); }));
-    hr += '<h4>Gemstones</h4>' + li(yes.map(function (g) { return '✓ <b>' + esc(g.gem) + '</b>: ' + esc(g.why); }).concat(no.map(function (g) { return '✕ Avoid ' + esc(g.gem) + ': ' + esc(g.why); })));
-    hr += '<h4>Rudraksha</h4>' + li(R.rudraksha.map(function (x) { return x.bead + ' for ' + PN[x.code]; }));
-    return { html: hr + '<p class="mut" style="font-size:12.5px">No remedy can be guaranteed. These follow classical rules for this lagna.</p>' + src('Functional nature (BPHS) · running dasha · Sade Sati status.') };
+    var main = R.plan[0];
+    return { html: plainAns({ verdict: 'good', headline: (yes.length ? 'Wear ' + yes[0].gem + '. ' : 'No gemstone is strongly needed. ') + (no.length ? 'Never wear ' + P_list(no.map(function (g) { return g.gem.split(' (')[0]; })) + '.' : ''), meaning: 'Chosen for ' + pr + ' ' + SG[k.ascSign] + ' lagna: helpful planets are strengthened, difficult ones are calmed.',
+      rows: [['Daily', R.plan.map(function (x) { return x.mantra[0] + ' (108 times) for ' + PN[x.code]; })], ['Weekly', R.plan.map(function (x) { return 'Donate ' + x.daan[0] + ' on ' + x.daan[1]; }), 'do'], ['Rudraksha', R.rudraksha.map(function (x) { return x.bead + ' (for ' + PN[x.code] + ')'; })], ['Lal Kitab', R.plan.slice(0, 2).map(function (x) { return x.lalkitab; })], ['Crystals', R.crystals.slice(0, 2).map(function (x) { return x.stone; })]],
+      tech: li(R.gems.map(function (g) { return (g.kind === 'yes' ? '✓ ' : g.kind === 'no' ? '✕ ' : '! ') + esc(g.gem + ': ' + g.why); })) }) + '<p class="mut" style="font-size:12.5px">No remedy can be guaranteed; these follow classical rules for this lagna.</p>' };
   }
   /* 6. a specific planet */
   if (pl && !kpm && !/today|transit|gochar/.test(ql)) {
-    var items = N.planet(c, pl, now);
-    return { html: '<p><b>' + PN[pl] + ' in ' + esc(p.name) + '’s chart</b></p>' + li(items.map(function (i) { return '<b>' + esc(i.t) + '</b><div class="why">' + i.why.map(esc).join('<br>') + '</div>'; })) };
+    var sp = S.planet(c, pl, now);
+    return { html: plainAns({ verdict: sp.verdict, headline: sp.headline, meaning: sp.meaning, rows: sp.lines.map(function (l) { return [l[0], [l[1]]]; }).concat([['What to do', sp.do, 'do'], ['Avoid', sp.avoid, 'avoid']]), tech: li(N.planet(c, pl, now).map(function (i) { return '<b>' + esc(i.t) + '</b>: ' + esc(i.why.join(' ')); })) }), text: sp.headline };
   }
   /* 7. today */
   if (/today|my day|aaj|tomorrow|kal\b/.test(ql)) {
     var L2 = DB.settings.loc, off = /tomorrow|kal\b/.test(ql) ? 1 : 0, D = N.myDay(c, todayStart(off), L2.lat, L2.lon, now);
-    return { html: '<p><b>' + D.word + (off ? ' tomorrow' : ' today') + '.</b> ' + esc(D.guide) + '</p>' + li(D.why.map(function (w) { return '<b>' + esc(w.label) + ':</b> ' + esc(w.why); }).concat(D.focus.map(esc))) + '<p>Best windows: ' + (D.best.slice(0, 3).map(function (b) { return PN[b.lord] + ' hora ' + N.hm(b.start) + '–' + N.hm(b.end); }).join(', ') || 'none clean') + '. Rahu Kaal ' + N.hm(D.parts.rahu.start) + '–' + N.hm(D.parts.rahu.end) + '.</p>' };
+    return { html: plainAns({ verdict: D.score.v === 'push' ? 'good' : D.score.v === 'backend' ? 'bad' : 'mixed', headline: D.word + (off ? ' tomorrow.' : ' today.'), meaning: D.guide, rows: [['Best time', D.best.slice(0, 3).map(function (b) { return N.hm(b.start) + '–' + N.hm(b.end) + ' (' + KB.HORA_USE[b.lord] + ')'; }), 'when'], ['Avoid', ['Starting anything in Rahu Kaal ' + N.hm(D.parts.rahu.start) + '–' + N.hm(D.parts.rahu.end)], 'avoid']], tech: li(D.why.map(function (w) { return esc(w.label + ': ' + w.why); })) }) };
   }
   /* 8. transit */
   if (/transit|gochar|this month|next month|month/.test(ql)) {
-    var offm = /next month/.test(ql) ? 1 : 0, ms = monthStart(offm), tm = N.transitMonth(c, ms.y, ms.m, now);
-    return { html: '<p><b>' + MONS[ms.m] + ' ' + ms.y + '.</b> Ruling: ' + (tm.ruler ? PN[tm.ruler] + ' (pratyantar lord)' : '–') + '. ' + esc(tm.sade.label) + '.</p>' + li(tm.tr.map(function (x) { return '<b>' + PN[x.code] + '</b> in ' + SG[x.sign] + ', ' + nth(x.h) + ' house, ' + nth(x.m) + ' from Moon: <b>' + VWORDQ[x.verdict] + '</b>. ' + esc(x.text) + (x.bav != null ? ' (' + x.bav + ' bindus)' : ''); })) + src('Gochar from natal Moon with vedha · own Ashtakavarga bindus.') };
+    var offm = /next month/.test(ql) ? 1 : 0, ms = monthStart(offm), tm = N.transitMonth(c, ms.y, ms.m, now), sm = S.month(c, tm);
+    return { html: plainAns({ verdict: sm.verdict, headline: MONS[ms.m] + ' ' + ms.y + ': ' + sm.word.toLowerCase() + ' for ' + (p.id === DB.settings.meId ? 'you' : p.name) + '.', meaning: sm.meaning, rows: [['Do', sm.do, 'do'], ['Avoid', sm.avoid, 'avoid'], ['Each planet', sm.rows.map(function (r) { return r.title + ': ' + r.text; })], ['Key dates', sm.dates.map(function (d) { return N.dmY(d.t) + ': ' + d.text; }), 'when']] }), text: sm.word + '. ' + sm.meaning };
   }
   /* 9. sade sati */
   if (/sade ?sati|sadesati|dhaiya|panoti|shani/.test(ql)) {
-    var ss = N.sadeSati(c, now); return { html: '<p><b>' + esc(ss.label) + '.</b> Saturn is ' + nth(ss.house) + ' from ' + pr + ' Moon in ' + SG[k.P.Mo.sign] + (ss.until ? ', until ' + N.dmy(ss.until) : '') + '.</p>' };
+    var ss = N.sadeSati(c, now);
+    return { html: plainAns({ verdict: ss.q === 'bad' ? 'bad' : 'good', headline: ss.q === 'bad' ? 'Yes, ' + he + ' is under Saturn’s pressure (' + ss.label + ') until ' + N.dmy(ss.until) + '.' : 'No Sade Sati or Dhaiya now.', rows: ss.q === 'bad' ? [['What it means', ['Tiredness, delays and extra responsibility; results come only with patience.']], ['What to do', ['Saturdays: Hanuman Chalisa or ' + KB.MANTRA.Sa[0] + '; donate black sesame or mustard oil; help elderly people or workers.'], 'do']] : [] }) };
   }
-  /* 10. KP style "will I / when will" questions */
+  /* 10. KP style "will / when" questions */
   if (kpm && /will|when|kab|chance|possible|get|promot|marr|buy|go /.test(ql) && !/about|tell me|reading/.test(ql)) {
-    var L3 = DB.settings.loc, rp = J.rulingPlanets(now, L3.lat, L3.lon, locOff(), 'kp'), jm = N.judgeMatter(c.sig, kpm, kpDasha(c), now, 5, rp.set), v = N.VERD[jm.main.level], j = jm.main, tw = N.topWindows(jm.timing, 4);
-    var hk = '<p><b>' + esc(jm.m.l) + ': ' + v[0] + '.</b></p>' + li([nth(j.cusp) + ' cusp sub lord <b>' + PN[j.csl] + '</b> signifies ' + N.uniq(j.st.planet.houses.concat(j.st.star.houses)).join(', ') + ' (favourable ' + jm.m.fav.join(', ') + '; against ' + jm.m.neg.join(', ') + ').', 'Its sub lord ' + PN[j.st.sub.lord] + ', star ' + PN[j.st.subStar.lord] + ': ' + j.st.subStar.houses.join(', ') + '.']);
-    if (tw.length) hk += '<h4>Likely periods</h4>' + li(tw.map(function (w) { return '<b>' + PN[w.md] + ' › ' + PN[w.ad] + ' › ' + PN[w.pd] + '</b>: ' + N.dmy(w.start) + ' – ' + N.dmy(w.end) + (w.rank === 2 ? ' (strongest)' : ''); }));
-    return { html: hk + src('KP: cusp sub lord, 4-step significators, Vimshottari (KP ayanamsa), ruling planets now.') };
+    var L3 = DB.settings.loc, rp = J.rulingPlanets(now, L3.lat, L3.lon, locOff(), 'kp'), jm = N.judgeMatter(c.sig, kpm, kpDasha(c), now, 5, rp.set), wins = S.kpWindows(c.sig, jm.m, kpDasha(c), now, kpm === 'health' ? 12 : 36, kpm === 'health' ? 4 : 3, rp.set), sk = S.kp(jm, kpm, wins, now);
+    return { html: plainAns({ verdict: sk.verdict, headline: sk.headline, meaning: sk.meaning, rows: [['When', sk.when, 'when'], ['What to do', sk.do, 'do']], tech: li([nth(jm.main.cusp) + ' cusp sub lord ' + PN[jm.main.csl] + ': ' + N.uniq(jm.main.st.planet.houses.concat(jm.main.st.star.houses)).join(', ') + ' (favourable ' + jm.m.fav.join(', ') + '; against ' + jm.m.neg.join(', ') + ')']) }), text: sk.headline + ' ' + sk.when.join(' ') };
   }
   /* 11. section questions */
   var secId = /health|body|disease|swasthya/.test(ql) ? 'health' : /career|job|work|business|profession/.test(ql) ? 'career' : /money|wealth|finance|income|dhan/.test(ql) ? 'money' : /marr|spouse|wife|husband|relationship|partner/.test(ql) ? 'marriage' : /child|kid|education|study/.test(ql) ? 'children' : /nature|personality|character|swabhav/.test(ql) ? 'personality' : /current|period|dasha|now/.test(ql) ? 'now' : /future|next|coming|years/.test(ql) ? 'future' : null;
-  var sec = N.report(c, now);
+  if (secId === 'health') {
+    var sh = S.health(c, now);
+    return { html: plainAns({ verdict: sh.verdict, headline: sh.headline, meaning: sh.meaning, rows: [['Right now', sh.now, 'when'], ['Gets better', sh.better, 'when'], ['What to do', sh.do, 'do'], ['Avoid', sh.avoid, 'avoid']], tech: li(sh.H.zones.filter(function (z) { return z.level !== 'good'; }).map(function (z) { return 'House ' + z.house + ': ' + esc(z.why.join(' ')); })) }), text: sh.headline + ' ' + sh.meaning };
+  }
+  var sum = S.report(c, now);
   if (secId) {
-    var s = sec.filter(function (x) { return x.id === secId; })[0];
-    var hs = '<p><b>' + esc(s.title) + '</b></p>' + (s.items ? li(s.items.map(function (i) { return (i.k === 'pro' ? '<b style="color:var(--good)">+</b> ' : i.k === 'con' ? '<b style="color:var(--bad)">−</b> ' : '') + '<b>' + esc(i.t) + '</b><div class="why">' + i.why.map(esc).join('<br>') + '</div>'; })) : '') + (s.timeline ? li(s.timeline.map(function (t) { return '<b>' + N.dmy(t.t) + ':</b> ' + esc(t.text); })) : '');
-    if (secId === 'health') { var H2 = N.healthAnalysis(c, now); hs += '<h4>Coming months</h4>' + li(H2.timeline.slice(0, 5).map(function (t) { return N.dmY(t.start) + ': ' + esc(t.t); })); }
-    return { html: hs };
+    var map = { career: 'Career', money: 'Money', marriage: 'Marriage', personality: 'Nature', now: 'Right now', future: 'Next change', children: null }, row = sum.filter(function (r) { return r.k === map[secId]; })[0];
+    var s = N.report(c, now).filter(function (x) { return x.id === secId; })[0];
+    var techS = s.items ? li(s.items.map(function (i) { return (i.k === 'pro' ? '+ ' : i.k === 'con' ? '− ' : '') + '<b>' + esc(i.t) + '</b>: ' + esc(i.why.join(' ')); })) : li((s.timeline || []).map(function (t) { return N.dmy(t.t) + ': ' + esc(t.text); }));
+    var good = (s.items || []).filter(function (i) { return i.k === 'pro'; }).map(function (i) { return i.t; }), bad = (s.items || []).filter(function (i) { return i.k === 'con'; }).map(function (i) { return i.t; });
+    return { html: plainAns({ verdict: row ? row.v : 'mixed', headline: row ? row.t : s.title, rows: [['Plus points', good.slice(0, 3), 'do'], ['Watch', bad.slice(0, 3), 'avoid'], ['Coming up', secId === 'future' ? (s.timeline || []).slice(0, 5).map(function (t) { return N.dmy(t.t) + ': ' + t.text; }) : [], 'when']], tech: techS }) };
   }
   if (/yoga|dosha|manglik|mangal dosh|kaal ?sarp|kemadruma/.test(ql)) return { html: li(c.yogas.map(function (y) { return '<b>' + esc(y.name) + '</b>: ' + esc(y.why); })) };
   if (/lagna|ascendant|rashi|moon sign|nakshatra|basic|details/.test(ql)) return { html: li(['Lagna <b>' + SG[k.ascSign] + ' ' + k.ascDegs + '</b> (' + k.ascNak.name + ' ' + k.ascNak.pada + ')', 'Moon <b>' + SG[k.P.Mo.sign] + ' ' + k.P.Mo.degs + '</b>, ' + k.P.Mo.nak.name + ' pada ' + k.P.Mo.nak.pada, 'Sun ' + SG[k.P.Su.sign] + ' ' + k.P.Su.degs, 'Ayanamsa ' + esc(ayanShort()) + ' ' + J.dms(k.ayanamsa, true)]) };
   /* 12. whole reading */
   if (/about|tell me|reading|overall|pros|cons|who is|life|everything|kundli|horoscope|summar/.test(ql) || q.length < 4) {
-    var hh = '';
-    sec.forEach(function (s) { if (s.id === 'future') { hh += '<h4>' + esc(s.title) + '</h4>' + li(s.timeline.slice(0, 6).map(function (t) { return '<b>' + N.dmy(t.t) + ':</b> ' + esc(t.text); })); return; } hh += '<h4>' + esc(s.title) + '</h4>' + li(s.items.slice(0, 4).map(function (i) { return (i.k === 'pro' ? '<b style="color:var(--good)">+</b> ' : i.k === 'con' ? '<b style="color:var(--bad)">−</b> ' : '') + esc(i.t) + ' <span class="mut">(' + esc(i.why[0] || '') + ')</span>'; })); });
-    return { html: '<p><b>' + esc(p.name) + ': the full reading in short.</b> Open the Report tab for every reason.</p>' + hh };
+    return { html: '<p class="pah">' + esc(p.name) + ' in simple words</p>' + li(sum.map(function (r) { return '<b>' + esc(r.k) + ':</b> ' + esc(r.t); })) + '<p class="mut" style="font-size:12.5px">Open the Report tab for every point with its reason.</p>', text: sum.map(function (r) { return r.k + ': ' + r.t; }).join(' ') };
   }
   return null;
 }
+function P_list(a) { return PLAIN.list(a); }
 var HELP = '<p>I answer from ' + 'the chart with the logic shown. Try:</p><ul><li>Tell me about this person</li><li>How is ' + 'the health? When will it improve?</li><li>Why did he have an accident on 15 Jul 2026 at 11:30?</li><li>By when will he recover? Which planet did this?</li><li>When will I get a promotion?</li><li>How is this month’s transit for me?</li><li>Saturn in my chart</li><li>Which gemstone and rudraksha suit me?</li><li>Good muhurat to buy a car</li></ul>';
 
 /* ---------- Claude ---------- */
@@ -2664,7 +2966,7 @@ function dossier(p, c) {
   if (p.events && p.events.length) L.push('KNOWN EVENTS: ' + p.events.map(function (e) { return KB.EVENTS[e.type].l + ' ' + e.date + ' ' + e.time; }).join('; '));
   return L.join('\n');
 }
-var SYS = 'You are Trikaal, a careful Vedic astrologer (Parashari and Krishnamurti Paddhati). The user is the app owner, an astrology practitioner asking about a chart. Rules: use ONLY the computed chart data given below; never invent positions, dates or dashas. Always show the logic: name the planets, houses, lordships, dignity, dasha and transit facts behind every claim. Judge results through functional benefics and malefics for the lagna. For timing, use the Vimshottari periods and transit dates provided, and KP cusp sub lords for yes/no questions. Be direct and specific, bottom line first, then the reasons. Be honest about uncertainty and never promise 100% outcomes. Health: give astrological indications and timing only, and advise seeing a doctor. Reply in the language the user writes in. Keep answers well structured with short headings and bullet points.';
+var SYS = 'You are Trikaal, a careful Vedic astrologer (Parashari and Krishnamurti Paddhati). The user is the app owner, an astrology practitioner asking about a chart. Rules: use ONLY the computed chart data given below; never invent positions, dates or dashas. Always show the logic: name the planets, houses, lordships, dignity, dasha and transit facts behind every claim. Judge results through functional benefics and malefics for the lagna. For timing, use the Vimshottari periods and transit dates provided, and KP cusp sub lords for yes/no questions. Write for a reader who knows no astrology: start with the plain answer in one or two sentences (yes or no, how good or bad, when, and what to do), then give the reasons in everyday words, with technical terms only in brackets. Be direct and specific. Be honest about uncertainty and never promise 100% outcomes. Health: give astrological indications and timing only, and advise seeing a doctor. Reply in the language the user writes in. Keep answers well structured with short headings and bullet points.';
 function mdToHtml(t) {
   var lines = esc(t).split('\n'), out = '', inList = false;
   lines.forEach(function (l) {
