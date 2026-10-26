@@ -191,6 +191,38 @@ function makeStory(A, C, J, KB, N, P, S) {
       paras: [sk.meaning + ' In KP, the sub lord of the ' + nth(j.cusp) + ' cusp decides whether ' + (jm.m.l || '').toLowerCase() + ' is promised, and the dasha periods of planets that signify the same houses decide when.', 'The best windows: ' + sk.when.join(' ')], short: 'In short, ' + sk.do[0].charAt(0).toLowerCase() + sk.do[0].slice(1).replace(/\.$/, '') + ', ' + name + '.', todo: sk.do };
   }
 
-  return { topic: topic, topicOf: topicOf, horizonOf: horizonOf, symptoms: symptoms, planet: planet, event: event, kp: kp };
+
+  /* one day, for a topic (health today, career tomorrow ...) */
+  var DAYTIP = {
+    health: { good: 'a good day for exercise, a health check-up or starting a diet', mixed: 'keep meals light and on time, and avoid over-exertion', bad: 'rest more, eat light, avoid fried food, and drive carefully' },
+    career: { good: 'a good day to push important work, meet seniors or ask for what you want', mixed: 'fine for follow-ups and routine work; hold big decisions', bad: 'avoid confrontations at work and big commitments; prepare instead' },
+    money: { good: 'fine for collections, investments and purchases', mixed: 'fine for routine payments; avoid speculation', bad: 'avoid lending, big purchases and risky trades' },
+    marriage: { good: 'a warm day for time together and important talks', mixed: 'keep talks light; avoid old arguments', bad: 'avoid sensitive topics and ego clashes; listen more' },
+    children: { good: 'good for studies, exams and time with children', mixed: 'steady day; keep routines', bad: 'be patient; avoid pressure on them today' },
+    general: { good: 'a good day to act', mixed: 'a steady day for routine work', bad: 'a day to go slow' } };
+  var MOONBODY = [null, 'head and energy', 'face, eyes and throat', 'shoulders and breathing', 'chest and heart', 'stomach and digestion', 'digestion and immunity', 'kidneys and lower back', 'chronic and hidden issues', 'hips and thighs', 'knees and joints', 'calves and circulation', 'feet, sleep and eyes'];
+  function day(p, c, q, now, D, off) {
+    var ql = q.toLowerCase(), tk = topicOf(ql) || 'general', T = TOPIC[tk], name = first(p.name), k = c.k, sc = D.score, dw = off ? 'tomorrow' : 'today';
+    var mo = D.tr.filter(function (x) { return x.code === 'Mo'; })[0], mh = mo ? mo.h : null, cb = sc.cb, tara = sc.tara;
+    var score = sc.score;
+    if (mh && T.houses.indexOf(mh) >= 0) score += (tk === 'health' && [6, 8, 12].indexOf(mh) >= 0) ? -1 : (tk === 'health' ? 0 : 1);
+    var slowBad = D.tr.filter(function (x) { return ['Ma', 'Sa', 'Ra', 'Ke'].indexOf(x.code) >= 0 && T.houses.indexOf(x.h) >= 0 && x.verdict === 'bad'; });
+    score -= slowBad.length * 0.5;
+    var v = cb === 8 ? 'bad' : score >= 2 ? 'good' : score <= -1 ? 'bad' : 'mixed';
+    var lead = { good: { health: 'your health energy is good ' + dw, general: dw + ' is a strong day for you' }, mixed: { health: 'health is steady ' + dw + ', with small ups and downs', general: dw + ' is a steady day' }, bad: { health: 'go easy on your body ' + dw, general: dw + ' is a day to go slow' } }[v];
+    var head = lead[tk] || ('your ' + T.noun + ' looks ' + { good: 'supportive', mixed: 'steady', bad: 'like it needs care' }[v] + ' ' + dw);
+    var quick = name + ', ' + head + '. ' + cap(DAYTIP[tk][v]) + '.' + (cb === 8 ? ' The Moon is 8th from your birth Moon (Chandrashtama), so energy and mood run low.' : '');
+    var paras = [];
+    paras.push('The Moon is in ' + SG[D.pc.moonSign] + ' ' + dw + ', ' + (mh ? 'passing through your ' + nth(mh) + ' house (' + P.AREA_SHORT[mh] + ')' : '') + ' and ' + nth(cb) + ' from your birth Moon. ' + (tk === 'health' && mh ? 'In the body this points to ' + MOONBODY[mh] + ', so give that area a little care. ' : '') + 'The day’s star ' + D.pc.nak.name + ' is ' + tara[0] + ' tara for you: ' + tara[2].charAt(0).toLowerCase() + tara[2].slice(1) + '.');
+    var bg = D.chain.slice(0, 2).map(function (x) { return PN[x.lord]; }).join('-'), ss = D.sade;
+    var bgs = 'In the background you are in the ' + bg + ' period' + (ss.q === 'bad' ? ', and Saturn’s hard position from your Moon (until ' + dmy(ss.until) + ') keeps tiredness in the background' : '') + '.';
+    if (slowBad.length) bgs += ' ' + list(slowBad.map(function (x) { return PN[x.code] + ' in your ' + nth(x.h) + ' house (' + P.EFFECT[x.code].bad + ')'; })) + ' also ' + (slowBad.length > 1 ? 'need' : 'needs') + ' watching.';
+    paras.push(bgs);
+    var best = D.best.slice(0, 2).map(function (b) { return N.hm(b.start) + '–' + N.hm(b.end); });
+    paras.push((tk === 'health' ? 'For a walk, exercise or a doctor visit, the better windows are ' : 'The better windows ' + dw + ' are ') + (best.length ? list(best) : 'the morning hours') + '; avoid starting anything in Rahu Kaal ' + N.hm(D.parts.rahu.start) + '–' + N.hm(D.parts.rahu.end) + '.');
+    var ask = tk === 'health' ? 'How are you feeling ' + dw + '? If anything is bothering you, like tiredness, acidity or a headache, tell me and I will check it against your chart.' : 'What is the main thing you want to do ' + dw + '? I can find the best time for it.';
+    return { verdict: v, quick: quick, question: ask, paras: paras, short: 'In short, ' + DAYTIP[tk][v] + ', ' + name + '.' };
+  }
+  return { day: day, topic: topic, topicOf: topicOf, horizonOf: horizonOf, symptoms: symptoms, planet: planet, event: event, kp: kp };
 }
 if (typeof module !== 'undefined') module.exports = makeStory;

@@ -154,7 +154,10 @@ function storyAnswer(p, c, q, ql, now, dt, ev, pl, kpm) {
     var L3 = DB.settings.loc, rp = J.rulingPlanets(now, L3.lat, L3.lon, locOff(), 'kp'), jm = N.judgeMatter(c.sig, kpm, kpDasha(c), now, 5, rp.set), wins = S.kpWindows(c.sig, jm.m, kpDasha(c), now, 36, 3, rp.set);
     return storyRes(T.kp(p, c, S.kp(jm, kpm, wins, now), jm, kpm));
   }
-  if (/muhurat|muhurt|auspicious|remed|upay|gem|stone|ratna|rudraksh|mantra|lal kitab|crystal|today|tomorrow|my day|aaj|transit|gochar|sade ?sati|dhaiya|panoti|yoga|dosha|lagna|ascendant|nakshatra/.test(ql)) return null;
+  var tp = T.topicOf(ql), isDay = /today|tomorrow|tonight|aaj|kal\b/.test(ql), noStory = /muhurat|muhurt|auspicious|remed|upay|gem|stone|ratna|rudraksh|mantra|lal kitab|crystal|sade ?sati|dhaiya|panoti|yoga|dosha|lagna|ascendant|nakshatra/.test(ql);
+  if (isDay && !noStory) { var off = /tomorrow|kal\b/.test(ql) ? 1 : 0, L0 = DB.settings.loc, D0 = N.myDay(c, todayStart(off), L0.lat, L0.lon, now); return storyRes(T.day(p, c, q, now, D0, off)); }
+  if (tp && !noStory && !/transit|gochar/.test(ql)) return storyRes(T.topic(p, c, q, now));
+  if (noStory || /transit|gochar|my day/.test(ql)) return null;
   if (pl) return storyRes(T.planet(p, c, pl, now));
   if (T.topicOf(ql) || /about|tell me|reading|overall|life|future|coming|next \\d|how (is|will) (my|his|her)|kaisa|kaise/.test(ql)) return storyRes(T.topic(p, c, q, now));
   return null;
