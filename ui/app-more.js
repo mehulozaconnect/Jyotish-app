@@ -12,7 +12,7 @@ function MoreScreen() {
     '<div class="field"><span>MODEL</span>' + sel('setGmodel', gModelOpts(), s.gmodel || GDEFAULT) + '</div>' +
     '<label class="field"><span>OR TYPE A MODEL NAME</span><input class="inp mono" data-in="setGmodelTxt" value="' + esc(s.gmodel || '') + '" placeholder="' + GDEFAULT + '"></label>' +
     '<button class="btn sec wide" data-act="testGkey">Test the key and find the best model</button>' +
-    '<div class="note">The test checks which Gemini models your key can use and picks the newest Pro model. If Google retires a model, the app switches by itself.</div></div>';
+    '<div class="note">The test checks which Gemini models your key can use and picks the newest Pro model. On a free key Google gives no Pro quota, so the app uses the newest Flash model instead. If Google retires a model, the app switches by itself.</div></div>';
   h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
   h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div></div>';
   h += '<div class="card"><h3>Accuracy</h3><p style="font-size:12.8px">Planet and lagna positions are checked against Swiss Ephemeris (the engine used by Jagannatha Hora and most professional software): planets within a few arc-seconds, lagna within arc-seconds for a correct birth time. Panchang ends, dashas and transits come from the same engine. Readings and remedies follow classical rules and show their logic; like any astrology, they are interpretations, not certainties.</p></div>';
@@ -20,13 +20,13 @@ function MoreScreen() {
   return h + '</div>';
 }
 var APP_VERSION = '2.0';
-INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); save(); };
-CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; save(); };
+INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; save(); };
+CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
 INP.setGmodelTxt = function (el) { if (el.value.trim()) { DB.settings.gmodel = el.value.trim(); save(); } };
 function gModelOpts() {
   var list = (DB.settings.gmodels && DB.settings.gmodels.length ? DB.settings.gmodels : [GDEFAULT, 'gemini-3-flash-preview']).slice(0, 12), cur = DB.settings.gmodel || GDEFAULT;
   if (list.indexOf(cur) < 0) list = [cur].concat(list);
-  var best = gBest(list, 'pro');
+  var best = gBest(list, DB.settings.gnoPro ? 'flash' : 'pro');
   return list.map(function (n) { return [n, n + (n === best ? '  (best)' : '')]; });
 }
 ACT.testGkey = function () {
@@ -35,7 +35,7 @@ ACT.testGkey = function () {
   gListModels().then(function (list) {
     if (!list.length) throw new Error('No Gemini text models are available for this key');
     var cur = DB.settings.gmodel;
-    if (!cur || list.indexOf(cur) < 0) { DB.settings.gmodel = gBest(list, 'pro'); save(); }
+    if (!cur || list.indexOf(cur) < 0) { DB.settings.gmodel = gBest(list, DB.settings.gnoPro ? 'flash' : 'pro'); save(); }
     return gGenerate(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }] }));
   }).then(function () { toast('Gemini works ✓ using ' + DB.settings.gmodel, 3500); rerender(); })
     .catch(function (e) { toast('Error: ' + e.message, 5000); rerender(); });

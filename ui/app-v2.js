@@ -244,16 +244,22 @@ function gGenerate(body, retried) {
     var d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('Unexpected reply (' + r.status + ')'); }
     if (r.status === 200) return d;
     var msg = (d.error && d.error.message) || ('HTTP ' + r.status);
-    if (!retried && (r.status === 404 || /no longer available|not found|not supported/i.test(msg))) {
+    var noFreePro = r.status === 429 && /-pro/.test(model) && /limit: 0|free tier/i.test(msg);
+    if (noFreePro) DB.settings.gnoPro = true;
+    if (!retried && (noFreePro || r.status === 404 || /no longer available|not found|not supported/i.test(msg))) {
       return gListModels().then(function (list) {
-        var want = /flash/.test(model) ? 'flash' : 'pro', best = gBest(list, want);
-        if (!best || best === model) throw new Error(msg);
-        DB.settings.gmodel = best; save(); toast('Switched to ' + best, 2500);
+        var want = noFreePro || DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro', best = gBest(list, want);
+        if (!best || best === model) throw new Error(gShort(r.status, msg));
+        DB.settings.gmodel = best; save(); toast(noFreePro ? 'Pro is not free on your key, using ' + best : 'Switched to ' + best, 3000);
         return gGenerate(body, true);
       });
     }
-    throw new Error(msg);
+    throw new Error(gShort(r.status, msg));
   });
+}
+function gShort(st, msg) {
+  if (st === 429) { var w = msg.match(/retry in ([\d]+h)?([\d]+m)?/); return 'Gemini daily/minute limit reached on your free plan' + (w ? ' (resets in ' + ((w[1] || '') + (w[2] || '')) + ')' : '') + '. Try a Flash model, or enable billing in Google AI Studio.'; }
+  return msg.split(/\.\s/)[0].slice(0, 220);
 }
 function gText(d) {
   var cand = d.candidates && d.candidates[0], txt = cand && cand.content && cand.content.parts ? cand.content.parts.filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join('\n') : '';
