@@ -3693,9 +3693,8 @@ function aiBubbles(txt, ev) {
 function AiV2() {
   var p = curP(); if (!p) return topBar('Ask AI', { noPerson: true }) + noPerson();
   var msgs = DB.chats[p.id] || [], hasKey = !!DB.settings.gkey;
-  var h = topBar('Ask AI', { right: '<span class="gem">' + (hasKey ? '✦ Gemini' : 'Offline') + '</span>' }) + '<div class="pad">';
+  var h = topBar('Ask AI', { right: '<span class="gem">' + (hasKey ? '✦ Gemini' : 'Offline') + '</span>' + (msgs.length ? '<button class="v2ib" data-act="clearAsk" aria-label="Clear conversation" style="color:var(--bad)">' + icon('trash', 18) + '</button>' : '') }) + '<div class="pad">';
   if (!hasKey) h += '<div class="card"><b style="font:600 15px var(--sans)">Connect Gemini for full answers</b><p class="sm" style="margin:6px 0 10px">Paste your Gemini API key (from aistudio.google.com). Every answer will then use your D1, divisional chart, all 5 dasha levels, aspects, transits and Ashtakavarga. Without a key you get the shorter offline answers.</p><input class="inp mono" id="gkeyIn" placeholder="AIza..." autocomplete="off"><button class="btn acc wide" style="margin-top:8px" data-act="saveGkey">Save key</button></div>';
-  if (msgs.length) h += '<div style="text-align:right;margin:-4px 0 6px"><button class="mut" style="font-size:12px;text-decoration:underline" data-act="clearChat2">Clear chat</button></div>';
   h += '</div>';
   var Q = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
   if (!msgs.length) h += '<div class="qchips" style="flex-wrap:wrap">' + Q.map(function (q) { return '<button data-act="askQ2">' + esc(q) + '</button>'; }).join('') + '</div>';
@@ -3704,7 +3703,17 @@ function AiV2() {
   return h;
 }
 ACT.saveGkey = function () { var v = ($('#gkeyIn').value || '').trim(); if (!v) return toast('Paste the key first'); DB.settings.gkey = v; save(); toast('Gemini connected'); rerender(); };
-ACT.clearChat2 = function () { var p = curP(); DB.chats[p.id] = []; save(); rerender(); };
+ACT.clearAsk = function () {
+  var p = curP(), n = (DB.chats[p.id] || []).filter(function (m) { return m.role === 'me'; }).length;
+  var others = Object.keys(DB.chats).filter(function (k) { return k !== p.id && (DB.chats[k] || []).length; }).length;
+  sheet('<div class="pad"><h3 style="font:600 18px var(--sans);margin:4px 0 6px">Clear conversation?</h3><p class="sm" style="margin-bottom:14px">This deletes the questions and answers from this phone. It cannot be undone.</p>' +
+    '<button class="btn wide" style="background:var(--bad);color:#fff;margin-bottom:8px" data-act="clearChat2">Clear ' + esc(p.name.split(' ')[0]) + '\'s chat (' + n + ' question' + (n === 1 ? '' : 's') + ')</button>' +
+    (others ? '<button class="btn sec wide" style="color:var(--bad);margin-bottom:8px" data-act="clearAllChats">Clear chats for all people</button>' : '') +
+    '<button class="btn sec wide" data-act="closeSheetBtn">Cancel</button></div>');
+};
+ACT.clearChat2 = function () { var p = curP(); DB.chats[p.id] = []; save(); closeSheet(); setTimeout(rerender, 20); toast('Conversation cleared'); };
+ACT.clearAllChats = function () { DB.chats = {}; save(); closeSheet(); setTimeout(rerender, 20); toast('All conversations cleared'); };
+ACT.closeSheetBtn = function () { closeSheet(); };
 ACT.askQ2 = function (el) { $('#askIn').value = el.textContent; ACT.askSend(); };
 ACT.askSend = function () {
   var t = $('#askIn'), q = (t.value || '').trim(), p = curP(); if (!q || !p) return;
