@@ -214,20 +214,59 @@ function geminiFormat(name) {
     '**Chain:** one line showing the reasoning, e.g. 10th house → lord Mars in 9th → D10 ... → Jupiter MD / Saturn AD / Saturn PD / Mercury SD → transit ... → result.\n' +
     'Be honest about uncertainty; never claim 100% certainty. For health, give astrological timing only and advise a doctor.\n\n' + E.RULES;
 }
+/* ---------- Gemini model handling: find the newest model this key can use ---------- */
+var GBASE = 'https://generativelanguage.googleapis.com/v1beta/';
+var GDEFAULT = 'gemini-3.1-pro-preview';
+function gVer(n) { var m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? +m[1] : 0; }
+function gRank(n, want) {
+  var s = gVer(n) * 100;
+  if (/-pro/.test(n)) s += want === 'flash' ? 10 : 50; else if (/-flash(?!-lite)/.test(n)) s += want === 'flash' ? 50 : 20; else if (/lite/.test(n)) s += 5;
+  if (/latest$/.test(n)) s += 2; if (/exp/.test(n)) s -= 3;
+  return s;
+}
+function gListModels() {
+  return http('GET', GBASE + 'models?pageSize=200', { 'x-goog-api-key': DB.settings.gkey }).then(function (r) {
+    var d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('Unexpected reply (' + r.status + ')'); }
+    if (r.status !== 200) throw new Error((d.error && d.error.message) || ('HTTP ' + r.status));
+    var list = (d.models || []).filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
+      .map(function (m) { return m.name.replace(/^models\//, ''); })
+      .filter(function (n) { return /^gemini-/.test(n) && !/image|tts|audio|live|embed|computer|robotics|vision|learnlm|aqa|gemma|nano|banana/.test(n); });
+    list.sort(function (a, b) { return gRank(b, 'pro') - gRank(a, 'pro'); });
+    DB.settings.gmodels = list; save();
+    return list;
+  });
+}
+function gBest(list, want) { return list.slice().sort(function (a, b) { return gRank(b, want) - gRank(a, want); })[0]; }
+/* POST generateContent; if the model is retired or unknown, switch to the best available model and retry once */
+function gGenerate(body, retried) {
+  var model = DB.settings.gmodel || GDEFAULT;
+  return http('POST', GBASE + 'models/' + encodeURIComponent(model) + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, body).then(function (r) {
+    var d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('Unexpected reply (' + r.status + ')'); }
+    if (r.status === 200) return d;
+    var msg = (d.error && d.error.message) || ('HTTP ' + r.status);
+    if (!retried && (r.status === 404 || /no longer available|not found|not supported/i.test(msg))) {
+      return gListModels().then(function (list) {
+        var want = /flash/.test(model) ? 'flash' : 'pro', best = gBest(list, want);
+        if (!best || best === model) throw new Error(msg);
+        DB.settings.gmodel = best; save(); toast('Switched to ' + best, 2500);
+        return gGenerate(body, true);
+      });
+    }
+    throw new Error(msg);
+  });
+}
+function gText(d) {
+  var cand = d.candidates && d.candidates[0], txt = cand && cand.content && cand.content.parts ? cand.content.parts.filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join('\n') : '';
+  if (!txt) throw new Error(cand && cand.finishReason ? 'No answer (' + cand.finishReason + ')' : 'Empty answer');
+  return txt;
+}
 function askGemini(p, c, q) {
   var now = new Date(), ev = E.build(p, c, q, now), name = p.name.split(' ')[0];
   var hist = (DB.chats[p.id] || []).filter(function (m) { return m.text; }).slice(-9, -1).map(function (m) { return { role: m.role === 'me' ? 'user' : 'model', parts: [{ text: m.text.slice(0, 4000) }] }; });
   while (hist.length && hist[0].role !== 'user') hist.shift();
   var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\nQUESTION: ' + q } ] }]);
-  var model = DB.settings.gmodel || 'gemini-2.5-pro';
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: { temperature: 0.35, maxOutputTokens: 8192 } });
-  return http('POST', 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, body).then(function (r) {
-    var d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('Unexpected reply (' + r.status + ')'); }
-    if (r.status !== 200) throw new Error((d.error && d.error.message) || ('HTTP ' + r.status));
-    var cand = d.candidates && d.candidates[0], txt = cand && cand.content && cand.content.parts ? cand.content.parts.filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join('\n') : '';
-    if (!txt) throw new Error(cand && cand.finishReason ? 'No answer (' + cand.finishReason + ')' : 'Empty answer');
-    return { txt: txt, ev: ev };
-  });
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: { temperature: 0.35, maxOutputTokens: 32768 } });
+  return gGenerate(body).then(function (d) { return { txt: gText(d), ev: ev }; });
 }
 function aiBubbles(txt, ev) {
   var chain = '', m = txt.match(/\*{0,2}Chain:?\*{0,2}:?\s*([\s\S]*)$/);
