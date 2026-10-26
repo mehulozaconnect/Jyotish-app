@@ -1,5 +1,5 @@
 /* Trikaal v2: five sections — Astrology, Panchang, Dasha, Remedies, AI (Gemini, evidence-based) */
-var E = makeEvidence(A, C, J, KB, N);
+var E = makeEvidence(A, C, J, KB, N), KA = makeKundliAnalysis(A, C, J, KB, N, S);
 NAVS = [['astro', 'Astrology'], ['panchang', 'Panchang'], ['dasha', 'Dasha'], ['remedies', 'Remedies'], ['ai', 'AI']];
 IC.astro = IC.kundli; IC.panchang = IC.today;
 IC.dasha = '<path d="M4 6h16M4 12h11M4 18h6"/>';
@@ -35,6 +35,7 @@ function render() {
     else if (scr === 'remedies') html = RemediesV2();
     else if (scr === 'remedy') { html = RemedyEdit(p[1]); navOn = 'remedies'; }
     else if (scr === 'ai') html = AiV2();
+    else if (scr === 'analysis') { html = AnalysisV2(); navOn = 'astro'; }
     else { html = AstroV2(p[1]); navOn = 'astro'; }
   } catch (e) { html = '<div class="empty"><h2>Something went wrong</h2>' + esc(e.message) + '<br><br><button class="btn" data-go="astro">Back</button></div>'; if (window.console) console.error(e); }
   $('#app').innerHTML = html;
@@ -59,6 +60,7 @@ function AstroV2(id) {
   var c = calcP(p), k = c.k; id = id || U.chart || 'D1'; U.chart = id;
   var h = topBar('Astrology');
   h += '<div class="chips v2chips">' + [['D1', 'D1 Rashi'], ['D9', 'D9'], ['D10', 'D10'], ['CH', 'Chalit'], ['MO', 'Moon'], ['ALL', 'All charts ›']].map(function (x) { return '<button data-go="astro/' + x[0] + '" class="' + (x[0] === id ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
+  h += '<button class="kentry" data-go="analysis"><span class="kei">✦</span><div><b>Kundli analysis</b><small>Strengths, weak spots, yogas, golden periods, remedies, health and success timeline, nature, deity, food</small></div><span>›</span></button>';
   if (id === 'ALL') {
     h += '<div class="mgrid">' + MINI.map(function (x) { var m = chartModel(c, x[0]); return '<button data-go="astro/' + x[0] + '">' + miniNorth(m.rows, m.ascSign) + '<b>' + (x[0] === 'CH' ? 'Chalit' : x[0] === 'MO' ? 'Moon' : x[0] === 'SU' ? 'Sun' : x[0]) + '</b><small>' + x[1] + '</small></button>'; }).join('') + '</div>';
   } else {
@@ -425,3 +427,50 @@ ACT.askSend = function () {
     list[list.length - 1].multi = true; trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   });
 };
+
+/* ---------- Kundli analysis (Astrology › Kundli analysis) ---------- */
+var KA_CACHE = {};
+function kaOf(p) { var c = calcP(p), key = p.id + '|' + DB.settings.ayan + '|' + DB.settings.node + '|' + new Date().toDateString(); if (!KA_CACHE[key]) KA_CACHE[key] = KA.analyze(c, new Date()); return KA_CACHE[key]; }
+function kaWhy(why) { return why && why.length ? '<details class="kwhy"><summary>Why</summary>' + why.map(function (w) { return '<p>' + esc(w) + '</p>'; }).join('') + '</details>' : ''; }
+function kaRate(r) { return '<span class="krate k' + r.charAt(0) + '">' + r + '</span>'; }
+function kaDates(a, b) { var f = function (d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getFullYear(); }; return f(a) + ' – ' + f(b); }
+var KA_SECS = [['pros', 'Strengths'], ['cons', 'Weak spots'], ['yogas', 'Yogas'], ['golden', 'Golden periods'], ['remedies', 'Remedies'], ['health', 'Health timeline'], ['success', 'Success timeline'], ['nature', 'Nature'], ['deity', 'Deity'], ['food', 'Food now'], ['lucky', 'Lucky factors']];
+function AnalysisV2() {
+  var p = curP(); if (!p) return topBar('Kundli analysis', { noPerson: true }) + noPerson();
+  var a = kaOf(p), s = a.snapshot, now = new Date(), h = topBar('Analysis');
+  h += '<div class="chips v2chips">' + KA_SECS.map(function (x) { return '<button data-act="kaJump" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
+  h += '<div class="v2hero"><div class="lbl">Kundli analysis · ' + esc(p.name) + '</div><h2>' + esc(s.grade[0]) + '</h2><p>' + esc(s.grade[1]) + '</p>' +
+    '<div class="khero"><span><small>Lagna</small>' + s.lagna + '</span><span><small>Moon</small>' + s.moon + '</span><span><small>Star</small>' + esc(s.nak.split(' pada')[0]) + '</span><span><small>Dasha</small>' + esc(s.dasha.split(' / ').slice(0, 2).join('–')) + '</span></div>' +
+    '<p style="margin-top:8px;font-size:12.5px">Strongest: <b>' + s.best.join(', ') + '</b> · Needs support: <b>' + s.weak.join(', ') + '</b></p></div>';
+  function sec(id, title, sub, body) { return '<div class="card ksec" id="ka-' + id + '"><h3>' + title + '</h3>' + (sub ? '<p class="sm" style="margin:-4px 0 8px">' + sub + '</p>' : '') + body + '</div>'; }
+  function li(kind, t, why, right) { return '<div class="kli"><span class="kic ' + kind + '">' + (kind === 'g' ? '✓' : kind === 'b' ? '!' : '•') + '</span><div><b>' + esc(t) + '</b>' + kaWhy(why) + '</div>' + (right || '') + '</div>'; }
+  h += sec('pros', 'Strengths of your kundli', a.pros.length + ' things working for you', a.pros.map(function (x) { return li('g', x.t, x.why); }).join(''));
+  h += sec('cons', 'Weak spots in your birth chart', a.cons.length + (a.cons.length === 1 ? ' area' : ' areas') + ' that need care or remedies', a.cons.map(function (x) { return li('b', x.t, x.why); }).join(''));
+  h += sec('yogas', 'All yogas in your chart', a.yogas.filter(function (y) { return y.good && y.kind !== 'mild'; }).length + ' helpful · ' + a.yogas.filter(function (y) { return !y.good || y.kind === 'mild'; }).length + ' doshas, mild or weak', a.yogas.map(function (y) { var ki = y.kind === 'mild' ? 'n' : y.good ? 'g' : 'b'; return '<div class="kli"><span class="kic ' + ki + '">' + (ki === 'g' ? '✓' : ki === 'b' ? '!' : '•') + '</span><div><b>' + esc(y.name) + '</b><p class="sm">' + esc(y.why) + '</p></div><span class="tag ' + (ki === 'g' ? 'tg' : ki === 'b' ? 'tr' : 'tn') + '">' + esc(y.label.split(' (')[0]) + '</span></div>'; }).join(''));
+  h += sec('golden', 'Golden dasha periods', 'Best Mahadasha–Antardasha combinations in the next 30 years', a.golden.map(function (g) { return '<div class="kgold' + (g.now ? ' now' : '') + '"><div class="kgh"><b>' + esc(g.label) + '</b>' + kaRate(g.rate) + '</div><div class="sm">' + kaDates(g.start, g.end) + ' · age ' + g.ageFrom + (g.now ? ' · <b style="color:var(--acc)">running now</b>' : '') + '</div><div class="kar">' + g.areas.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div>' + kaWhy(g.why) + '</div>'; }).join('') +
+    '<div class="lbl" style="margin:14px 0 6px">Your whole life, Mahadasha by Mahadasha</div>' + a.life.map(function (m) { return '<div class="klife' + (m.now ? ' now' : '') + '"><span class="pt" style="background:' + PCOL[m.code] + '">' + m.code + '</span><div><b>' + m.lord + '</b><small>age ' + m.from + '–' + m.to + ' · ' + m.start.getFullYear() + '–' + m.end.getFullYear() + (m.now ? ' · now' : '') + '</small></div>' + kaRate(m.rate) + '</div>'; }).join(''));
+  var R = a.rem, GK = { yes: ['tg', 'Suits you'], care: ['tn', 'With advice'], no: ['tr', 'Avoid'] };
+  h += sec('remedies', 'Recommended remedies', 'Based on your lagna, running dasha and Saturn cycle',
+    R.plan.map(function (x) { return '<div class="krem"><div class="kgh"><b><span class="pt" style="background:' + PCOL[x.code] + '">' + x.code + '</span> ' + PN[x.code] + '</b><span class="tag ' + (x.mode === 'calm' ? 'tr' : 'tg') + '">' + (x.mode === 'calm' ? 'Calm it' : x.mode === 'both' ? 'Strengthen & calm' : 'Strengthen') + '</span></div><p class="sm">' + esc((x.why || '').trim()) + '</p>' +
+      '<ul><li><b>Mantra:</b> ' + esc(x.mantra[0]) + ', 108 times daily</li><li><b>Daan:</b> ' + esc(x.daan[0]) + ' on ' + esc(x.daan[1]) + '</li><li><b>Lal Kitab:</b> ' + esc(x.lalkitab) + '</li><li><b>Fast / Rudraksha:</b> ' + esc(x.fast) + ' · ' + esc(x.rudra) + '</li></ul></div>'; }).join('') +
+    '<div class="lbl" style="margin:12px 0 6px">Gemstones</div>' + R.gems.map(function (g) { return '<div class="kli"><span class="pt" style="background:' + PCOL[g.code] + '">' + g.code + '</span><div><b>' + esc(g.gem) + '</b><p class="sm">' + esc(g.why) + (g.kind !== 'no' ? ' Wear: ' + esc(g.how) + '. Lighter option: ' + esc(g.up) + '.' : '') + '</p></div><span class="tag ' + GK[g.kind][0] + '">' + GK[g.kind][1] + '</span></div>'; }).join('') +
+    '<button class="btn acc wide" style="margin-top:10px" data-act="kaAddRem">+ Add these remedies to my tracker</button>');
+  h += sec('health', 'Potential health periods', 'Times to take extra care, with the body areas involved',
+    (a.health.length ? a.health.map(function (x) { return '<div class="ktl"><div class="kgh"><b>' + kaDates(x.start, x.end) + '</b><span class="tag ' + (x.level === 'Watch' ? 'tr' : 'tn') + '">' + x.level + '</span></div><div class="sm">' + esc(x.label) + ' period · watch: ' + esc(x.areas.join('; ')) + '</div>' + kaWhy(x.why) + '</div>'; }).join('') : '<p class="sm">No strongly sensitive dasha periods in the next 25 years. Keep normal check-ups.</p>') +
+    (a.saturn.length ? '<div class="lbl" style="margin:12px 0 6px">Saturn cycles from your Moon</div>' + a.saturn.map(function (x) { return '<div class="ktl"><div class="kgh"><b>' + esc(x.label) + '</b><span class="sm">' + kaDates(x.start, x.end) + '</span></div><div class="sm">' + (x.label === 'Sade Sati' ? 'Slower results, fatigue and pressure; steady routine and Saturn remedies help.' : x.label === 'Ashtama Shani' ? 'Watch health, sudden expenses and stress; avoid risky moves.' : 'Pressure at home and on peace of mind; patience pays.') + '</div></div>'; }).join('') : '') +
+    '<p class="note">Astrological indications only, not a diagnosis. See a doctor for any symptoms.</p>');
+  h += sec('success', 'Potential success periods', 'When career, money and other goals get the strongest support',
+    a.success.length ? a.success.map(function (x) { return '<div class="ktl"><div class="kgh"><b>' + kaDates(x.start, x.end) + '</b><span class="tag tg">' + x.level + '</span></div><div class="sm">' + esc(x.label) + ' period</div><div class="kar">' + x.areas.map(function (y) { return '<span>' + esc(y) + '</span>'; }).join('') + '</div>' + kaWhy(x.why) + '</div>'; }).join('') : '<p class="sm">No standout periods; progress comes steadily through effort.</p>');
+  h += sec('nature', 'Your nature', '', a.nature.map(function (x) { return '<div class="knat"><b>' + esc(x.t) + '</b><p>' + esc(x.d) + '</p></div>'; }).join(''));
+  h += sec('deity', 'Deity to worship', '', a.deity.map(function (d) { return '<div class="krem"><div class="kgh"><b>' + esc(d.name) + '</b><span class="pt" style="background:' + PCOL[d.code] + '">' + d.code + '</span></div><div class="lbl" style="margin:2px 0 4px">' + esc(d.role) + '</div><p class="sm">' + esc(d.how) + '</p>' + kaWhy([d.why]) + '</div>'; }).join(''));
+  var F = a.food;
+  h += sec('food', 'Favourable food in this dasha', PN[F.md] + ' Mahadasha (to ' + N.dmy(F.mdTo) + ')' + (F.ad !== F.md ? ' · ' + PN[F.ad] + ' Antardasha (to ' + N.dmy(F.adTo) + ')' : ''),
+    F.items.map(function (x) { return '<div class="krem"><div class="kgh"><b>For ' + PN[x.code] + '</b><span class="tag ' + (x.mode === 'balance' ? 'tn' : 'tg') + '">' + (x.mode === 'balance' ? 'Balance it' : 'Strengthen it') + '</span></div><p class="sm"><b style="color:var(--good)">Favour:</b> ' + esc(x.favour) + '</p><p class="sm"><b style="color:var(--bad)">Go easy on:</b> ' + esc(x.limit) + '</p></div>'; }).join('') +
+    '<div class="krem"><b>Your body type: ' + F.nadi + ' nadi (' + F.dosha + ')</b><p class="sm">' + esc(F.tip.charAt(0).toUpperCase() + F.tip.slice(1)) + '.</p></div>');
+  h += sec('lucky', 'Lucky factors and other useful info', '', '<div class="klk">' + a.lucky.map(function (x) { return '<div><small>' + esc(x.t) + '</small><b>' + esc(x.d) + '</b></div>'; }).join('') + '</div>');
+  h += '<button class="btn sec wide" style="margin:4px 0 6px" data-act="kaAsk">✦ Ask AI to explain my kundli in depth</button></div>';
+  return h;
+}
+ACT.kaJump = function (el) { var t = document.getElementById('ka-' + el.dataset.v); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); };
+ACT.kaAddRem = function () { ACT.addSuggested(); setTimeout(function () { go('remedies'); }, 600); };
+ACT.kaAsk = function () { go('ai'); setTimeout(function () { var t = $('#askIn'); if (t) { t.value = 'Give me a complete analysis of my kundli: strengths, weaknesses, yogas, golden periods and what I should focus on now.'; ACT.askSend(); } }, 120); };
