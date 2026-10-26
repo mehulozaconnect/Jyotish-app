@@ -20,24 +20,37 @@ function MoreScreen() {
   return h + '</div>';
 }
 var APP_VERSION = '2.0';
-INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; save(); };
+INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
 INP.setGmodelTxt = function (el) { if (el.value.trim()) { DB.settings.gmodel = el.value.trim(); save(); } };
 function gModelOpts() {
-  var list = (DB.settings.gmodels && DB.settings.gmodels.length ? DB.settings.gmodels : [GDEFAULT, 'gemini-3-flash-preview']).slice(0, 12), cur = DB.settings.gmodel || GDEFAULT;
+  var list = (DB.settings.gmodels && DB.settings.gmodels.length ? DB.settings.gmodels : [GDEFAULT, 'gemini-3-flash-preview']).filter(function (n) { return gRank(n, 'flash') > 0; }).slice(0, 12), cur = DB.settings.gmodel || GDEFAULT;
   if (list.indexOf(cur) < 0) list = [cur].concat(list);
   var best = gBest(list, DB.settings.gnoPro ? 'flash' : 'pro');
-  return list.map(function (n) { return [n, n + (n === best ? '  (best)' : '')]; });
+  return list.map(function (n) { return [n, n + (n === best ? '  (best)' : '') + ((DB.settings.gbad || []).indexOf(n) >= 0 ? '  (no free quota)' : '')]; });
 }
+/* Test: list the key's models, then try them best-first until one actually answers; save that one */
 ACT.testGkey = function () {
   if (!DB.settings.gkey) return toast('Paste your Gemini key first');
-  toast('Checking your key…', 1500);
+  toast('Checking which models your key can use…', 2500);
+  var ping = JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }] }), busy = [];
   gListModels().then(function (list) {
-    if (!list.length) throw new Error('No Gemini text models are available for this key');
-    var cur = DB.settings.gmodel;
-    if (!cur || list.indexOf(cur) < 0) { DB.settings.gmodel = gBest(list, DB.settings.gnoPro ? 'flash' : 'pro'); save(); }
-    return gGenerate(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }] }));
-  }).then(function () { toast('Gemini works ✓ using ' + DB.settings.gmodel, 3500); rerender(); })
+    var want = DB.settings.gnoPro ? 'flash' : 'pro';
+    var cands = list.filter(function (n) { return gRank(n, want) > 0; }).sort(function (a, b) { return gRank(b, want) - gRank(a, want); }).slice(0, 7);
+    if (!cands.length) throw new Error('No Gemini text models are available for this key');
+    var i = 0;
+    function next() {
+      if (i >= cands.length) { if (busy.length) { DB.settings.gmodel = busy[0]; save(); return busy[0] + ' (busy now, try again shortly)'; } throw new Error('None of your models have free quota. Check the key in Google AI Studio.'); }
+      var m = cands[i++];
+      return gCall(m, ping).then(function (x) {
+        if (x.status === 200) { DB.settings.gmodel = m; save(); return m; }
+        if (x.status === 429 && /limit: 0/i.test(x.msg)) { DB.settings.gbad = uniqA((DB.settings.gbad || []).concat([m])); if (/-pro/.test(m)) DB.settings.gnoPro = true; save(); }
+        else if (gBusy(x)) busy.push(m);
+        return next();
+      });
+    }
+    return next();
+  }).then(function (m) { toast('Gemini works ✓ using ' + m, 4000); rerender(); })
     .catch(function (e) { toast('Error: ' + e.message, 5000); rerender(); });
 };
 function resetCache() { CACHE = {}; }

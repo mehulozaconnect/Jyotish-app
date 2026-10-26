@@ -221,7 +221,9 @@ function gVer(n) { var m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? +m[1] :
 function gRank(n, want) {
   var s = gVer(n) * 100;
   if (/-pro/.test(n)) s += want === 'flash' ? 10 : 50; else if (/-flash(?!-lite)/.test(n)) s += want === 'flash' ? 50 : 20; else if (/lite/.test(n)) s += 5;
+  else s -= 1000; /* codenames like gemini-4-argon: never auto-picked */
   if (/latest$/.test(n)) s += 2; if (/exp/.test(n)) s -= 3;
+  if ((DB.settings.gbad || []).indexOf(n) >= 0) s -= 5000; /* no quota on this key */
   return s;
 }
 function gListModels() {
@@ -249,19 +251,21 @@ function gBusy(x) { return x.status === 503 || x.status === 500 || x.status === 
 /* Calls Gemini with the chosen model.
    - retired model or no free Pro quota: switch the saved model for good, then retry
    - busy or rate-limited: wait and retry once, then answer with the next-best models (saved choice kept) */
-function gGenerate(body) {
+function uniqA(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+function gGenerate(body, depth) {
   var model = DB.settings.gmodel || GDEFAULT, first;
   return gCall(model, body).then(function (x) {
     if (x.status === 200) return x.d;
     first = x;
-    var noFreePro = x.status === 429 && /-pro/.test(model) && /limit: 0|free tier/i.test(x.msg);
-    if (noFreePro) DB.settings.gnoPro = true;
-    if (noFreePro || x.status === 404 || /no longer available|not found|not supported/i.test(x.msg)) {
+    var noQuota = x.status === 429 && /limit: 0/i.test(x.msg);
+    if (noQuota) { DB.settings.gbad = uniqA((DB.settings.gbad || []).concat([model])); if (/-pro/.test(model)) DB.settings.gnoPro = true; save(); }
+    if (noQuota || x.status === 404 || /no longer available|not found|not supported/i.test(x.msg)) {
+      if ((depth || 0) >= 4) throw new Error(gShort(x.status, x.msg));
       return gListModels().then(function (list) {
         var best = gBest(list, DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro');
-        if (!best || best === model) throw new Error(gShort(x.status, x.msg));
-        DB.settings.gmodel = best; save(); toast(noFreePro ? 'Pro is not free on your key, using ' + best : 'Switched to ' + best, 3000);
-        return gGenerate(body);
+        if (!best || best === model || gRank(best, 'flash') < 0) throw new Error(noQuota ? 'Your free key has no quota for any listed model. Check the key in Google AI Studio.' : gShort(x.status, x.msg));
+        DB.settings.gmodel = best; save(); toast((noQuota ? model + ' is not free on your key, using ' : 'Switched to ') + best, 3000);
+        return gGenerate(body, (depth || 0) + 1);
       });
     }
     if (!gBusy(x)) throw new Error(gShort(x.status, x.msg));
@@ -272,7 +276,7 @@ function gGenerate(body) {
       var listP = DB.settings.gmodels && DB.settings.gmodels.length ? Promise.resolve(DB.settings.gmodels) : gListModels();
       return listP.then(function (list) {
         var want = DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro';
-        var alts = list.filter(function (n) { return n !== model && !(DB.settings.gnoPro && /-pro/.test(n)); })
+        var alts = list.filter(function (n) { return n !== model && gRank(n, want) > 0 && !(DB.settings.gnoPro && /-pro/.test(n)); })
           .sort(function (p, q) { return gRank(q, want) - gRank(p, want); }).slice(0, 4);
         var i = 0;
         function next() {
