@@ -2252,6 +2252,20 @@ function makeEvidence(A, C, J, KB, N) {
       var sign = (k.ascSign + h - 1) % 12, lord = J.lordOfHouse(k.ascSign, h), lp = k.P[lord], occ = k.planets.filter(function (x) { return x.house === h; });
       L.push('House ' + h + ' (' + SG[sign] + ', SAV ' + c.av.sav[sign] + ' bindus): occupants ' + (occ.length ? occ.map(pos).join('; ') : 'none') + '. Aspected by ' + (aspectsOnSign(k, sign).join(', ') || 'none') + '. Lord ' + PN[lord] + ' in house ' + lp.house + ': ' + pos(lp) + '; lord conjunct ' + (conj(k, lp).join(', ') || 'none') + '; lord aspected by ' + (aspectsOnSign(k, lp.sign).join(', ') || 'none') + '. KP cusp ' + h + ' sub lord ' + PN[c.kp.cusps[h - 1].kp.sub] + ' signifies ' + c.sig.sig[c.kp.cusps[h - 1].kp.sub].join(','));
     });
+    /* Moon chart (Chandra lagna): the same topic houses counted from the natal Moon, with transits over them */
+    var ms = k.P.Mo.sign, TR = N.transitAt(c, now);
+    function hm(sign) { return J.houseFrom(ms, sign); }
+    L.push('\n[1b] MOON CHART (Chandra lagna = ' + SG[ms] + ', Moon ' + k.P.Mo.degs + ', nakshatra ' + k.P.Mo.nak.name + ') – SAME TOPIC HOUSES COUNTED FROM THE MOON');
+    houses.forEach(function (h) {
+      if (h > 12) return;
+      var sign = (ms + h - 1) % 12, lord = J.lordOfHouse(ms, h), lp = k.P[lord];
+      var occ = k.planets.filter(function (x) { return x.sign === sign; }).map(function (x) { return PN[x.code] + ' ' + x.degs + ' ' + x.dignity.toLowerCase(); });
+      var asp = k.planets.filter(function (x) { return x.sign !== sign && J.aspectedHouses(x.code, hm(x.sign)).indexOf(h) >= 0; }).map(function (x) { return PN[x.code] + ' (from ' + nth(hm(x.sign)) + ' from Moon)'; });
+      var tin = TR.filter(function (x) { return x.sign === sign; }).map(function (x) { return PN[x.code]; });
+      var tasp = TR.filter(function (x) { return x.sign !== sign && J.aspectedHouses(x.code, hm(x.sign)).indexOf(h) >= 0; }).map(function (x) { return PN[x.code]; });
+      L.push(nth(h) + ' from Moon (' + SG[sign] + ', SAV ' + c.av.sav[sign] + '): natal occupants ' + (occ.join(', ') || 'none') + '; natal aspects ' + (asp.join(', ') || 'none') + '; lord ' + PN[lord] + ' in ' + nth(hm(lp.sign)) + ' from Moon (' + SG[lp.sign] + ', ' + lp.dignity.toLowerCase() + '). Transit NOW: in it ' + (tin.join(', ') || 'none') + '; aspecting it ' + (tasp.join(', ') || 'none') + '.');
+    });
+    L.push('%DASHAMOON%');
     T[5].forEach(function (code) { var x = k.P[code]; L.push('Karaka ' + PN[code] + ': house ' + x.house + ', ' + pos(x) + '; aspected by ' + (aspectsOnSign(k, x.sign).join(', ') || 'none') + '.'); });
     function vargaBlock(n, label) {
       var va = J.varga(k.asc, n), out = [label + ': lagna ' + SG[va.sign] + '.'];
@@ -2264,16 +2278,18 @@ function makeEvidence(A, C, J, KB, N) {
     L.push('\n[2] DIVISIONAL CHARTS'); if (vn !== 9) L.push(vargaBlock(vn, T[4])); L.push(vargaBlock(9, 'D9 Navamsha'));
     L.push('\n[3] DASHA (Vimshottari, ' + C.AYAN_INFO[k.ayan].name + ')');
     var ch = J.dashaChain(c.maha, now, 5), LV = ['Mahadasha', 'Antardasha', 'Pratyantar', 'Sookshma', 'Prana'];
+    L = L.map(function (t) { return t.indexOf('%DASHAMOON%') >= 0 ? 'Running dasha lords from the Moon: ' + ch.map(function (x, i) { var hh = hm(k.P[x.lord].sign); return LV[i] + ' ' + PN[x.lord] + ' in ' + nth(hh) + ' from Moon' + (houses.indexOf(hh) >= 0 ? ' (topic house from Moon)' : ''); }).join('; ') + '.' : t; });
     ch.forEach(function (x, i) { L.push(LV[i] + ' ' + PN[x.lord] + ' (' + dmy(x.start) + ' to ' + dmy(x.end) + '): functional ' + fn(x.lord) + '; in house ' + k.P[x.lord].house + ' ' + SG[k.P[x.lord].sign] + '; link to topic: ' + links(c, x.lord, houses) + '.'); });
     var lvl = days > 400 ? 1 : days > 60 ? 2 : 3, upcoming = [];
     (function walk(list, d) { list.forEach(function (x) { if (x.end <= now || x.start > end) return; if (d === lvl) { if (x.start > now) upcoming.push(x); } else walk(J.subPeriods(x), d + 1); }); })([ch[0]].concat(c.maha.filter(function (m) { return m.start > ch[0].start && m.start < end; })), 0);
     if (upcoming.length) L.push('Upcoming ' + LV[lvl] + ' periods in the period asked: ' + upcoming.slice(0, 14).map(function (x) { return PN[x.lord] + ' ' + dmy(x.start) + '–' + dmy(x.end) + ' [' + links(c, x.lord, houses) + ']'; }).join(' | '));
     L.push('\n[4] TRANSITS (sidereal) NOW, ' + dmy(now));
-    N.transitAt(c, now).forEach(function (x) { var asp = J.aspectedHouses(x.code, x.h).filter(function (h) { return houses.indexOf(h) >= 0; }); L.push(PN[x.code] + ' in ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + ': house ' + x.h + ' from lagna, ' + x.m + ' from Moon, gochar ' + x.verdict + (x.bav != null ? ', own BAV ' + x.bav + '/8, SAV ' + x.sav : '') + (x.vedha ? ', vedha by ' + x.vedha.by.join(',') : '') + (asp.length ? '; aspects topic house ' + asp.join(',') : '') + (houses.indexOf(x.h) >= 0 ? '; IN topic house' : '') + '.'); });
+    N.transitAt(c, now).forEach(function (x) { var asp = J.aspectedHouses(x.code, x.h).filter(function (h) { return houses.indexOf(h) >= 0; }); L.push(PN[x.code] + ' in ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + ': house ' + x.h + ' from lagna, ' + x.m + ' from Moon, gochar ' + x.verdict + (x.bav != null ? ', own BAV ' + x.bav + '/8, SAV ' + x.sav : '') + (x.vedha ? ', vedha by ' + x.vedha.by.join(',') : '') + (asp.length ? '; aspects topic house ' + asp.join(',') : '') + (houses.indexOf(x.h) >= 0 ? '; IN topic house' : '') + (houses.indexOf(x.m) >= 0 ? '; IN topic house from Moon' : '') + (function () { var a2 = J.aspectedHouses(x.code, x.m).filter(function (h) { return houses.indexOf(h) >= 0; }); return a2.length ? '; aspects topic house from Moon ' + a2.join(',') : ''; })() + '.'); });
     var evs = J.events(now, new Date(Math.max(end.getTime(), now.getTime() + 120 * DAY)), ['Ju', 'Sa', 'Ra', 'Ma']).filter(function (e) { return e.type !== 'ingress' || e.code !== 'Ma' || e.t < end; });
     if (evs.length) L.push('Transit changes: ' + evs.slice(0, 16).map(function (e) { return dmy(e.t) + ' ' + PN[e.code] + (e.type === 'ingress' ? ' enters ' + SG[e.sign] + ' (house ' + J.houseFrom(k.ascSign, e.sign) + ', ' + J.houseFrom(k.P.Mo.sign, e.sign) + ' from Moon, BAV ' + (c.av.bav[e.code] ? c.av.bav[e.code][e.sign] : '-') + ')' + (e.code === 'Ra' ? ', Ketu enters ' + SG[(e.sign + 6) % 12] + ' (house ' + J.houseFrom(k.ascSign, (e.sign + 6) % 12) + ')' : '') : ' turns ' + (e.type === 'retro' ? 'retrograde' : 'direct')); }).join('; '));
     var dt = houses[0], jh = J.houseFrom(k.ascSign, J.signOf(C.sidereal('Ju', now))), sh = J.houseFrom(k.ascSign, J.signOf(C.sidereal('Sa', now)));
-    L.push('Double transit on house ' + dt + ' now: Jupiter ' + ([jh].concat(J.aspectedHouses('Ju', jh)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + ', Saturn ' + ([sh].concat(J.aspectedHouses('Sa', sh)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + '. ' + N.sadeSati(c, now).label + '.');
+    var jm = hm(J.signOf(C.sidereal('Ju', now))), sm = hm(J.signOf(C.sidereal('Sa', now)));
+    L.push('Double transit on house ' + dt + ' now: from lagna Jupiter ' + ([jh].concat(J.aspectedHouses('Ju', jh)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + ', Saturn ' + ([sh].concat(J.aspectedHouses('Sa', sh)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + '; from Moon Jupiter ' + ([jm].concat(J.aspectedHouses('Ju', jm)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + ', Saturn ' + ([sm].concat(J.aspectedHouses('Sa', sm)).indexOf(dt) >= 0 ? 'touches' : 'does not touch') + '. ' + N.sadeSati(c, now).label + '.');
     L.push('\n[5] ASHTAKAVARGA (signs Aries..Pisces)');
     L.push('SAV: ' + c.av.sav.join(' ') + ' (total ' + c.av.sav.reduce(function (a, b) { return a + b; }, 0) + '). By house 1-12: ' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function (h) { return h + ':' + N.savOf(c, h); }).join(' '));
     J.P7.forEach(function (x) { L.push('BAV ' + PN[x] + ': ' + c.av.bav[x].join(' ') + ' (total ' + c.av.bav[x].reduce(function (a, b) { return a + b; }, 0) + ')'); });
@@ -2288,7 +2304,9 @@ function makeEvidence(A, C, J, KB, N) {
     '- Timing: an event happens in the dasha of planets linked to the topic houses (owner, occupant, aspect, conjunction with the house lord, or KP signification), when Mahadasha, Antardasha and Pratyantar agree, and when transits support it (Jupiter and Saturn both touching the house or its lord = double transit). Sookshma and Prana narrow the date.\n' +
     '- KP: a matter is promised when the cusp sub lord signifies the favourable houses; it fructifies in the joint periods of significators.\n' +
     '- Ashtakavarga: total SAV is 337, average 28 per house; 28+ strong, below 25 weak; 11th more than 12th means income exceeds expenses. A transiting planet gives good results in signs where its own BAV is 5+ and weak results at 3 or less.\n' +
-    '- Gochar is judged from the natal Moon; Sade Sati is Saturn in the 12th, 1st and 2nd from the Moon.\n';
+    '- Gochar is judged from the natal Moon; Sade Sati is Saturn in the 12th, 1st and 2nd from the Moon.\n' +
+    '- Moon chart (Chandra lagna): read the same topic houses counted from the Moon. A matter shown from both the lagna and the Moon is strong and reliable; shown from only one, it is partial or delayed. A dasha lord placed in a topic house from the Moon also activates the matter.\n' +
+    '- Transit is the trigger: the dasha promises, the transit delivers. Before predicting a date, check that slow planets (Jupiter, Saturn, Rahu/Ketu) are in or aspecting the topic house or its lord from the lagna AND from the Moon, with good BAV. If the dasha supports but transit does not, give the later date when transit joins.\n';
   return { build: build, topicOf: topicOf, horizon: horizon, RULES: RULES };
 }
 if (typeof module !== 'undefined') module.exports = makeEvidence;
@@ -3656,14 +3674,14 @@ function scheduleAll() {
 /* ---------- 5. AI (Gemini) ---------- */
 function geminiFormat(name) {
   return 'You are Trikaal, an expert Vedic astrologer (Parashari and KP). You are given an EVIDENCE SHEET computed precisely from the chart; positions are accurate to the arc-second. Use ONLY these numbers and dates. Never invent a position, aspect, dasha or date. If something is not in the sheet, say it is not available.\n' +
-    'Before answering, reason through every layer in order: (1) D1 house, its lord and the karaka, with occupants, aspects and conjunctions; (2) the divisional chart for the topic and D9; (3) Mahadasha, Antardasha, Pratyantar, Sookshma and Prana lords and how each links to the topic houses; (4) transits, double transit and Ashtakavarga support; (5) functional nature for this lagna; (6) KP cusp sub lord where useful. Only conclude after weighing all layers; if layers disagree, say so and give the date when they agree.\n' +
+    'Before answering, reason through every layer in order: (1) D1 house, its lord and the karaka, with occupants, aspects and conjunctions; (2) the Moon chart: the same houses counted from the Moon (section 1b); (3) the divisional chart for the topic and D9; (4) Mahadasha, Antardasha, Pratyantar, Sookshma and Prana lords and how each links to the topic houses from the lagna and from the Moon; (5) transits over the topic houses from the lagna and from the Moon, double transit and Ashtakavarga bindus; (6) functional nature for this lagna; (7) KP cusp sub lord where useful. Every prediction must state whether the Moon chart and the current transits confirm it; never predict from dasha alone. Only conclude after weighing all layers; if layers disagree, say so and give the date when they agree.\n' +
     'Address the person warmly by first name (' + name + ') and answer in the language the user writes in. Use exactly these sections with bold titles:\n' +
     '**Quick Answer** two or three sentences: the verdict for the period asked, what to expect and the key date.\n' +
     '**A Quick Question** one short clarifying question only if it would genuinely change the answer; otherwise omit this section.\n' +
-    '**Astrological Explanation** three to five short paragraphs in plain language, citing the actual chart facts (house, lord, divisional chart, each dasha level, aspects, transits, bindus).\n' +
+    '**Astrological Explanation** three to five short paragraphs in plain language, citing the actual chart facts (house, lord, Moon chart, divisional chart, each dasha level, aspects, transits from lagna and Moon, bindus).\n' +
     '**Key Dates** a short list of dates from the sheet with what happens.\n' +
     '**What to do** two to four practical steps, including remedies tied to the planets involved.\n' +
-    '**Chain:** one line showing the reasoning, e.g. 10th house → lord Mars in 9th → D10 ... → Jupiter MD / Saturn AD / Saturn PD / Mercury SD → transit ... → result.\n' +
+    '**Chain:** one line showing the reasoning, e.g. 10th house → lord Mars in 9th → Moon chart 10th ... → D10 ... → Jupiter MD / Saturn AD / Saturn PD / Mercury SD → transit from lagna and Moon ... → result.\n' +
     'Be honest about uncertainty; never claim 100% certainty. For health, give astrological timing only and advise a doctor.\n\n' + E.RULES;
 }
 /* ---------- Gemini model handling: find the newest model this key can use ---------- */
