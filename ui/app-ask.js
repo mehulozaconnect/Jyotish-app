@@ -35,6 +35,7 @@ function plainAns(o) {
 function answerLocal(p, c, q) {
   var ql = q.toLowerCase(), now = new Date(), k = c.k, pr = p.gender === 'F' ? 'her' : 'his', he = p.gender === 'F' ? 'she' : 'he';
   var dt = parseDateQ(q), ev = findWord(ql, EWORDS), pl = findPlanet(ql), kpm = findWord(ql, KPWORDS);
+  var st = storyAnswer(p, c, q, ql, now, dt, ev, pl, kpm); if (st) return st;
   /* 1. why did an event happen */
   if (ev && (dt || /why|reason|cause/.test(ql))) {
     if (!dt) return { html: '<p>Tell me the date (and time if known) of the ' + esc(KB.EVENTS[ev].l.toLowerCase()) + ', for example “why did this accident happen on 15 Jul 2026 at 11:30”. I will tell you the cause, the planet behind it and when things get better.</p>' };
@@ -127,6 +128,37 @@ function answerLocal(p, c, q) {
   return null;
 }
 function P_list(a) { return PLAIN.list(a); }
+/* consultant-style answers: Quick Answer, A Quick Question, Astrological Explanation */
+function storyHtml(o) {
+  var h = '<div class="msg bot sto"><b>Quick Answer</b> ' + esc(o.quick) + '</div>';
+  if (o.question) h += '<div class="msg bot sto"><b>A Quick Question</b> ' + esc(o.question) + '</div>';
+  h += '<div class="msg bot sto"><p><b>Astrological Explanation</b> ' + esc(o.paras[0] || '') + '</p>' + o.paras.slice(1).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') + '<p>' + esc(o.short) + '</p></div>';
+  if (o.todo && o.todo.length) h += '<div class="msg bot sto"><b>What to do</b><ul>' + o.todo.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+  return h;
+}
+function storyRes(o) { return { story: o, html: storyHtml(o), text: 'Quick Answer: ' + o.quick + (o.question ? '\nA Quick Question: ' + o.question : '') + '\nAstrological Explanation: ' + o.paras.join(' ') + ' ' + o.short }; }
+function storyAnswer(p, c, q, ql, now, dt, ev, pl, kpm) {
+  var list = DB.chats[p.id] || [], prev = list.length >= 2 ? list[list.length - 2] : null;
+  /* reply to our clarifying question */
+  if (prev && prev.role === 'bot' && prev.ask) { var sy = T.symptoms(p, c, q, now); if (sy) return storyRes(sy); }
+  if (ev && dt) {
+    var at = evDate(p, dt.date, dt.time), E = N.eventAnalysis(c, ev, at);
+    U.lastEvent = { p: p.id, E: E, ev: { type: ev, date: dt.date, time: dt.time } };
+    p.events = p.events || []; if (!p.events.some(function (x) { return x.type === ev && x.date === dt.date; })) { p.events.push({ type: ev, date: dt.date, time: dt.time }); save(); }
+    return storyRes(T.event(p, c, E, now));
+  }
+  var le = U.lastEvent && U.lastEvent.p === p.id ? U.lastEvent : null;
+  if (!le && p.events && p.events.length) { var x = p.events[p.events.length - 1]; le = { E: N.eventAnalysis(c, x.type, evDate(p, x.date, x.time)), ev: x }; }
+  if (le && ((/when|by when|kab/.test(ql) && /cure|recover|heal|better|normal|improve|relief|theek/.test(ql)) || /which planet|kaun sa graha|what planet|which graha/.test(ql))) return storyRes(T.event(p, c, le.E, now));
+  if (kpm && kpm !== 'health' && /will|when|kab|chance|possible|promot|marr|buy/.test(ql) && !/about|tell me|reading|how (is|will)|next \\d|months?|year/.test(ql)) {
+    var L3 = DB.settings.loc, rp = J.rulingPlanets(now, L3.lat, L3.lon, locOff(), 'kp'), jm = N.judgeMatter(c.sig, kpm, kpDasha(c), now, 5, rp.set), wins = S.kpWindows(c.sig, jm.m, kpDasha(c), now, 36, 3, rp.set);
+    return storyRes(T.kp(p, c, S.kp(jm, kpm, wins, now), jm, kpm));
+  }
+  if (/muhurat|muhurt|auspicious|remed|upay|gem|stone|ratna|rudraksh|mantra|lal kitab|crystal|today|tomorrow|my day|aaj|transit|gochar|sade ?sati|dhaiya|panoti|yoga|dosha|lagna|ascendant|nakshatra/.test(ql)) return null;
+  if (pl) return storyRes(T.planet(p, c, pl, now));
+  if (T.topicOf(ql) || /about|tell me|reading|overall|life|future|coming|next \\d|how (is|will) (my|his|her)|kaisa|kaise/.test(ql)) return storyRes(T.topic(p, c, q, now));
+  return null;
+}
 var HELP = '<p>I answer from ' + 'the chart with the logic shown. Try:</p><ul><li>Tell me about this person</li><li>How is ' + 'the health? When will it improve?</li><li>Why did he have an accident on 15 Jul 2026 at 11:30?</li><li>By when will he recover? Which planet did this?</li><li>When will I get a promotion?</li><li>How is this month’s transit for me?</li><li>Saturn in my chart</li><li>Which gemstone and rudraksha suit me?</li><li>Good muhurat to buy a car</li></ul>';
 
 /* ---------- Claude ---------- */
@@ -154,7 +186,7 @@ function dossier(p, c) {
   if (p.events && p.events.length) L.push('KNOWN EVENTS: ' + p.events.map(function (e) { return KB.EVENTS[e.type].l + ' ' + e.date + ' ' + e.time; }).join('; '));
   return L.join('\n');
 }
-var SYS = 'You are Trikaal, a careful Vedic astrologer (Parashari and Krishnamurti Paddhati). The user is the app owner, an astrology practitioner asking about a chart. Rules: use ONLY the computed chart data given below; never invent positions, dates or dashas. Always show the logic: name the planets, houses, lordships, dignity, dasha and transit facts behind every claim. Judge results through functional benefics and malefics for the lagna. For timing, use the Vimshottari periods and transit dates provided, and KP cusp sub lords for yes/no questions. Write for a reader who knows no astrology: start with the plain answer in one or two sentences (yes or no, how good or bad, when, and what to do), then give the reasons in everyday words, with technical terms only in brackets. Be direct and specific. Be honest about uncertainty and never promise 100% outcomes. Health: give astrological indications and timing only, and advise seeing a doctor. Reply in the language the user writes in. Keep answers well structured with short headings and bullet points.';
+var SYS = 'You are Trikaal, a careful Vedic astrologer (Parashari and Krishnamurti Paddhati). The user is the app owner, an astrology practitioner asking about a chart. Rules: use ONLY the computed chart data given below; never invent positions, dates or dashas. Always show the logic: name the planets, houses, lordships, dignity, dasha and transit facts behind every claim. Judge results through functional benefics and malefics for the lagna. For timing, use the Vimshottari periods and transit dates provided, and KP cusp sub lords for yes/no questions. Write for a reader who knows no astrology: start with the plain answer in one or two sentences (yes or no, how good or bad, when, and what to do), then give the reasons in everyday words, with technical terms only in brackets. Be direct and specific. Be honest about uncertainty and never promise 100% outcomes. Health: give astrological indications and timing only, and advise seeing a doctor. Reply in the language the user writes in. Answer in exactly this format, as a warm personal consultant addressing the person by first name: **Quick Answer** (two or three sentences: the verdict for the time asked, what to expect and the key date), then **A Quick Question** (one clarifying question that would sharpen the reading, for example current symptoms or the exact goal), then **Astrological Explanation** (three or four flowing paragraphs, no bullet points: first the natal promise of the relevant house, its lord and aspects; then the running dasha and what it means; then the transits and dates inside the period asked; end with a line starting “In short,”). If the user is replying to your earlier question, use their answer and skip the question.';
 function mdToHtml(t) {
   var lines = esc(t).split('\n'), out = '', inList = false;
   lines.forEach(function (l) {
@@ -192,7 +224,7 @@ function AskScreen() {
   var Q = [['Tell me about this person', 1], ['How is the health?', 1], ['When will the career rise?', 1], ['How is this month’s transit?', 1], ['Which gemstone suits?', 1], ['Why did this accident happen on DD Mon YYYY at HH:MM?', 0], ['By when will it get better?', 1], ['Which planet is doing this?', 1], ['Saturn in this chart', 1], ['Good muhurat to buy a car', 1]];
   h += '<div class="qchips">' + Q.map(function (q) { return '<button data-act="askQ" data-send="' + q[1] + '">' + esc(q[0]) + '</button>'; }).join('') + '</div><div class="chat" id="chat">';
   if (!msgs.length) h += '<div class="msg bot">' + HELP + '</div>';
-  msgs.forEach(function (m) { h += m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : '<div class="msg bot">' + m.html + '</div>'; });
+  msgs.forEach(function (m) { h += m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; });
   h += '</div><div style="height:90px"></div>';
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
   return h;
@@ -208,19 +240,26 @@ ACT.askSend = function () {
   var res = null; try { res = answerLocal(p, c, q); } catch (e) { res = { html: '<p>Could not work that out: ' + esc(e.message) + '</p>' }; }
   var deep = DB.settings.key && DB.settings.deep;
   if (!deep) {
-    list.push({ role: 'bot', html: res ? res.html : HELP + '<p class="mut">For free-form questions, add your Claude API key in More › Claude.</p>', text: res ? (res.text || htmlText(res.html)).slice(0, 3000) : '' });
+    list.push(res && res.story ? { role: 'bot', multi: true, ask: !!res.story.question, html: res.html, text: res.text } : { role: 'bot', html: res ? res.html : HELP + '<p class="mut">For free-form questions, add your Claude API key in More › Claude.</p>', text: res ? (res.text || htmlText(res.html)).slice(0, 3000) : '' });
     trimChat(list); save(); rerender(); return;
   }
   save(); rerender();
   var chat = $('#chat'), pend = document.createElement('div'); pend.className = 'msg bot'; pend.innerHTML = '<span class="typing"><i></i><i></i><i></i></span> <span class="mut" style="font-size:12.5px">Reading the chart…</span>'; chat.appendChild(pend); window.scrollTo(0, document.body.scrollHeight);
   var localTxt = res ? htmlText(res.html).slice(0, 2500) : '';
   askClaude(p, c, q, localTxt).then(function (txt) {
-    list.push({ role: 'bot', html: mdToHtml(txt) + (res ? '<details><summary>Offline calculation</summary>' + res.html + '</details>' : '') + '<div class="src">Claude · ' + esc(DB.settings.model) + ' · from the computed chart</div>', text: txt });
+    list.push({ role: 'bot', multi: true, ask: /A Quick Question/.test(txt), html: claudeBubbles(txt), text: txt });
     trimChat(list); save(); if (location.hash.indexOf('ask') >= 0) rerender();
   }).catch(function (e) {
-    list.push({ role: 'bot', html: (res ? res.html : HELP) + '<p class="mut" style="font-size:12.5px">Claude could not answer (' + esc(e.message) + '). ' + (res ? 'This is the offline answer.' : '') + '</p>', text: localTxt });
+    list.push(res && res.story ? { role: 'bot', multi: true, ask: !!res.story.question, html: res.html, text: res.text } : { role: 'bot', html: (res ? res.html : HELP) + '<p class="mut" style="font-size:12.5px">Claude could not answer (' + esc(e.message) + '). ' + (res ? 'This is the offline answer.' : '') + '</p>', text: localTxt });
     trimChat(list); save(); if (location.hash.indexOf('ask') >= 0) rerender();
   });
 };
+function claudeBubbles(txt) {
+  var parts = txt.split(/\*{0,2}(Quick Answer|A Quick Question|Astrological Explanation|What to do)\*{0,2}:?/), out = '';
+  if (parts.length < 3) return '<div class="msg bot">' + mdToHtml(txt) + '</div>';
+  if (parts[0].trim()) out += '<div class="msg bot">' + mdToHtml(parts[0]) + '</div>';
+  for (var i = 1; i < parts.length; i += 2) { var body = mdToHtml((parts[i + 1] || '').trim()); out += '<div class="msg bot sto">' + body.replace(/^<p>/, '<p><b>' + esc(parts[i]) + '</b> ') + '</div>'; }
+  return out;
+}
 function htmlText(h) { var d = document.createElement('div'); d.innerHTML = h; return (d.innerText || d.textContent || '').replace(/\s+\n/g, '\n'); }
 function trimChat(list) { while (list.length > 60) list.shift(); }

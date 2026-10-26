@@ -232,3 +232,6 @@ details.tech .techin .card{box-shadow:0 0 0 1px var(--line)}
 .msg.bot .pa p+p{margin-top:4px}
 .msg.bot h4.do{color:var(--good)} .msg.bot h4.avoid{color:var(--bad)} .msg.bot h4.when{color:var(--acc)}
 .msg.bot h4{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--indigo);margin:11px 0 3px}
+.msg.bot.sto{background:#FFF9F0;box-shadow:0 0 0 1px #EFE3CF;border-radius:16px;font-size:14.5px;line-height:1.6;color:#2A2622}
+.msg.bot.sto b{font-weight:700;color:#1B1A22}
+.msg.bot.sto p+p{margin-top:10px}

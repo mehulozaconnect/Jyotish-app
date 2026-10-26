@@ -1,5 +1,5 @@
 /* Trikaal app: state, storage, bridge, routing, people */
-var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB), S = makeSimple(A, C, J, KB, N, PLAIN);
+var A = Astronomy, C = makeCore(A), J = makeJyotish(A, C), N = makeAnalysis(A, C, J, KB), S = makeSimple(A, C, J, KB, N, PLAIN), T = makeStory(A, C, J, KB, N, PLAIN, S);
 var PN = J.PNAME, SG = J.SIGNS, SG3 = J.SG3, nth = N.nth;
 var PCOL = { Su: '#C9762A', Mo: '#5C7CA8', Ma: '#B03A2E', Me: '#2D7A52', Ju: '#B38A1E', Ve: '#8E5BA8', Sa: '#3D4A6B', Ra: '#55525C', Ke: '#7A7680', La: '#B94E1A' };
 var AVCOL = ['#26254A', '#B94E1A', '#2D7A52', '#8E5BA8', '#B38A1E', '#5C7CA8', '#B03A2E', '#3D4A6B'];
