@@ -3690,23 +3690,54 @@ function gListModels() {
 }
 function gBest(list, want) { return list.slice().sort(function (a, b) { return gRank(b, want) - gRank(a, want); })[0]; }
 /* POST generateContent; if the model is retired or unknown, switch to the best available model and retry once */
-function gGenerate(body, retried) {
-  var model = DB.settings.gmodel || GDEFAULT;
+function gCall(model, body) {
   return http('POST', GBASE + 'models/' + encodeURIComponent(model) + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, body).then(function (r) {
-    var d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('Unexpected reply (' + r.status + ')'); }
-    if (r.status === 200) return d;
-    var msg = (d.error && d.error.message) || ('HTTP ' + r.status);
-    var noFreePro = r.status === 429 && /-pro/.test(model) && /limit: 0|free tier/i.test(msg);
+    var d; try { d = JSON.parse(r.text); } catch (e) { d = {}; }
+    return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
+  });
+}
+function gWait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+function gBusy(x) { return x.status === 503 || x.status === 500 || x.status === 504 || /high demand|overloaded|unavailable|try again later|deadline/i.test(x.msg) || (x.status === 429 && !/limit: 0/.test(x.msg)); }
+/* Calls Gemini with the chosen model.
+   - retired model or no free Pro quota: switch the saved model for good, then retry
+   - busy or rate-limited: wait and retry once, then answer with the next-best models (saved choice kept) */
+function gGenerate(body) {
+  var model = DB.settings.gmodel || GDEFAULT, first;
+  return gCall(model, body).then(function (x) {
+    if (x.status === 200) return x.d;
+    first = x;
+    var noFreePro = x.status === 429 && /-pro/.test(model) && /limit: 0|free tier/i.test(x.msg);
     if (noFreePro) DB.settings.gnoPro = true;
-    if (!retried && (noFreePro || r.status === 404 || /no longer available|not found|not supported/i.test(msg))) {
+    if (noFreePro || x.status === 404 || /no longer available|not found|not supported/i.test(x.msg)) {
       return gListModels().then(function (list) {
-        var want = noFreePro || DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro', best = gBest(list, want);
-        if (!best || best === model) throw new Error(gShort(r.status, msg));
+        var best = gBest(list, DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro');
+        if (!best || best === model) throw new Error(gShort(x.status, x.msg));
         DB.settings.gmodel = best; save(); toast(noFreePro ? 'Pro is not free on your key, using ' + best : 'Switched to ' + best, 3000);
-        return gGenerate(body, true);
+        return gGenerate(body);
       });
     }
-    throw new Error(gShort(r.status, msg));
+    if (!gBusy(x)) throw new Error(gShort(x.status, x.msg));
+    toast(model + ' is busy, retrying…', 2000);
+    return gWait(2500).then(function () { return gCall(model, body); }).then(function (y) {
+      if (y.status === 200) return y.d;
+      if (!gBusy(y)) throw new Error(gShort(y.status, y.msg));
+      var listP = DB.settings.gmodels && DB.settings.gmodels.length ? Promise.resolve(DB.settings.gmodels) : gListModels();
+      return listP.then(function (list) {
+        var want = DB.settings.gnoPro || /flash/.test(model) ? 'flash' : 'pro';
+        var alts = list.filter(function (n) { return n !== model && !(DB.settings.gnoPro && /-pro/.test(n)); })
+          .sort(function (p, q) { return gRank(q, want) - gRank(p, want); }).slice(0, 4);
+        var i = 0;
+        function next() {
+          if (i >= alts.length) throw new Error('All Gemini models are busy right now. Please try again in a minute.');
+          var m = alts[i++];
+          return gCall(m, body).then(function (z) {
+            if (z.status === 200) { toast(model + ' was busy, answered with ' + m, 3000); return z.d; }
+            return next();
+          });
+        }
+        return next();
+      });
+    });
   });
 }
 function gShort(st, msg) {
