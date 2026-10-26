@@ -207,6 +207,7 @@ function scheduleAll() {
 function geminiFormat(name) {
   return 'You are Trikaal, an expert Vedic astrologer (Parashari and KP). You are given an EVIDENCE SHEET computed precisely from the chart; positions are accurate to the arc-second. Use ONLY these numbers and dates. Never invent a position, aspect, dasha or date. If something is not in the sheet, say it is not available.\n' +
     'Before answering, reason through every layer in order: (1) D1 house, its lord and the karaka, with occupants, aspects and conjunctions; (2) the Moon chart: the same houses counted from the Moon (section 1b); (3) the divisional chart for the topic and D9; (4) Mahadasha, Antardasha, Pratyantar, Sookshma and Prana lords and how each links to the topic houses from the lagna and from the Moon; (5) transits over the topic houses from the lagna and from the Moon, double transit and Ashtakavarga bindus; (6) functional nature for this lagna; (7) KP cusp sub lord where useful. Every prediction must state whether the Moon chart and the current transits confirm it; never predict from dasha alone. Only conclude after weighing all layers; if layers disagree, say so and give the date when they agree.\n' +
+    'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====). Earlier messages are background only; never answer an earlier question instead, and do not switch to a different topic. If the current question asks for a whole-chart or kundli analysis, cover strengths, weak spots, yogas, golden periods and what to focus on now, using the KUNDLI ANALYSIS block.\n' +
     'Address the person warmly by first name (' + name + ') and answer in the language the user writes in. Use exactly these sections with bold titles:\n' +
     '**Quick Answer** two or three sentences: the verdict for the period asked, what to expect and the key date.\n' +
     '**A Quick Question** one short clarifying question only if it would genuinely change the answer; otherwise omit this section.\n' +
@@ -338,11 +339,38 @@ function gText(d) {
   if (!txt) throw new Error(cand && cand.finishReason ? 'No answer (' + cand.finishReason + ')' : 'Empty answer');
   return txt;
 }
+function answerAny(p, c, q) {
+  if (!isWholeChart(q)) return answerLocal(p, c, q);
+  var a = kaOf(p), h = '<p><b>' + esc(a.snapshot.grade[0]) + '.</b> ' + esc(a.snapshot.grade[1]) + '</p>' +
+    '<p><b>Strengths:</b> ' + esc(a.pros.slice(0, 4).map(function (x) { return x.t; }).join('; ')) + '.</p>' +
+    '<p><b>Weak spots:</b> ' + esc(a.cons.slice(0, 4).map(function (x) { return x.t; }).join('; ')) + '.</p>' +
+    '<p><b>Golden periods:</b> ' + esc(a.golden.slice(0, 3).map(function (g) { return g.label + ' (' + N.dmy(g.start) + ' – ' + N.dmy(g.end) + ')'; }).join('; ')) + '.</p>' +
+    '<button class="btn acc sm" style="margin-top:8px" data-go="analysis">Open full Kundli analysis ›</button>';
+  return { html: h, text: htmlText(h) };
+}
+function isWholeChart(q) { var ql = q.toLowerCase(); return /\b(kundli|kundali|horoscope|birth ?chart|whole chart|complete|overall|full reading|full analysis|strengths?|weakness\w*|golden|my life|life reading|summary of my chart)\b/.test(ql); }
+function kaText(p) {
+  var a = kaOf(p), d = function (x) { return N.dmy(x); }, L = [];
+  L.push('Overall: ' + a.snapshot.grade[0] + '. Strongest planets ' + a.snapshot.best.join(', ') + '; needing support ' + a.snapshot.weak.join(', ') + '.');
+  L.push('STRENGTHS: ' + a.pros.map(function (x) { return x.t + ' [' + (x.why || []).join(' ') + ']'; }).join(' | '));
+  L.push('WEAK SPOTS: ' + a.cons.map(function (x) { return x.t + ' [' + (x.why || []).join(' ') + ']'; }).join(' | '));
+  L.push('YOGAS: ' + a.yogas.map(function (y) { return y.name + ' (' + y.label + '): ' + y.why; }).join(' | '));
+  L.push('GOLDEN PERIODS: ' + a.golden.map(function (g) { return g.label + ' ' + d(g.start) + '–' + d(g.end) + ' (' + g.rate + '; ' + g.areas.join(', ') + ')'; }).join(' | '));
+  L.push('MAHADASHA RATINGS: ' + a.life.map(function (m) { return m.lord + ' age ' + m.from + '–' + m.to + ' ' + m.rate; }).join(', '));
+  L.push('HEALTH CARE PERIODS: ' + (a.health.map(function (x) { return x.label + ' ' + d(x.start) + '–' + d(x.end) + ' (' + x.level + ': ' + x.areas.join('; ') + ')'; }).join(' | ') || 'none strong') + '. Saturn cycles: ' + (a.saturn.map(function (x) { return x.label + ' ' + d(x.start) + '–' + d(x.end); }).join(', ') || 'none'));
+  L.push('SUCCESS PERIODS: ' + a.success.map(function (x) { return x.label + ' ' + d(x.start) + '–' + d(x.end) + ' (' + x.level + ': ' + x.areas.join(', ') + ')'; }).join(' | '));
+  L.push('NATURE: ' + a.nature.map(function (x) { return x.t + ': ' + x.d; }).join(' '));
+  L.push('DEITY: ' + a.deity.map(function (x) { return x.role + ': ' + x.name; }).join('; ') + '. FOOD NOW: ' + a.food.items.map(function (x) { return PN[x.code] + ' favour ' + x.favour; }).join('; ') + '.');
+  return L.join('\n');
+}
 function askGemini(p, c, q, onLive) {
   var now = new Date(), ev = E.build(p, c, q, now), name = p.name.split(' ')[0];
-  var hist = (DB.chats[p.id] || []).filter(function (m) { return m.text; }).slice(-9, -1).map(function (m) { return { role: m.role === 'me' ? 'user' : 'model', parts: [{ text: m.text.slice(0, 4000) }] }; });
-  while (hist.length && hist[0].role !== 'user') hist.shift();
-  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\nQUESTION: ' + q } ] }]);
+  /* earlier conversation: only completed question–answer pairs (an unanswered question is dropped, so it can never be answered in place of the new one) */
+  var all = (DB.chats[p.id] || []).slice(0, -1), pairs = [];
+  for (var i = 0; i < all.length - 1; i++) if (all[i].role === 'me' && all[i + 1].role === 'bot' && all[i + 1].text) { pairs.push([all[i].text, all[i + 1].text]); i++; }
+  var hist = []; pairs.slice(-3).forEach(function (x) { hist.push({ role: 'user', parts: [{ text: '(Earlier question, already answered) ' + x[0].slice(0, 600) }] }, { role: 'model', parts: [{ text: x[1].slice(0, 2500) }] }); });
+  var whole = isWholeChart(q), extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
+  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
   var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
   var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: gc });
@@ -377,7 +405,7 @@ function AiV2() {
   h += '</div>';
   var Q = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
   if (!msgs.length) h += '<div class="qchips" style="flex-wrap:wrap">' + Q.map(function (q) { return '<button data-act="askQ2">' + esc(q) + '</button>'; }).join('') + '</div>';
-  h += '<div class="chat" id="chat">' + msgs.map(function (m) { return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div id="liveAns">' + liveHtml(U.live && U.live[p.id]) + '</div>' : '') + '</div><div style="height:100px"></div>';
+  h += '<div class="chat" id="chat">' + msgs.map(function (m, i) { var orphan = m.role === 'me' && (msgs[i + 1] ? msgs[i + 1].role === 'me' : !(U.pending && U.pending[p.id])); return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' + (orphan ? '<div class="msg bot"><p class="mut" style="font-size:12.5px">This question was not answered (the app was closed or the connection dropped).</p><button class="btn sec sm" style="margin-top:6px" data-act="retryOrphan" data-i="' + i + '">↻ Ask this again</button></div>' : '') : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div id="liveAns">' + liveHtml(U.live && U.live[p.id]) + '</div>' : '') + '</div><div style="height:100px"></div>';
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
   return h;
 }
@@ -393,6 +421,7 @@ ACT.clearAsk = function () {
 ACT.clearChat2 = function () { var p = curP(); DB.chats[p.id] = []; save(); closeSheet(); setTimeout(rerender, 20); toast('Conversation cleared'); };
 ACT.clearAllChats = function () { DB.chats = {}; save(); closeSheet(); setTimeout(rerender, 20); toast('All conversations cleared'); };
 ACT.closeSheetBtn = function () { closeSheet(); };
+ACT.retryOrphan = function (el) { var p = curP(), list = DB.chats[p.id] || [], i = +el.dataset.i, q = list[i] && list[i].text; if (!q || (U.pending && U.pending[p.id])) return; list.splice(i, 1); save(); $('#askIn').value = q; ACT.askSend(); };
 ACT.retryAsk = function (el) { var p = curP(), list = DB.chats[p.id] || []; if (U.pending && U.pending[p.id]) return; if (list.length && list[list.length - 1].role === 'bot') list.pop(); if (list.length && list[list.length - 1].role === 'me') list.pop(); $('#askIn').value = el.dataset.q; ACT.askSend(); };
 ACT.askQ2 = function (el) { $('#askIn').value = el.textContent; ACT.askSend(); };
 ACT.askSend = function () {
@@ -402,7 +431,7 @@ ACT.askSend = function () {
   var c = calcP(p), list = DB.chats[p.id] = DB.chats[p.id] || [];
   list.push({ role: 'me', text: q });
   if (!DB.settings.gkey) {
-    var res = null; try { res = answerLocal(p, c, q); } catch (e) { res = { html: '<p>Could not work that out: ' + esc(e.message) + '</p>' }; }
+    var res = null; try { res = answerAny(p, c, q); } catch (e) { res = { html: '<p>Could not work that out: ' + esc(e.message) + '</p>' }; }
     list.push(res && res.story ? { role: 'bot', multi: true, ask: !!res.story.question, html: res.html, text: res.text } : { role: 'bot', html: res ? res.html : HELP, text: res ? (res.text || htmlText(res.html)).slice(0, 3000) : '' });
     trimChat(list); save(); rerender(); return;
   }
@@ -422,7 +451,7 @@ ACT.askSend = function () {
   }).catch(function (e) {
     clearInterval(tick); delete U.live[p.id];
     delete U.pending[p.id];
-    var res = null; try { res = answerLocal(p, c, q); } catch (x) { }
+    var res = null; try { res = answerAny(p, c, q); } catch (x) { }
     list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px">Gemini could not answer: ' + esc(e.message.replace(/\.$/, '')) + '. ' + (res ? 'Offline answer below.' : '') + '</p><button class="btn sec sm" style="margin-top:8px" data-act="retryAsk" data-q="' + esc(q) + '">↻ Ask Gemini again</button></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });
     list[list.length - 1].multi = true; trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   });
