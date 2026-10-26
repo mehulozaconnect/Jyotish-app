@@ -3710,7 +3710,13 @@ function gListModels() {
 }
 function gBest(list, want) { return list.slice().sort(function (a, b) { return gRank(b, want) - gRank(a, want); })[0]; }
 /* POST generateContent; if the model is retired or unknown, switch to the best available model and retry once */
-function gCall(model, body) {
+function gCall(model, body, tries) {
+  return gCall1(model, body).catch(function (e) {
+    if ((tries || 0) >= 2) throw new Error('Connection dropped (' + e.message.replace(/^\w+Exception:\s*/, '') + '). Check your internet and try again.');
+    return gWait(2000).then(function () { return gCall(model, body, (tries || 0) + 1); });
+  });
+}
+function gCall1(model, body) {
   return http('POST', GBASE + 'models/' + encodeURIComponent(model) + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, body).then(function (r) {
     var d; try { d = JSON.parse(r.text); } catch (e) { d = {}; }
     return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
@@ -3796,7 +3802,7 @@ function AiV2() {
   h += '</div>';
   var Q = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
   if (!msgs.length) h += '<div class="qchips" style="flex-wrap:wrap">' + Q.map(function (q) { return '<button data-act="askQ2">' + esc(q) + '</button>'; }).join('') + '</div>';
-  h += '<div class="chat" id="chat">' + msgs.map(function (m) { return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + '</div><div style="height:100px"></div>';
+  h += '<div class="chat" id="chat">' + msgs.map(function (m) { return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div class="msg bot"><span class="typing"><i></i><i></i><i></i></span> <span class="mut" style="font-size:12.5px">Checking D1, Moon chart, divisional chart, dashas, aspects and transits… (up to a minute)</span></div>' : '') + '</div><div style="height:100px"></div>';
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
   return h;
 }
@@ -3812,9 +3818,11 @@ ACT.clearAsk = function () {
 ACT.clearChat2 = function () { var p = curP(); DB.chats[p.id] = []; save(); closeSheet(); setTimeout(rerender, 20); toast('Conversation cleared'); };
 ACT.clearAllChats = function () { DB.chats = {}; save(); closeSheet(); setTimeout(rerender, 20); toast('All conversations cleared'); };
 ACT.closeSheetBtn = function () { closeSheet(); };
+ACT.retryAsk = function (el) { var p = curP(), list = DB.chats[p.id] || []; if (U.pending && U.pending[p.id]) return; if (list.length && list[list.length - 1].role === 'bot') list.pop(); if (list.length && list[list.length - 1].role === 'me') list.pop(); $('#askIn').value = el.dataset.q; ACT.askSend(); };
 ACT.askQ2 = function (el) { $('#askIn').value = el.textContent; ACT.askSend(); };
 ACT.askSend = function () {
   var t = $('#askIn'), q = (t.value || '').trim(), p = curP(); if (!q || !p) return;
+  if (U.pending && U.pending[p.id]) return toast('Still answering your last question…');
   t.value = ''; t.style.height = '';
   var c = calcP(p), list = DB.chats[p.id] = DB.chats[p.id] || [];
   list.push({ role: 'me', text: q });
@@ -3823,13 +3831,15 @@ ACT.askSend = function () {
     list.push(res && res.story ? { role: 'bot', multi: true, ask: !!res.story.question, html: res.html, text: res.text } : { role: 'bot', html: res ? res.html : HELP, text: res ? (res.text || htmlText(res.html)).slice(0, 3000) : '' });
     trimChat(list); save(); rerender(); return;
   }
+  U.pending = U.pending || {}; U.pending[p.id] = 1;
   save(); rerender();
-  var pend = document.createElement('div'); pend.className = 'msg bot'; pend.innerHTML = '<span class="typing"><i></i><i></i><i></i></span> <span class="mut" style="font-size:12.5px">Checking D1, divisional chart, dashas, aspects and transits…</span>'; $('#chat').appendChild(pend); window.scrollTo(0, document.body.scrollHeight);
   askGemini(p, c, q).then(function (r) {
+    delete U.pending[p.id];
     list.push({ role: 'bot', multi: true, html: aiBubbles(r.txt, r.ev), text: r.txt }); trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   }).catch(function (e) {
+    delete U.pending[p.id];
     var res = null; try { res = answerLocal(p, c, q); } catch (x) { }
-    list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px">Gemini could not answer: ' + esc(e.message) + '. ' + (res ? 'Offline answer below.' : '') + '</p></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });
+    list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px">Gemini could not answer: ' + esc(e.message.replace(/\.$/, '')) + '. ' + (res ? 'Offline answer below.' : '') + '</p><button class="btn sec sm" style="margin-top:8px" data-act="retryAsk" data-q="' + esc(q) + '">↻ Ask Gemini again</button></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });
     list[list.length - 1].multi = true; trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   });
 };
@@ -3888,8 +3898,8 @@ ACT.testGkey = function () {
       });
     }
     return next();
-  }).then(function (m) { toast('Gemini works ✓ using ' + m, 4000); rerender(); })
-    .catch(function (e) { toast('Error: ' + e.message, 5000); rerender(); });
+  }).then(function (m) { toast('Gemini works ✓ using ' + m, 4000); if (parts()[0] === 'more') rerender(); })
+    .catch(function (e) { toast('Test failed: ' + e.message, 5000); if (parts()[0] === 'more') rerender(); });
 };
 function resetCache() { CACHE = {}; }
 CHG.setAyan = function (el) { DB.settings.ayan = el.value; save(); resetCache(); toast('Ayanamsa: ' + C.AYAN_INFO[el.value].name); };

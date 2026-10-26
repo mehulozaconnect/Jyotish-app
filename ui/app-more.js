@@ -50,8 +50,8 @@ ACT.testGkey = function () {
       });
     }
     return next();
-  }).then(function (m) { toast('Gemini works ✓ using ' + m, 4000); rerender(); })
-    .catch(function (e) { toast('Error: ' + e.message, 5000); rerender(); });
+  }).then(function (m) { toast('Gemini works ✓ using ' + m, 4000); if (parts()[0] === 'more') rerender(); })
+    .catch(function (e) { toast('Test failed: ' + e.message, 5000); if (parts()[0] === 'more') rerender(); });
 };
 function resetCache() { CACHE = {}; }
 CHG.setAyan = function (el) { DB.settings.ayan = el.value; save(); resetCache(); toast('Ayanamsa: ' + C.AYAN_INFO[el.value].name); };
