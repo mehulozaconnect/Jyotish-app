@@ -17,7 +17,24 @@ function makeEvidence(A, C, J, KB, N) {
     ['spiritual', /spiritual|moksha|meditation|guru|dharma/, [9, 12, 5], 20, 'D20 (Vimshamsha: spiritual)', ['Ke', 'Ju']]
   ];
   function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
-  function topicOf(q) { q = q.toLowerCase(); for (var i = 0; i < TOPICS.length; i++) if (TOPICS[i][1].test(q)) return TOPICS[i]; return ['general', null, [1, 10, 7, 4], 9, 'D9 (Navamsha: overall strength)', ['Su', 'Mo']]; }
+  /* divisional charts by number: [name, what it shows, topic] */
+  var VN = { 2: ['Hora', 'wealth and resources', 'money'], 3: ['Drekkana', 'siblings, courage and effort', 'siblings'], 4: ['Chaturthamsha', 'property, home and fortune', 'property'], 7: ['Saptamsha', 'children and progeny', 'children'],
+    9: ['Navamsha', 'spouse, dharma and inner strength of planets', 'marriage'], 10: ['Dashamsha', 'career and status', 'career'], 12: ['Dwadashamsha', 'parents and ancestry', 'parents'], 16: ['Shodashamsha', 'vehicles, comforts and happiness', 'property'],
+    20: ['Vimshamsha', 'spiritual progress and worship', 'spiritual'], 24: ['Chaturvimshamsha', 'education and learning', 'education'], 27: ['Saptavimshamsha (Bhamsha)', 'strength, stamina and weaknesses', 'health'], 30: ['Trimshamsha', 'misfortunes, illness and character', 'health'],
+    40: ['Khavedamsha', 'maternal legacy and auspicious effects', 'general'], 45: ['Akshavedamsha', 'character and conduct', 'general'], 60: ['Shashtiamsha', 'past-life karma; overall result of each planet', 'general'] };
+  var VWORDS = { hora: 2, drekkana: 3, drekana: 3, chaturthamsha: 4, saptamsha: 7, navamsha: 9, navamsa: 9, navansh: 9, dashamsha: 10, dasamsa: 10, dashamsa: 10, dwadashamsha: 12, shodashamsha: 16, vimshamsha: 20, chaturvimshamsha: 24, siddhamsha: 24, bhamsha: 27, saptavimshamsha: 27, trimshamsha: 30, trimsamsa: 30, khavedamsha: 40, akshavedamsha: 45, shashtiamsha: 60, shashtyamsha: 60 };
+  function vargaAsked(q) {
+    var ql = q.toLowerCase(), m = ql.match(/\bd\s?-?\s?(\d{1,2})\b/);
+    if (m && VN[+m[1]]) return +m[1];
+    for (var w in VWORDS) if (ql.indexOf(w) >= 0) return VWORDS[w];
+    return 0;
+  }
+  function topicOf(q) {
+    var ql = q.toLowerCase(), va = vargaAsked(q);
+    for (var i = 0; i < TOPICS.length; i++) if (TOPICS[i][1].test(ql) && !(va && TOPICS[i][0] === 'marriage' && va !== 9 && !/marr|spouse|wife|husband/.test(ql))) { var t = TOPICS[i]; return va && va !== t[3] ? [t[0], t[1], t[2], va, 'D' + va + ' (' + VN[va][0] + ': ' + VN[va][1] + ')', t[5]] : t; }
+    if (va) { var tt = TOPICS.filter(function (x) { return x[0] === VN[va][2]; })[0]; var hs = tt ? tt[2] : [1, 10, 7, 4]; return [tt ? tt[0] : 'general', null, hs, va, 'D' + va + ' (' + VN[va][0] + ': ' + VN[va][1] + ')', tt ? tt[5] : ['Su', 'Mo']]; }
+    return ['general', null, [1, 10, 7, 4], 9, 'D9 (Navamsha: overall strength)', ['Su', 'Mo']];
+  }
   function horizon(q) {
     var m = q.toLowerCase().match(/(\d+|one|two|three|four|five|six|twelve)\s*(day|week|month|year)/), W = ['', 'one', 'two', 'three', 'four', 'five', 'six', '', '', '', '', '', 'twelve'];
     if (m) { var n = isNaN(+m[1]) ? W.indexOf(m[1]) : +m[1]; return { d: 30, w: 7, m: 30.44, y: 365.25 }[m[2].charAt(0)] * n; }
@@ -72,6 +89,17 @@ function makeEvidence(A, C, J, KB, N) {
       return out.join(' ');
     }
     L.push('\n[2] DIVISIONAL CHARTS'); if (vn !== 9) L.push(vargaBlock(vn, T[4])); L.push(vargaBlock(9, 'D9 Navamsha'));
+    var asked = vargaAsked(q);
+    if (asked) {
+      /* the person asked about one divisional chart: give it house by house */
+      var va2 = J.varga(k.asc, asked), hb = [];
+      for (var hx = 1; hx <= 12; hx++) { var sg = (va2.sign + hx - 1) % 12, ld = J.RULER[sg], lv = J.varga(k.P[ld].lon, asked), oc = k.planets.filter(function (x) { return J.varga(x.lon, asked).sign === sg; });
+        hb.push('h' + hx + ' ' + SG[sg] + ': ' + (oc.length ? oc.map(function (x) { var v = J.varga(x.lon, asked); return PN[x.code] + ' (' + J.dignity(x.code, v.sign * 30 + v.deg).toLowerCase() + (v.sign === x.sign ? ', vargottama' : '') + ')'; }).join(', ') : 'empty') + '; lord ' + PN[ld] + ' in h' + J.houseFrom(va2.sign, lv.sign)); }
+      L.push('\nCHART ASKED ABOUT: D' + asked + ' ' + VN[asked][0] + ' (shows ' + VN[asked][1] + '). Lagna ' + SG[va2.sign] + '. House by house: ' + hb.join(' | ') + '.' + (asked === 2 ? ' Parashari Hora: planets in Leo are in the Sun hora (self-earned, active wealth), in Cancer the Moon hora (inherited, steady or family wealth).' : ''));
+    }
+    /* compact table of every divisional chart, so any chart question can be answered */
+    L.push('\n[7] ALL DIVISIONAL CHARTS (sign and house of each planet)');
+    [2, 3, 4, 7, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60].forEach(function (n) { var vx = J.varga(k.asc, n); L.push('D' + n + ' ' + VN[n][0] + ' (' + VN[n][1] + '), lagna ' + SG[vx.sign] + ': ' + k.planets.map(function (x) { var v = J.varga(x.lon, n), d = J.dignity(x.code, v.sign * 30 + v.deg); return PN[x.code] + ' ' + SG[v.sign].slice(0, 3) + ' h' + J.houseFrom(vx.sign, v.sign) + ({ 'Exalted': ' exalted', 'Debilitated': ' debilitated', 'Own sign': ' own', 'Moolatrikona': ' MT' }[d] || ''); }).join(', ')); });
     L.push('\n[3] DASHA (Vimshottari, ' + C.AYAN_INFO[k.ayan].name + ')');
     var ch = J.dashaChain(c.maha, now, 5), LV = ['Mahadasha', 'Antardasha', 'Pratyantar', 'Sookshma', 'Prana'];
     L = L.map(function (t) { return t.indexOf('%DASHAMOON%') >= 0 ? 'Running dasha lords from the Moon: ' + ch.map(function (x, i) { var hh = hm(k.P[x.lord].sign); return LV[i] + ' ' + PN[x.lord] + ' in ' + nth(hh) + ' from Moon' + (houses.indexOf(hh) >= 0 ? ' (topic house from Moon)' : ''); }).join('; ') + '.' : t; });
@@ -91,7 +119,7 @@ function makeEvidence(A, C, J, KB, N) {
     J.P7.forEach(function (x) { L.push('BAV ' + PN[x] + ': ' + c.av.bav[x].join(' ') + ' (total ' + c.av.bav[x].reduce(function (a, b) { return a + b; }, 0) + ')'); });
     L.push('\n[6] FUNCTIONAL NATURE for ' + SG[k.ascSign] + ' lagna: ' + J.P7.map(function (x) { return PN[x] + ' ' + fn(x) + ' (rules ' + func[x].houses.join('&') + ')'; }).join('; ') + '. Badhaka: ' + func.badhaka.house + 'th lord ' + PN[func.badhaka.lord] + '.');
     L.push('Yogas: ' + c.yogas.map(function (y) { return y.name + ' [' + y.why + ']'; }).join(' '));
-    return { topic: T[0], houses: houses, varga: vn, vlabel: T[4], days: days, chain: ch, text: L.join('\n') };
+    return { topic: T[0], houses: houses, varga: vn, vlabel: T[4], asked: vargaAsked(q), days: days, chain: ch, text: L.join('\n') };
   }
   var RULES = 'ASTROLOGY RULES YOU MUST APPLY:\n' +
     '- Judge every matter from three places: the house, its lord, and its natural significator (karaka), in D1, then confirm in the divisional chart listed and in D9. A result promised in D1 but weak in the divisional chart is partial.\n' +
@@ -103,6 +131,6 @@ function makeEvidence(A, C, J, KB, N) {
     '- Gochar is judged from the natal Moon; Sade Sati is Saturn in the 12th, 1st and 2nd from the Moon.\n' +
     '- Moon chart (Chandra lagna): read the same topic houses counted from the Moon. A matter shown from both the lagna and the Moon is strong and reliable; shown from only one, it is partial or delayed. A dasha lord placed in a topic house from the Moon also activates the matter.\n' +
     '- Transit is the trigger: the dasha promises, the transit delivers. Before predicting a date, check that slow planets (Jupiter, Saturn, Rahu/Ketu) are in or aspecting the topic house or its lord from the lagna AND from the Moon, with good BAV. If the dasha supports but transit does not, give the later date when transit joins.\n';
-  return { build: build, topicOf: topicOf, horizon: horizon, RULES: RULES };
+  return { build: build, topicOf: topicOf, horizon: horizon, RULES: RULES, vargaAsked: vargaAsked, VN: VN };
 }
 if (typeof module !== 'undefined') module.exports = makeEvidence;
