@@ -82,7 +82,8 @@ public class MainActivity extends Activity {
         });
         web.addJavascriptInterface(new Bridge(), "Android");
         setContentView(web);
-        web.loadUrl("file:///android_asset/www/index.html");
+        String route = getIntent() != null ? getIntent().getStringExtra("route") : null;
+        web.loadUrl("file:///android_asset/www/index.html" + (route != null ? "#/" + route : ""));
     }
 
     @Override
@@ -181,6 +182,16 @@ public class MainActivity extends Activity {
                 try { startActivityForResult(i, REQ_OPEN); } catch (Exception e) { Toast.makeText(MainActivity.this, "No file manager found", Toast.LENGTH_LONG).show(); }
             });
         }
+
+        @JavascriptInterface
+        public void scheduleReminder(String id, String title, String body, int hour, int minute, String days) {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                ui.post(() -> requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, 21));
+            ReminderReceiver.schedule(MainActivity.this, id, title, body, hour, minute, days);
+        }
+
+        @JavascriptInterface
+        public void cancelReminder(String id) { ReminderReceiver.cancel(MainActivity.this, id); }
 
         @JavascriptInterface
         public void print(String title) {

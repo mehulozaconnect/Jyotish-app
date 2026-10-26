@@ -7,7 +7,7 @@ function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').repla
 function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
 function $(s) { return document.querySelector(s); }
 var DEF_SETTINGS = { ayan: 'lahiri', node: 'mean', dyear: 365.25, style: 'north', meId: null, loc: { name: 'Mumbai', region: 'Maharashtra, India', lat: 19.076, lon: 72.8777, tz: 'Asia/Kolkata' }, key: '', model: 'claude-sonnet-5-5', deep: true };
-var DB = { v: 1, people: [], settings: JSON.parse(JSON.stringify(DEF_SETTINGS)), chats: {} };
+var DB = { v: 1, people: [], settings: JSON.parse(JSON.stringify(DEF_SETTINGS)), chats: {}, remedies: [] };
 var U = { tab: {}, chart: 'D1', style: null, dpath: [], dsys: 'vim', month: 0, kpseg: 'cusps', kpm: 'job', tseg: 'day', dayOff: 0, mpurpose: 'vehicle', mdays: 60, vage: null, ev: null, filter: 'all', open: {} };
 var AND = window.Android || null;
 
@@ -17,7 +17,7 @@ function load() {
   try { if (AND && AND.loadState) t = AND.loadState(); } catch (e) { }
   try { if (!t) t = localStorage.getItem('trikaal'); } catch (e) { }
   if (!t) return;
-  try { var d = JSON.parse(t); DB.people = d.people || []; DB.chats = d.chats || {}; Object.keys(d.settings || {}).forEach(function (k) { DB.settings[k] = d.settings[k]; }); } catch (e) { }
+  try { var d = JSON.parse(t); DB.people = d.people || []; DB.chats = d.chats || {}; DB.remedies = d.remedies || []; Object.keys(d.settings || {}).forEach(function (k) { DB.settings[k] = d.settings[k]; }); } catch (e) { }
 }
 function save() {
   var t = JSON.stringify(DB);

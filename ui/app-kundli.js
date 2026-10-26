@@ -5,7 +5,7 @@ function Hub(p, tab) {
   if (!TABF[tab]) tab = 'report';
   U.tab[p.id] = tab;
   var c = calcP(p), now = new Date(), ch = J.dashaChain(c.maha, now, 3);
-  var h = '<div class="top"><button class="ib" data-go="people">' + icon('back') + '</button><div style="min-width:0;flex:1"><div class="ttl" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + (p.id === DB.settings.meId ? ' <span style="color:var(--acc)">★</span>' : '') + '</div><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(birthLine(p)) + '</div></div>' +
+  var h = '<div class="top"><button class="ib" data-act="hubBack">' + icon('back') + '</button><div style="min-width:0;flex:1"><div class="ttl" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + (p.id === DB.settings.meId ? ' <span style="color:var(--acc)">★</span>' : '') + '</div><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(birthLine(p)) + '</div></div>' +
     '<button class="ib" data-act="shareTab" title="Share">' + icon('share') + '</button><button class="ib" data-go="edit/' + p.id + '" title="Edit">' + icon('edit') + '</button></div>';
   h += '<div class="sub" style="padding-top:0">' + SG[c.k.ascSign] + ' lagna ' + c.k.ascDeg + ' · ' + SG[c.k.P.Mo.sign] + ' Moon (' + c.k.P.Mo.nak.name + ') · ' + ch.map(function (x) { return PN[x.lord]; }).join(' › ') + ' · <span style="color:var(--lavI);font-weight:600">' + esc(ayanShort()) + '</span></div>';
   h += '<div class="tabs">' + TABS.map(function (t) { return '<button data-go="p/' + p.id + '/' + t[0] + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>';
@@ -385,3 +385,5 @@ TABF.btime = function (p, c) {
   h += '</table></div><div class="note">If a value is fragile, readings based on it (for example D9 or D60, or the KP lagna sub lord) depend on a birth time correct to that many minutes. Check it against known life events in the Event tab.</div></div></div>';
   return h;
 };
+
+ACT.hubBack = function () { if (history.length > 1) history.back(); else go('astro'); };

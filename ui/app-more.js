@@ -7,17 +7,28 @@ function MoreScreen() {
     '<div class="field" style="margin-bottom:0"><span>CHART STYLE</span>' + sel('setStyle', [['north', 'North Indian'], ['south', 'South Indian']], s.style) + '</div>' +
     '<div class="note">KP screens always use the KP (Krishnamurti) ayanamsa. Houses: whole sign for Parashari, Placidus for KP and Chalit.</div></div>';
   h += '<div class="card"><h3>Location for Today</h3><div class="row"><div><b>' + esc(s.loc.name) + '</b><div class="mut" style="font-size:12px">' + (+s.loc.lat).toFixed(4) + ', ' + (+s.loc.lon).toFixed(4) + ' · ' + esc(s.loc.tz) + ' · ' + fmtOff(locOff()) + '</div></div><button class="btn sec sm" data-act="pickLoc">Change</button></div></div>';
-  h += '<div class="card"><h3>Claude (optional)</h3><p style="font-size:12.8px;margin-bottom:10px">The offline engine answers the common questions. With your own Anthropic API key, Ask also handles any free-form question, using the full computed chart. The key stays on this phone.</p>' +
-    '<label class="field"><span>API KEY</span><input class="inp mono" type="password" data-in="setKey" value="' + esc(s.key) + '" placeholder="sk-ant-..." autocomplete="off"></label>' +
-    '<div class="field"><span>MODEL</span>' + sel('setModel', [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (balanced)'], ['claude-opus-5-5', 'Claude Opus 5.5 (deepest)'], ['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 (fastest)']], s.model) + '</div>' +
-    '<div class="set"><div><b>Use Claude in Ask</b><small>Off = offline answers only</small></div><button class="sw ' + (s.deep ? 'on' : '') + '" data-act="toggleDeep"></button></div>' +
-    '<button class="btn sec wide" data-act="testKey">Test the key</button></div>';
+  h += '<div class="card"><h3>AI: Gemini</h3><p style="font-size:12.8px;margin-bottom:10px">Answers in the AI tab use your Gemini key with a full evidence sheet from the chart (D1, divisional chart, D9, all 5 dasha levels, aspects, transits, Ashtakavarga). The key stays on this phone.</p>' +
+    '<label class="field"><span>GEMINI API KEY</span><input class="inp mono" type="password" data-in="setGkey" value="' + esc(s.gkey || '') + '" placeholder="AIza..." autocomplete="off"></label>' +
+    '<div class="field"><span>MODEL</span>' + sel('setGmodel', [['gemini-2.5-pro', 'Gemini 2.5 Pro (best reasoning)'], ['gemini-2.5-flash', 'Gemini 2.5 Flash (faster)']], s.gmodel || 'gemini-2.5-pro') + '</div>' +
+    '<label class="field"><span>OR TYPE A MODEL NAME</span><input class="inp mono" data-in="setGmodelTxt" value="' + esc(s.gmodel || '') + '" placeholder="gemini-2.5-pro"></label>' +
+    '<button class="btn sec wide" data-act="testGkey">Test the key</button></div>';
+  h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
   h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div></div>';
   h += '<div class="card"><h3>Accuracy</h3><p style="font-size:12.8px">Planet and lagna positions are checked against Swiss Ephemeris (the engine used by Jagannatha Hora and most professional software): planets within a few arc-seconds, lagna within arc-seconds for a correct birth time. Panchang ends, dashas and transits come from the same engine. Readings and remedies follow classical rules and show their logic; like any astrology, they are interpretations, not certainties.</p></div>';
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '1.0';
+var APP_VERSION = '2.0';
+INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); save(); };
+CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; save(); };
+INP.setGmodelTxt = function (el) { if (el.value.trim()) { DB.settings.gmodel = el.value.trim(); save(); } };
+ACT.testGkey = function () {
+  if (!DB.settings.gkey) return toast('Paste your Gemini key first');
+  toast('Testing…', 1200);
+  http('POST', 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(DB.settings.gmodel || 'gemini-2.5-pro') + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }] }))
+    .then(function (r) { if (r.status === 200) toast('Gemini key works ✓'); else { var m = ''; try { m = JSON.parse(r.text).error.message; } catch (e) { } toast('Error ' + r.status + (m ? ': ' + m : ''), 4500); } })
+    .catch(function (e) { toast('No connection: ' + e.message, 3500); });
+};
 function resetCache() { CACHE = {}; }
 CHG.setAyan = function (el) { DB.settings.ayan = el.value; save(); resetCache(); toast('Ayanamsa: ' + C.AYAN_INFO[el.value].name); };
 CHG.setNode = function (el) { DB.settings.node = el.value; save(); resetCache(); };
@@ -35,7 +46,7 @@ ACT.testKey = function () {
 };
 ACT.backup = function () {
   var d = new Date(), name = 'trikaal-backup-' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '.json';
-  var data = JSON.parse(JSON.stringify(DB)); data.settings.key = ''; data.exported = d.toISOString();
+  var data = JSON.parse(JSON.stringify(DB)); data.settings.key = ''; data.settings.gkey = ''; data.exported = d.toISOString();
   saveFile(name, 'application/json', JSON.stringify(data, null, 1));
 };
 ACT.restore = function () {
@@ -44,6 +55,7 @@ ACT.restore = function () {
       var d = JSON.parse(text); if (!d.people) throw new Error('Not a Trikaal backup');
       var ids = DB.people.map(function (p) { return p.id; }), added = 0;
       d.people.forEach(function (p) { var i = ids.indexOf(p.id); if (i >= 0) DB.people[i] = p; else { DB.people.push(p); added++; } });
+      (d.remedies || []).forEach(function (r) { DB.remedies = DB.remedies || []; if (!DB.remedies.some(function (x) { return x.id === r.id; })) DB.remedies.push(r); });
       Object.keys(d.chats || {}).forEach(function (k) { if (!DB.chats[k]) DB.chats[k] = d.chats[k]; });
       if (!DB.settings.meId && d.settings && d.settings.meId) DB.settings.meId = d.settings.meId;
       save(); resetCache(); toast('Restored ' + d.people.length + ' kundlis (' + added + ' new)'); rerender();
@@ -63,6 +75,7 @@ ACT.sampleData = function () {
   var t = $('#askIn');
   t.addEventListener('input', function () { t.style.height = ''; t.style.height = Math.min(120, t.scrollHeight) + 'px'; });
   t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ACT.askSend(); } });
-  window.trikaalBack = function () { if ($('#scrim')) { closeSheet(); return 'true'; } var p = parts(); if (!p.length || p[0] === 'today' || (p[0] === 'people' && !me())) return 'false'; history.back(); return 'true'; };
+  window.trikaalBack = function () { if ($('#scrim')) { closeSheet(); return 'true'; } var p = parts(); if (!p.length || ['astro', 'panchang', 'dasha', 'remedies', 'ai'].indexOf(p[0]) >= 0 && p.length < 2) return 'false'; history.back(); return 'true'; };
+  try { scheduleAll(); } catch (e) { }
   render();
 })();
