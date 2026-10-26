@@ -119,7 +119,7 @@ function makeStory(A, C, J, KB, N, P, S) {
     return { text: txt + (bg ? ' ' + bg : ''), score: score + (ss.q === 'bad' ? -0.5 : 0), key: key };
   }
   function topicOf(q) {
-    return /health|body|disease|swasthya|ill|sick|tabiyat|sehat/.test(q) ? 'health' : /career|job|work|promot|business|profession|office/.test(q) ? 'career' : /money|wealth|finance|income|dhan|paisa|salary|invest/.test(q) ? 'money' : /marr|spouse|wife|husband|relationship|partner|love/.test(q) ? 'marriage' : /child|kid|son|daughter|study|education|exam/.test(q) ? 'children' : null;
+    return /\b(health|body|disease|swasthya|ill|illness|sick|tabiyat|sehat)\b/.test(q) ? 'health' : /\b(career|job|jobs|work|promot\w*|business|profession|office|appraisal|boss)\b/.test(q) ? 'career' : /\b(money|wealth|financ\w*|income|dhan|paisa|salary|invest\w*)\b/.test(q) ? 'money' : /\b(marr\w*|spouse|wife|husband|relationship|partner|love|d9)\b/.test(q) ? 'marriage' : /\b(child\w*|kids?|son|daughter|study|studies|education|exams?)\b/.test(q) ? 'children' : null;
   }
   function horizonOf(q, topic) {
     var m = q.match(/(\d+|one|two|three|four|five|six|nine|twelve)\s*(month|year)/), n;

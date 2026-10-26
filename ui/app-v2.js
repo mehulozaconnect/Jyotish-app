@@ -244,6 +244,7 @@ var G_ON = null; /* live listener while an answer streams: G_ON(kind 'thought'|'
 function gCall(model, body, tries) {
   var t0 = Date.now(); gCall.got = false;
   return gCall1(model, body).catch(function (e) {
+    if (e.slow) throw e;
     /* retry only quick drops before any text arrived; a long answer cut midway is not re-sent automatically */
     if ((tries || 0) >= 2 || gCall.got || Date.now() - t0 > 20000) throw new Error('Connection dropped (' + e.message.replace(/^\w+Exception:\s*/, '') + '). Check your internet and try again.');
     return gWait(1500).then(function () { return gCall(model, body, (tries || 0) + 1); });
@@ -255,10 +256,13 @@ function gCall1(model, body) {
     var d; try { d = JSON.parse(r.text); } catch (e) { d = {}; }
     return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
   });
-  var acc = '', fin = '', on = G_ON;
-  return httpStream(GBASE + 'models/' + encodeURIComponent(model) + ':streamGenerateContent?alt=sse', H, body, function (data) {
+  var acc = '', fin = '', on = G_ON, dead = false, last = Date.now(), wd;
+  /* watchdog: nothing for 45 s at the start, or a 60 s stall mid-answer, counts as a slow call */
+  var slow = new Promise(function (res, rej) { wd = setInterval(function () { if (Date.now() - last > (gCall.got ? 60000 : 45000)) { dead = true; clearInterval(wd); var e = new Error('Gemini is taking too long'); e.slow = true; rej(e); } }, 1000); });
+  var main = httpStream(GBASE + 'models/' + encodeURIComponent(model) + ':streamGenerateContent?alt=sse', H, body, function (data) {
+    if (dead) return;
     var j; try { j = JSON.parse(data); } catch (e) { return; }
-    gCall.got = true;
+    gCall.got = true; last = Date.now();
     (j.candidates || []).forEach(function (cd) {
       if (cd.finishReason) fin = cd.finishReason;
       ((cd.content && cd.content.parts) || []).forEach(function (pt) {
@@ -267,10 +271,12 @@ function gCall1(model, body) {
       });
     });
   }).then(function (r) {
+    clearInterval(wd); if (dead) return new Promise(function () { });
     if (r.status === 200) return { model: model, status: 200, d: { candidates: [{ content: { parts: [{ text: acc }] }, finishReason: fin }] }, msg: '' };
     var d; try { d = JSON.parse(r.text); if (Array.isArray(d)) d = d[0]; } catch (e) { d = {}; }
     return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
-  });
+  }, function (e) { clearInterval(wd); if (dead) return new Promise(function () { }); throw e; });
+  return Promise.race([main, slow]);
 }
 function gWait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 function gBusy(x) { return x.status === 503 || x.status === 500 || x.status === 504 || /high demand|overloaded|unavailable|try again later|deadline/i.test(x.msg) || (x.status === 429 && !/limit: 0/.test(x.msg)); }
@@ -339,7 +345,13 @@ function askGemini(p, c, q, onLive) {
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
   var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
-  return gGenerate(body).then(function (d) { G_ON = null; return { txt: gText(d), ev: ev }; }, function (e) { G_ON = null; throw e; });
+  return gGenerate(body).catch(function (e) {
+    /* deep answer too slow or cut off before any text: try once more with light reasoning */
+    if (DB.settings.gfast || !(e.slow || /dropped/i.test(e.message)) || gCall.got) throw e;
+    if (onLive) onLive('thought', 'Taking long, switching to a faster answer');
+    var fc = JSON.parse(body); if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) fc.generationConfig.thinkingConfig.thinkingLevel = 'low'; else fc.generationConfig.thinkingConfig.thinkingBudget = 1024;
+    return gGenerate(JSON.stringify(fc));
+  }).then(function (d) { G_ON = null; return { txt: gText(d), ev: ev }; }, function (e) { G_ON = null; throw e; });
 }
 function aiBubbles(txt, ev) {
   var chain = '', m = txt.match(/\*{0,2}Chain:?\*{0,2}:?\s*([\s\S]*)$/);
