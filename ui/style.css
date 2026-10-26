@@ -296,3 +296,12 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .klk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.klk div{background:#F8F3EA;border-radius:12px;padding:9px 10px}.klk small{display:block;font:600 11px var(--sans);color:var(--mut);text-transform:uppercase;letter-spacing:.3px}.klk b{font:600 13.5px/1.35 var(--sans);display:block;margin-top:3px}
 .msg.bot.qa{box-shadow:0 0 0 1.5px var(--acc);background:#FFF9F1}
 .msg.bot.kd li{margin:5px 0}
+/* my day */
+.dhero{border-radius:20px;padding:15px 16px;margin-bottom:10px;color:#fff}.dhero.dg{background:linear-gradient(135deg,#2D7A52,#1E5A3B)}.dhero.dm{background:linear-gradient(135deg,#34336A,#22214A)}.dhero.db{background:linear-gradient(135deg,#9A3A2F,#6E241C)}
+.dhero .lbl{color:rgba(255,255,255,.75)}.dhero h2{font:600 28px/1.15 var(--serif);margin:4px 0}.dhero p{font:400 14px/1.45 var(--sans);color:rgba(255,255,255,.92)}.dhero .dsum{margin-top:6px;font-size:13.5px}
+.darea{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}.darea:first-of-type{border-top:0}.darea p{font:400 13.5px/1.45 var(--sans);margin-top:3px}.darea small{display:block;font:400 11.5px/1.4 var(--sans);color:var(--mut);margin-top:3px}
+.dic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font:600 15px var(--sans)}.dic.good{background:var(--goodS);color:var(--good)}.dic.ok{background:#EFECE6;color:#55515D}.dic.bad{background:var(--badS);color:var(--bad)}
+.dslot{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:8px 10px;border-radius:10px;margin:3px 0;border-left:4px solid #D8D2C6}.dslot.g{border-left-color:var(--good);background:#F2F8F4}.dslot.b{border-left-color:var(--bad);background:#FBF1EF}.dslot.now{box-shadow:0 0 0 1.5px var(--acc)}
+.dslot .mono{font:600 13px var(--mono);padding-top:1px}.dslot b{font:600 13.5px var(--sans)}.dslot p{font:400 12.5px/1.4 var(--sans);color:#4e4a55}.dslot em{color:var(--bad);font-style:normal}
+.dda ul{margin:6px 0 0 16px;font:400 13px/1.45 var(--sans)}.dda li{margin:4px 0}
+.dwhy summary{font:600 14px var(--sans);cursor:pointer}.dwhy[open] summary{margin-bottom:8px}
