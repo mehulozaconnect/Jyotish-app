@@ -11,6 +11,7 @@ function MoreScreen() {
     '<label class="field"><span>GEMINI API KEY</span><input class="inp mono" type="password" data-in="setGkey" value="' + esc(s.gkey || '') + '" placeholder="AIza..." autocomplete="off"></label>' +
     '<div class="field"><span>MODEL</span>' + sel('setGmodel', gModelOpts(), s.gmodel || GDEFAULT) + '</div>' +
     '<label class="field"><span>OR TYPE A MODEL NAME</span><input class="inp mono" data-in="setGmodelTxt" value="' + esc(s.gmodel || '') + '" placeholder="' + GDEFAULT + '"></label>' +
+    '<div class="field"><span>ANSWER STYLE</span>' + sel('setGfast', [['0', 'Deep: most careful reasoning (slower)'], ['1', 'Fast: quicker answers, lighter reasoning']], s.gfast ? '1' : '0') + '</div>' +
     '<button class="btn sec wide" data-act="testGkey">Test the key and find the best model</button>' +
     '<div class="note">The test checks which Gemini models your key can use and picks the newest Pro model. On a free key Google gives no Pro quota, so the app uses the newest Flash model instead. If Google retires a model, the app switches by itself.</div></div>';
   h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
@@ -21,6 +22,7 @@ function MoreScreen() {
 }
 var APP_VERSION = '2.0';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
+CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
 INP.setGmodelTxt = function (el) { if (el.value.trim()) { DB.settings.gmodel = el.value.trim(); save(); } };
 function gModelOpts() {

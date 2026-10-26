@@ -240,15 +240,35 @@ function gListModels() {
 }
 function gBest(list, want) { return list.slice().sort(function (a, b) { return gRank(b, want) - gRank(a, want); })[0]; }
 /* POST generateContent; if the model is retired or unknown, switch to the best available model and retry once */
+var G_ON = null; /* live listener while an answer streams: G_ON(kind 'thought'|'text', text) */
 function gCall(model, body, tries) {
+  var t0 = Date.now(); gCall.got = false;
   return gCall1(model, body).catch(function (e) {
-    if ((tries || 0) >= 2) throw new Error('Connection dropped (' + e.message.replace(/^\w+Exception:\s*/, '') + '). Check your internet and try again.');
-    return gWait(2000).then(function () { return gCall(model, body, (tries || 0) + 1); });
+    /* retry only quick drops before any text arrived; a long answer cut midway is not re-sent automatically */
+    if ((tries || 0) >= 2 || gCall.got || Date.now() - t0 > 20000) throw new Error('Connection dropped (' + e.message.replace(/^\w+Exception:\s*/, '') + '). Check your internet and try again.');
+    return gWait(1500).then(function () { return gCall(model, body, (tries || 0) + 1); });
   });
 }
 function gCall1(model, body) {
-  return http('POST', GBASE + 'models/' + encodeURIComponent(model) + ':generateContent', { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey }, body).then(function (r) {
+  var H = { 'content-type': 'application/json', 'x-goog-api-key': DB.settings.gkey };
+  if (!G_ON) return http('POST', GBASE + 'models/' + encodeURIComponent(model) + ':generateContent', H, body).then(function (r) {
     var d; try { d = JSON.parse(r.text); } catch (e) { d = {}; }
+    return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
+  });
+  var acc = '', fin = '', on = G_ON;
+  return httpStream(GBASE + 'models/' + encodeURIComponent(model) + ':streamGenerateContent?alt=sse', H, body, function (data) {
+    var j; try { j = JSON.parse(data); } catch (e) { return; }
+    gCall.got = true;
+    (j.candidates || []).forEach(function (cd) {
+      if (cd.finishReason) fin = cd.finishReason;
+      ((cd.content && cd.content.parts) || []).forEach(function (pt) {
+        if (!pt.text) return;
+        if (pt.thought) on('thought', pt.text); else { acc += pt.text; on('text', acc); }
+      });
+    });
+  }).then(function (r) {
+    if (r.status === 200) return { model: model, status: 200, d: { candidates: [{ content: { parts: [{ text: acc }] }, finishReason: fin }] }, msg: '' };
+    var d; try { d = JSON.parse(r.text); if (Array.isArray(d)) d = d[0]; } catch (e) { d = {}; }
     return { model: model, status: r.status, d: d, msg: (d.error && d.error.message) || ('HTTP ' + r.status) };
   });
 }
@@ -263,6 +283,9 @@ function gGenerate(body, depth) {
   return gCall(model, body).then(function (x) {
     if (x.status === 200) return x.d;
     first = x;
+    if (x.status === 400 && /thinking/i.test(x.msg) && body.indexOf('thinkingConfig') >= 0) {
+      var bj = JSON.parse(body); delete bj.generationConfig.thinkingConfig; return gGenerate(JSON.stringify(bj), depth);
+    }
     var noQuota = x.status === 429 && /limit: 0/i.test(x.msg);
     if (noQuota) { DB.settings.gbad = uniqA((DB.settings.gbad || []).concat([model])); if (/-pro/.test(model)) DB.settings.gnoPro = true; save(); }
     if (noQuota || x.status === 404 || /no longer available|not found|not supported/i.test(x.msg)) {
@@ -307,13 +330,16 @@ function gText(d) {
   if (!txt) throw new Error(cand && cand.finishReason ? 'No answer (' + cand.finishReason + ')' : 'Empty answer');
   return txt;
 }
-function askGemini(p, c, q) {
+function askGemini(p, c, q, onLive) {
   var now = new Date(), ev = E.build(p, c, q, now), name = p.name.split(' ')[0];
   var hist = (DB.chats[p.id] || []).filter(function (m) { return m.text; }).slice(-9, -1).map(function (m) { return { role: m.role === 'me' ? 'user' : 'model', parts: [{ text: m.text.slice(0, 4000) }] }; });
   while (hist.length && hist[0].role !== 'user') hist.shift();
   var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\nQUESTION: ' + q } ] }]);
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: { temperature: 0.35, maxOutputTokens: 32768 } });
-  return gGenerate(body).then(function (d) { return { txt: gText(d), ev: ev }; });
+  var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
+  if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: gc });
+  G_ON = onLive || null;
+  return gGenerate(body).then(function (d) { G_ON = null; return { txt: gText(d), ev: ev }; }, function (e) { G_ON = null; throw e; });
 }
 function aiBubbles(txt, ev) {
   var chain = '', m = txt.match(/\*{0,2}Chain:?\*{0,2}:?\s*([\s\S]*)$/);
@@ -324,6 +350,11 @@ function aiBubbles(txt, ev) {
   if (chain) out += '<div class="msg bot chain"><b class="sh">Chain of logic</b><div class="ch">' + chain.split(/\s*(?:→|->)\s*/).map(function (s) { return '<span>' + esc(s.replace(/\*\*/g, '')) + '</span>'; }).join('<i>›</i>') + '</div>' + (ev ? '<details><summary>Evidence sheet used (' + esc(ev.topic) + ', ' + esc(ev.vlabel.split(' ')[0]) + ')</summary><pre class="evs">' + esc(ev.text) + '</pre></details>' : '') + '</div>';
   return out;
 }
+function liveHtml(L) {
+  var sec = L ? Math.round((Date.now() - L.t0) / 1000) : 0;
+  if (L && L.text) return '<div class="msg bot sto">' + mdToHtml(L.text.replace(/\*{0,2}Chain:?[\s\S]*$/, '')) + '<p class="mut" style="font-size:12px;margin-top:6px"><span class="typing"><i></i><i></i><i></i></span> writing… ' + sec + 's</p></div>';
+  return '<div class="msg bot"><span class="typing"><i></i><i></i><i></i></span> <span class="mut" style="font-size:12.5px">' + (L && L.thought ? 'Reasoning: ' + esc(L.thought) : 'Checking D1, Moon chart, divisional chart, dashas, aspects and transits…') + ' · ' + sec + 's</span></div>';
+}
 function AiV2() {
   var p = curP(); if (!p) return topBar('Ask AI', { noPerson: true }) + noPerson();
   var msgs = DB.chats[p.id] || [], hasKey = !!DB.settings.gkey;
@@ -332,7 +363,7 @@ function AiV2() {
   h += '</div>';
   var Q = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
   if (!msgs.length) h += '<div class="qchips" style="flex-wrap:wrap">' + Q.map(function (q) { return '<button data-act="askQ2">' + esc(q) + '</button>'; }).join('') + '</div>';
-  h += '<div class="chat" id="chat">' + msgs.map(function (m) { return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div class="msg bot"><span class="typing"><i></i><i></i><i></i></span> <span class="mut" style="font-size:12.5px">Checking D1, Moon chart, divisional chart, dashas, aspects and transits… (up to a minute)</span></div>' : '') + '</div><div style="height:100px"></div>';
+  h += '<div class="chat" id="chat">' + msgs.map(function (m) { return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div id="liveAns">' + liveHtml(U.live && U.live[p.id]) + '</div>' : '') + '</div><div style="height:100px"></div>';
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
   return h;
 }
@@ -363,10 +394,19 @@ ACT.askSend = function () {
   }
   U.pending = U.pending || {}; U.pending[p.id] = 1;
   save(); rerender();
-  askGemini(p, c, q).then(function (r) {
+  var t0 = Date.now(); U.live = U.live || {}; U.live[p.id] = { t0: t0, thought: '', text: '' };
+  var tick = setInterval(liveDraw, 1000);
+  function liveDraw() { var el = document.getElementById('liveAns'); if (el && U.live[p.id]) el.innerHTML = liveHtml(U.live[p.id]); }
+  askGemini(p, c, q, function (kind, txt) {
+    var L = U.live[p.id]; if (!L) return;
+    if (kind === 'thought') { var m = txt.match(/\*\*([^*]{3,80})\*\*/); L.thought = m ? m[1] : txt.split('\n')[0].slice(0, 90); } else L.text = txt;
+    liveDraw(); var ch = document.getElementById('chat'); if (ch && kind === 'text') window.scrollTo(0, document.body.scrollHeight);
+  }).then(function (r) {
+    clearInterval(tick); delete U.live[p.id];
     delete U.pending[p.id];
     list.push({ role: 'bot', multi: true, html: aiBubbles(r.txt, r.ev), text: r.txt }); trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   }).catch(function (e) {
+    clearInterval(tick); delete U.live[p.id];
     delete U.pending[p.id];
     var res = null; try { res = answerLocal(p, c, q); } catch (x) { }
     list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px">Gemini could not answer: ' + esc(e.message.replace(/\.$/, '')) + '. ' + (res ? 'Offline answer below.' : '') + '</p><button class="btn sec sm" style="margin-top:8px" data-act="retryAsk" data-q="' + esc(q) + '">↻ Ask Gemini again</button></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });

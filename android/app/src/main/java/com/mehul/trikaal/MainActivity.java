@@ -24,7 +24,9 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStreamReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -200,6 +202,44 @@ public class MainActivity extends Activity {
                 PrintDocumentAdapter ad = web.createPrintDocumentAdapter(title == null ? "Trikaal" : title);
                 pm.print(title == null ? "Trikaal" : title, ad, new PrintAttributes.Builder().build());
             });
+        }
+
+        /* Server-sent events: each "data:" line goes to window.__httpChunk(id, json); the end goes to __httpCb(id, status, errorText) */
+        @JavascriptInterface
+        public void httpStream(final String id, final String url, final String headersJson, final String body) {
+            new Thread(() -> {
+                int status = 0;
+                String text = "";
+                HttpURLConnection c = null;
+                try {
+                    c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setRequestMethod("POST");
+                    c.setConnectTimeout(20000);
+                    c.setReadTimeout(150000);
+                    JSONObject h = new JSONObject(headersJson == null || headersJson.isEmpty() ? "{}" : headersJson);
+                    Iterator<String> it = h.keys();
+                    while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.getString(k)); }
+                    c.setDoOutput(true);
+                    try (OutputStream o = c.getOutputStream()) { o.write(body.getBytes(StandardCharsets.UTF_8)); }
+                    status = c.getResponseCode();
+                    if (status >= 400) {
+                        InputStream in = c.getErrorStream();
+                        text = in == null ? "" : readAll(in);
+                    } else {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), StandardCharsets.UTF_8));
+                        String line;
+                        while ((line = r.readLine()) != null) {
+                            if (line.startsWith("data:")) js("window.__httpChunk(" + JSONObject.quote(id) + "," + JSONObject.quote(line.substring(5).trim()) + ")");
+                        }
+                    }
+                } catch (Exception e) {
+                    status = 0;
+                    text = e.getClass().getSimpleName() + ": " + e.getMessage();
+                } finally {
+                    if (c != null) c.disconnect();
+                }
+                js("window.__httpCb(" + JSONObject.quote(id) + "," + status + "," + JSONObject.quote(text) + ")");
+            }).start();
         }
 
         @JavascriptInterface

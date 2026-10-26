@@ -75,6 +75,30 @@ function http(method, url, headers, body) {
     fetch(url, { method: method, headers: headers, body: body || undefined }).then(function (r) { return r.text().then(function (t) { res({ status: r.status, text: t }); }); }).catch(rej);
   });
 }
+/* Streaming POST (server-sent events). onData(jsonString) for each "data:" line; resolves {status, text(error body)} at the end */
+var HTTPC = {};
+window.__httpChunk = function (id, data) { var f = HTTPC[id]; if (f) f(data); };
+function httpStream(url, headers, body, onData) {
+  return new Promise(function (res, rej) {
+    if (AND && AND.httpStream) {
+      var id = 's' + (++httpN); HTTPC[id] = onData;
+      HTTP[id] = function (st, tx) { delete HTTPC[id]; if (st === 0) rej(new Error(tx || 'Network error')); else res({ status: st, text: tx }); };
+      AND.httpStream(id, url, JSON.stringify(headers || {}), body); return;
+    }
+    if (AND && AND.http) { /* old app shell without streaming: one shot */
+      return http('POST', url.replace(':streamGenerateContent?alt=sse', ':generateContent'), headers, body).then(function (r) { if (r.status === 200) { onData(r.text); res({ status: 200, text: '' }); } else res(r); }, rej);
+    }
+    fetch(url, { method: 'POST', headers: headers, body: body }).then(function (r) {
+      if (!r.ok || !r.body) return r.text().then(function (t) { res({ status: r.status, text: t }); });
+      var rd = r.body.getReader(), dec = new TextDecoder(), buf = '';
+      (function pump() { rd.read().then(function (x) {
+        if (x.done) { if (buf.indexOf('data:') === 0) onData(buf.slice(5).trim()); return res({ status: 200, text: '' }); }
+        buf += dec.decode(x.value, { stream: true }); var lines = buf.split(/\r?\n/); buf = lines.pop();
+        lines.forEach(function (l) { if (l.indexOf('data:') === 0) onData(l.slice(5).trim()); }); pump();
+      }, rej); })();
+    }).catch(rej);
+  });
+}
 function printPage() { try { if (AND && AND.print) { AND.print(document.title); return; } } catch (e) { } window.print(); }
 
 /* ---------- calculation cache ---------- */
