@@ -30,6 +30,7 @@ function makeEvidence(A, C, J, KB, N) {
     return 0;
   }
   function topicOf(q) {
+    q = String(q).split(/\n\nFACTS SHARED|\n\nAPP SCORING/)[0];
     var ql = q.toLowerCase(), va = vargaAsked(q);
     for (var i = 0; i < TOPICS.length; i++) if (TOPICS[i][1].test(ql) && !(va && TOPICS[i][0] === 'marriage' && va !== 9 && !/marr|spouse|wife|husband/.test(ql))) { var t = TOPICS[i]; return va && va !== t[3] ? [t[0], t[1], t[2], va, 'D' + va + ' (' + VN[va][0] + ': ' + VN[va][1] + ')', t[5]] : t; }
     if (va) { var tt = TOPICS.filter(function (x) { return x[0] === VN[va][2]; })[0]; var hs = tt ? tt[2] : [1, 10, 7, 4]; return [tt ? tt[0] : 'general', null, hs, va, 'D' + va + ' (' + VN[va][0] + ': ' + VN[va][1] + ')', tt ? tt[5] : ['Su', 'Mo']]; }

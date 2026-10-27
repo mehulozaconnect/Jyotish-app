@@ -246,8 +246,21 @@ function bizJob(p, c, now) {
   return { quick: verdict, paras: [timing + ' ' + whenB, (bw.length ? 'For business: ' + bw.join('; ') + '. ' : 'Business factors are average. ') + (jw.length ? 'For a job: ' + jw.join('; ') + '.' : 'Job factors are average.'), care.length ? 'Be careful: ' + care.join('; ') + '.' : 'Be careful: do not invest borrowed money in a new venture during Rahu or Saturn sub-periods.'], short: 'Score: business ' + biz.toFixed(1) + ' vs job ' + job.toFixed(1) + ' (from 7th, 3rd, 6th, 10th lords, Mercury, Saturn, Sun and Shadbala).', todo: todo, question: null };
 }
 function lastQs(p) { var l = DB.chats[p.id] || []; return l.filter(function (m) { return m.role === 'me'; }).map(function (m) { return m.text; }); }
+function isStatement(q) {
+  var t = q.trim().toLowerCase();
+  if (/\?/.test(t)) return false;
+  if (/^(what|when|will|how|why|which|who|where|is|are|am|can|could|should|shall|does|do|did|has|have|kab|kya|kaise|kaisa|kaun|kitna|tell|explain|give|show|predict|list|check|analy[sz]e|compare|suggest|find|what's|whats|any|key points|remedies)\b/.test(t)) return false;
+  if (/\b(when will|will (she|he|i|they)|should (she|he|i)|tell me|what about|chances|possible|predict)\b/.test(t)) return false;
+  if (/\b(wants? to know|know about|asking|query|regarding|about (her|his|my|their)|\bor\b)\b/.test(t)) return false;
+  return t.split(/\s+/).length >= 3 && /\b(is|was|were|left|lives?|living|stay(s|ing|ed)?|works?|working|worked|married|has|had|got|lost|moved|born|studying|studied|started|passed|divorced|separated|joined|quit|resigned|running|owns|bought|sold|already|since|ago|back)\b/.test(t);
+}
+function prevQuestion(p) { var qs = lastQs(p).slice(0, -1); for (var i = qs.length - 1; i >= 0; i--) if (!isStatement(qs[i])) return qs[i]; return ''; }
 function withContext(p, q) {
-  var qs = lastQs(p), prev = qs.length >= 2 ? qs[qs.length - 2] : '', words = q.trim().split(/\s+/).length;
+  var prev = prevQuestion(p), words = q.trim().split(/\s+/).length;
+  if (isStatement(q)) {
+    var facts = lastQs(p).slice(0, -1).filter(isStatement).slice(-3).concat([q]);
+    return (prev ? prev : 'Give a reading of the present situation') + '\n\nFACTS SHARED BY THE ASTROLOGER (real-life information, NOT new questions): ' + facts.join(' | ') + '\nDo not invent a new topic from these facts. Answer the question above again in the light of them: say briefly how the chart shows these facts (this also confirms the birth time), then update the answer to the question.';
+  }
   if (prev && words <= 7 && !/\b(19|20)\d\d\b/.test(q) && !/\b(health|marriage|child|money|property|travel|education|study|exam)\b/i.test(q)) return prev + ' — follow-up: ' + q;
   return q;
 }
