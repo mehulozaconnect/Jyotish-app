@@ -41,7 +41,7 @@ function varshOutcome(p, c, now, a) {
   tell.push('Year lord ' + PN[yl] + ': ' + (ylS >= 1 ? 'strong, so the year supports ' + AREA_OF[V.P[yl].house] + '.' : 'weak, so strengthen it: ' + KB.MANTRA[yl][0] + ' on ' + KB.FAST[yl] + 's.'));
   return { verdict: verdict, areas: areas, months: months, tell: tell, vp: vp };
 }
-function mon(d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + String(d.getFullYear()).slice(2); }
+function mon(d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getFullYear(); }
 
 /* ---------- one outcome per tab ---------- */
 var OUT = {};
