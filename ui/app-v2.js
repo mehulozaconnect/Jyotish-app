@@ -157,7 +157,7 @@ ACT.addSuggested = function () {
   var p = curP(), c = calcP(p), R = N.remedies(c, new Date()), added = 0; DB.remedies = DB.remedies || [];
   R.plan.forEach(function (x) {
     var dayIdx = WD.map(function (w) { return w; }).indexOf(x.daan[1].slice(0, 3));
-    [{ name: x.mantra[0], type: 'Mantra', count: 108, days: [], note: (x.mode === 'calm' ? 'Calms ' : 'Strengthens ') + PN[x.code] + (x.why ? '. ' + x.why.trim() : '') }, { name: 'Donate ' + x.daan[0], type: 'Daan', count: 1, days: dayIdx >= 0 ? [dayIdx] : [], note: 'For ' + PN[x.code] }].forEach(function (r) {
+    [{ name: x.mantra[0], type: 'Mantra', count: 108, days: [], note: (x.mode === 'calm' ? 'Calms ' : 'Strengthens ') + PN[x.code] + (x.why ? '. ' + x.why.trim() : '') + ' ' + KB.MANTRA_HOW }, { name: 'Donate ' + KB.DAAN_SHORT[x.code][0], type: 'Daan', count: 1, days: dayIdx >= 0 ? [dayIdx] : [], note: 'For ' + PN[x.code] + '. Give ' + x.daan[0] + '. ' + KB.DAAN_HOW }].forEach(function (r) {
       if (DB.remedies.some(function (y) { return y.pid === p.id && y.name === r.name; })) return;
       DB.remedies.push({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), pid: p.id, name: r.name, type: r.type, planet: x.code, days: r.days, count: r.count, time: '07:00', from: dkey(new Date()), until: '', note: r.note, done: {}, created: Date.now() }); added++;
     });
@@ -556,7 +556,7 @@ function AnalysisV2() {
   var R = a.rem, GK = { yes: ['tg', 'Suits you'], care: ['tn', 'With advice'], no: ['tr', 'Avoid'] };
   h += sec('remedies', 'Recommended remedies', 'Based on your lagna, running dasha and Saturn cycle',
     R.plan.map(function (x) { return '<div class="krem"><div class="kgh"><b><span class="pt" style="background:' + PCOL[x.code] + '">' + x.code + '</span> ' + PN[x.code] + '</b><span class="tag ' + (x.mode === 'calm' ? 'tr' : 'tg') + '">' + (x.mode === 'calm' ? 'Calm it' : x.mode === 'both' ? 'Strengthen & calm' : 'Strengthen') + '</span></div><p class="sm">' + esc((x.why || '').trim()) + '</p>' +
-      '<ul><li><b>Mantra:</b> ' + esc(x.mantra[0]) + ', 108 times daily</li><li><b>Daan:</b> ' + esc(x.daan[0]) + ' on ' + esc(x.daan[1]) + '</li><li><b>Lal Kitab:</b> ' + esc(x.lalkitab) + '</li><li><b>Fast / Rudraksha:</b> ' + esc(x.fast) + ' · ' + esc(x.rudra) + '</li></ul></div>'; }).join('') +
+      '<ul><li><b>Mantra:</b> "' + esc(x.mantra[0]) + '". ' + esc(KB.MANTRA_HOW) + '</li><li><b>Daan (donation) every ' + esc(x.daan[1]) + ':</b> ' + esc(x.daan[0]) + '. ' + esc(KB.DAAN_HOW) + '</li><li><b>Lal Kitab:</b> ' + esc(x.lalkitab) + '</li><li><b>Fast:</b> on ' + esc(x.fast) + 's, eat one simple meal (no non-veg or alcohol) and pray to the planet\'s deity.</li><li><b>Rudraksha:</b> wear a ' + esc(x.rudra) + ' rudraksha on a red or yellow thread, after a short prayer on a Monday.</li></ul></div>'; }).join('') +
     '<div class="lbl" style="margin:12px 0 6px">Gemstones</div>' + R.gems.map(function (g) { return '<div class="kli"><span class="pt" style="background:' + PCOL[g.code] + '">' + g.code + '</span><div><b>' + esc(g.gem) + '</b><p class="sm">' + esc(g.why) + (g.kind !== 'no' ? ' Wear: ' + esc(g.how) + '. Lighter option: ' + esc(g.up) + '.' : '') + '</p></div><span class="tag ' + GK[g.kind][0] + '">' + GK[g.kind][1] + '</span></div>'; }).join('') +
     '<button class="btn acc wide" style="margin-top:10px" data-act="kaAddRem">+ Add these remedies to my tracker</button>');
   h += sec('health', 'Potential health periods', 'Times to take extra care, with the body areas involved',

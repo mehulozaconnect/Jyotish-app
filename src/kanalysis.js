@@ -147,7 +147,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     var k = c.k, p = k.P[code], ag = age(c, new Date()), hs = linkHouses(c, code).filter(function (h, i, a) { return a.indexOf(h) === i; });
     var areas = hs.map(function (h) { return typeof NARR !== 'undefined' ? NARR.areaWord(h, ag, HOUSE_WORD[h]) : HOUSE_WORD[h]; });
     var H = typeof NARR !== 'undefined' ? NARR.H[p.house] : null;
-    return (good ? 'This works in your favour for: ' : 'This weakens: ') + areas.join('; ') + '. ' + (H ? (good ? H.g[0] : H.b[0]) + ' ' : '') + (good ? '' : 'Remedy: ' + KB.MANTRA[code][0] + ' (108 times) and ' + KB.DAAN[code][0] + ' on ' + KB.DAAN[code][1] + '.');
+    return (good ? 'This works in your favour for: ' : 'This weakens: ') + areas.join('; ') + '. ' + (H ? (good ? H.g[0] : H.b[0]) + ' ' : '') + (good ? '' : 'Remedy: chant "' + KB.MANTRA[code][0] + '" 108 times (one round of a mala) every morning after a bath. Every ' + KB.DAAN[code][1] + ', donate ' + KB.DAAN[code][0] + ' to a needy person or at a temple.');
   }
   function addOutcomes(c, out, now) {
     var k = c.k;

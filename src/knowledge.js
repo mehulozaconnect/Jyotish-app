@@ -64,8 +64,21 @@ var KB = (function () {
   var CRYSTAL = { Su: 'Sunstone, carnelian', Mo: 'Moonstone, selenite', Ma: 'Red jasper, carnelian', Me: 'Green aventurine, peridot', Ju: 'Citrine, yellow topaz', Ve: 'Clear quartz (Sphatik), rose quartz', Sa: 'Amethyst, black tourmaline', Ra: 'Smoky quartz, black tourmaline', Ke: "Tiger's eye, labradorite" };
   var MANTRA = { Su: ['Om Hraam Hreem Hraum Sah Suryaya Namah', 7000], Mo: ['Om Shraam Shreem Shraum Sah Chandraya Namah', 11000], Ma: ['Om Kraam Kreem Kraum Sah Bhaumaya Namah', 10000], Me: ['Om Braam Breem Braum Sah Budhaya Namah', 9000],
     Ju: ['Om Graam Greem Graum Sah Gurave Namah', 19000], Ve: ['Om Draam Dreem Draum Sah Shukraya Namah', 16000], Sa: ['Om Praam Preem Praum Sah Shanaye Namah', 23000], Ra: ['Om Bhraam Bhreem Bhraum Sah Rahave Namah', 18000], Ke: ['Om Sraam Sreem Sraum Sah Ketave Namah', 17000] };
-  var DAAN = { Su: ['wheat, jaggery, copper', 'Sunday'], Mo: ['rice, milk, white cloth', 'Monday'], Ma: ['red lentils (masoor), jaggery', 'Tuesday'], Me: ['green moong, green vegetables', 'Wednesday'], Ju: ['chana dal, turmeric, yellow cloth', 'Thursday'],
+  var DAAN_SHORT = { Su: ['wheat, jaggery, copper', 'Sunday'], Mo: ['rice, milk, white cloth', 'Monday'], Ma: ['red lentils (masoor), jaggery', 'Tuesday'], Me: ['green moong, green vegetables', 'Wednesday'], Ju: ['chana dal, turmeric, yellow cloth', 'Thursday'],
     Ve: ['rice, sugar, curd, white cloth', 'Friday'], Sa: ['black sesame, mustard oil, black urad', 'Saturday'], Ra: ['barley, black blanket, coconut', 'Saturday'], Ke: ['blanket, sesame, food for dogs', 'Tuesday or Saturday'] };
+  /* explicit daan: what exactly to give (Hindi name, rough quantity) */
+  var DAAN = {
+    Su: ['wheat (gehun, about 1 kg), jaggery (gud, about 250 g) and a small copper item such as a copper glass or coin', 'Sunday'],
+    Mo: ['rice (chawal, about 1 kg), milk (about half a litre) and a white cloth', 'Monday'],
+    Ma: ['red lentils (masoor dal, about 1 kg) and jaggery (gud, about 250 g)', 'Tuesday'],
+    Me: ['whole green moong (about 1 kg) and green vegetables, or green grass (hara chara) for a cow', 'Wednesday'],
+    Ju: ['chana dal (about 1 kg), turmeric (haldi, a small packet) and bananas or a yellow cloth', 'Thursday'],
+    Ve: ['rice (about 1 kg), sugar (about 500 g), curd (dahi) and a white cloth', 'Friday'],
+    Sa: ['black sesame seeds (kala til, about 250 g), mustard oil (sarson ka tel, about 500 ml) and black urad dal (about 1 kg)', 'Saturday'],
+    Ra: ['barley (jau, about 1 kg), a dark blanket and a coconut', 'Saturday'],
+    Ke: ['a blanket, sesame seeds (til) and rotis for stray dogs', 'Tuesday or Saturday'] };
+  var DAAN_HOW = 'Give it in the morning, with respect, to a needy person, a temple or a priest. Do it on that day for 5 or 11 weeks in a row.';
+  var MANTRA_HOW = 'Chant it 108 times (one round of a mala) every morning after a bath, sitting facing east. Start on the planet\'s day and continue for at least 40 days.';
   var LALKITAB = { Su: 'Offer water to the rising Sun; keep a copper coin; respect your father and seniors.', Mo: 'Keep silver with you; serve your mother; offer milk or water at a peepal tree on Mondays.',
     Ma: 'Offer sweet batashas or red lentils in flowing water on Tuesdays; keep good relations with brothers.', Me: 'Feed green fodder to cows on Wednesdays; respect sisters and aunts; keep your word.',
     Ju: 'Apply a saffron or turmeric tilak; offer chana dal at a temple on Thursdays; respect teachers.', Ve: 'Donate curd or camphor; feed cows; respect your spouse; keep clothes clean and fragrant.',
@@ -108,7 +121,7 @@ var KB = (function () {
   };
   var CAREER_HINT = { Su: 'leadership, government or administration', Mo: 'public-facing, hospitality or care roles', Ma: 'engineering, property, operations or command roles', Me: 'sales, communication, trade, accounts or IT', Ju: 'advisory, teaching, finance, law or consulting', Ve: 'design, arts, hospitality, luxury or client relations', Sa: 'operations, systems, manufacturing or long-term structured work', Ra: 'technology, foreign links, media or unconventional fields', Ke: 'research, specialist, technical or healing work' };
   return { HOUSE: HOUSE, SIGN_BODY: SIGN_BODY, SIGN_TRAIT: SIGN_TRAIT, SIGN_ELEMENT: SIGN_ELEMENT, SIGN_MODE: SIGN_MODE, PLANET: PLANET, IN_HOUSE: IN_HOUSE, NAK_TRAIT: NAK_TRAIT,
-    GOCHAR_GOOD: GOCHAR_GOOD, VEDHA: VEDHA, GOCHAR: GOCHAR, GEM: GEM, UPRATNA: UPRATNA, RUDRA: RUDRA, CRYSTAL: CRYSTAL, MANTRA: MANTRA, DAAN: DAAN, LALKITAB: LALKITAB, FAST: FAST, GHATAK: GHATAK, TARA: TARA, HORA_USE: HORA_USE,
+    GOCHAR_GOOD: GOCHAR_GOOD, VEDHA: VEDHA, GOCHAR: GOCHAR, GEM: GEM, UPRATNA: UPRATNA, RUDRA: RUDRA, CRYSTAL: CRYSTAL, MANTRA: MANTRA, DAAN: DAAN, DAAN_SHORT: DAAN_SHORT, DAAN_HOW: DAAN_HOW, MANTRA_HOW: MANTRA_HOW, LALKITAB: LALKITAB, FAST: FAST, GHATAK: GHATAK, TARA: TARA, HORA_USE: HORA_USE,
     MUHURAT: MUHURAT, SARVARTHA: SARVARTHA, AMRIT: AMRIT, DISHA_SHOOL: DISHA_SHOOL, EVENTS: EVENTS, CAREER_HINT: CAREER_HINT };
 })();
 if (typeof module !== 'undefined') module.exports = KB;
