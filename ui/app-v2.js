@@ -204,20 +204,53 @@ function scheduleAll() {
 }
 
 /* ---------- 5. AI (Gemini) ---------- */
-function geminiFormat(name) {
-  return 'You are Trikaal, an expert Vedic astrologer (Parashari and KP). You are given an EVIDENCE SHEET computed precisely from the chart; positions are accurate to the arc-second. Use ONLY these numbers and dates. Never invent a position, aspect, dasha or date. If something is not in the sheet, say it is not available.\n' +
-    'Before answering, reason through every layer in order: (1) D1 house, its lord and the karaka, with occupants, aspects and conjunctions; (2) the Moon chart: the same houses counted from the Moon (section 1b); (3) the divisional chart for the topic and D9; (4) Mahadasha, Antardasha, Pratyantar, Sookshma and Prana lords and how each links to the topic houses from the lagna and from the Moon; (5) transits over the topic houses from the lagna and from the Moon, double transit and Ashtakavarga bindus; (6) functional nature for this lagna; (7) KP cusp sub lord where useful. Every prediction must state whether the Moon chart and the current transits confirm it; never predict from dasha alone. Only conclude after weighing all layers; if layers disagree, say so and give the date when they agree.\n' +
-    'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====). Earlier messages are background only; never answer an earlier question instead, and do not switch to a different topic. If the current question asks for a whole-chart or kundli analysis, cover strengths, weak spots, yogas, golden periods and what to focus on now, using the KUNDLI ANALYSIS block.\n' +
-    'OUTCOME FIRST. The person wants to know WHAT WILL HAPPEN and WHEN, not how astrology works. Never teach or describe method ("one examines", "to master your chart", "this house signifies"). Never say a dasha is merely "active" or "supports growth": say the concrete result it brings (e.g. "a raise or new role offer", "a lump-sum gain", "delays and extra workload", "a health dip needing rest"). Give a clear verdict, specific month-year windows (narrow them with Pratyantar/Sookshma dates and transit dates from the sheet), and how strong the result will be. If the result is negative, say so plainly and say when it improves.\n' +
-    'Address the person by first name (' + name + ') and answer in the language the user writes in. Use exactly these sections with bold titles:\n' +
-    'If the question asks to EXPLAIN something (a chart such as D2, a yoga, a dasha, Ashtakavarga), do not force a yes/no verdict: in Quick Answer say in plain words what it shows for THIS person (strong or weak, what they will experience), and in What will happen give the dated periods when it delivers. All divisional charts are in the sheet (section 7, and CHART ASKED ABOUT when a chart is named); never say a chart is unavailable.\n' +
-    '**Quick Answer** start with one verdict word in bold (Yes / Likely / Partly / Delayed / Unlikely / Good / Mixed / Difficult), then in two sentences: the concrete outcome and the best (or worst) window as month-year to month-year. End with "Confidence: High/Medium/Low" and a few words why (layers agree or disagree).\n' +
+/* what kind of question: 'explain' (what / which / explain / list / meaning) or 'predict' (will / when / how will / should I) */
+function qIntent(q) {
+  var ql = q.toLowerCase();
+  if (/\b(will|when|kab|should i|shall i|chances?|possible|how will|how is my .* (going|next)|next \d+|this year|next year|future|predict|timing|best time)\b/.test(ql)) return 'predict';
+  if (/\b(what|which|explain|list|meaning|means|tell me about|describe|how many|kya|kaun|why|show)\b/.test(ql)) return 'explain';
+  return 'predict';
+}
+function geminiFormat(name, intent) {
+  var core = 'You are Trikaal, an expert Vedic astrologer (Parashari and KP) talking to ' + name + '. You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
+    'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====), exactly what was asked. Earlier messages are background only.\n' +
+    'Write in plain, warm language a non-astrologer understands; explain any term in a few words the first time. Answer in the language the user writes in. Address ' + name + ' by name once.\n';
+  if (intent === 'explain') return core +
+    'This is an EXPLAIN question. Answer it directly and specifically from THIS chart. If it asks "which/what yogas, planets, houses, doshas", name every one that exists in the sheet, with the actual planets and houses. Never answer with generic statements like "your chart has powerful yogas".\n' +
+    'Use exactly these sections with bold titles:\n' +
+    '**Quick Answer** two or three sentences answering the question directly (e.g. "You have 4 Raja yogas: ...").\n' +
+    '**Details** one bullet per item. Each bullet: **Name** – how it forms in your chart (which planets, which houses, signs) – what it gives you in real life – how strong it is (dignity, D9, combustion, cancellation) – when it delivers (the Mahadasha/Antardasha periods of those planets with dates from the sheet).\n' +
+    '**What it means for you** two or three sentences: the practical takeaway and what to do.\n' +
+    '**Chain:** one line linking the key facts, e.g. Venus (4th & 9th lord) + Saturn (1st lord) conjunct in 9th → Raja yoga → active in Saturn AD 2026–2029.\n\n' + E.RULES;
+  return core +
+    'This is a PREDICTION question. The person wants WHAT WILL HAPPEN and WHEN. Before concluding, weigh: D1 house, lord and karaka; the same houses from the Moon; the divisional chart and D9; all five dasha levels and how each links to the topic; transits from lagna and Moon with bindus. Never predict from the dasha alone. Give concrete results (e.g. "a raise or new role offer", "delays and extra workload"), never "the dasha supports growth". If the result is negative, say so and say when it improves.\n' +
+    'Use exactly these sections with bold titles:\n' +
+    '**Quick Answer** start with one verdict word in bold (Yes / Likely / Partly / Delayed / Unlikely / Good / Mixed / Difficult), then two sentences: the concrete outcome and the best (or worst) window as month-year to month-year. End with "Confidence: High/Medium/Low" and why.\n' +
     '**A Quick Question** one short clarifying question only if it would genuinely change the answer; otherwise omit this section.\n' +
-    '**What will happen** 3 to 6 bullets in time order. Each bullet: "Month Year – Month Year: concrete outcome" then a short reason in brackets (dasha level + transit). Only outcomes, no theory.\n' +
-    '**Astrological Explanation** at most two short paragraphs citing only the chart facts that decide this outcome (house, lord, Moon chart, divisional chart, dasha levels, transits, bindus).\n' +
-    '**What to do** two to four specific actions tied to the dates above (what to push, what to avoid, which remedy and when).\n' +
-    '**Chain:** one line showing the reasoning, e.g. 10th house → lord Mars in 9th → Moon chart 10th ... → D10 ... → Jupiter MD / Saturn AD / Saturn PD / Mercury SD → transit from lagna and Moon ... → result.\n' +
-    'Be honest about uncertainty; never claim 100% certainty. For health, give astrological timing only and advise a doctor.\n\n' + E.RULES;
+    '**What will happen** 3 to 6 bullets in time order: "Month Year – Month Year: concrete outcome (reason: dasha level + transit)".\n' +
+    '**Astrological Explanation** at most two short paragraphs citing the chart facts that decide this outcome.\n' +
+    '**What to do** two to four specific actions tied to the dates above.\n' +
+    '**Chain:** one line, e.g. 10th house → lord Mars in 9th → Moon chart 10th → D10 → Jupiter MD / Saturn AD / Mercury PD → transit → result.\n' +
+    'Never claim 100% certainty. For health, give astrological timing only and advise a doctor.\n\n' + E.RULES;
+}
+/* facts the answer must not contradict */
+function fixedFacts(p, c) {
+  var k = c.k, now = new Date(), ch = J.dashaChain(c.maha, now, 3), LV = ['Mahadasha', 'Antardasha', 'Pratyantar'], a = kaOf(p);
+  return 'FIXED FACTS (do not contradict)\n' +
+    'Lagna ' + J.SIGNS[k.ascSign] + ' (lord ' + PN[J.lordOfHouse(k.ascSign, 1)] + '); Moon sign ' + J.SIGNS[k.P.Mo.sign] + ', nakshatra ' + k.P.Mo.nak.name + '; Sun sign ' + J.SIGNS[k.P.Su.sign] + '.\n' +
+    'RUNNING NOW (' + N.dmy(now) + '): ' + ch.map(function (x, i) { return LV[i] + ' ' + PN[x.lord] + ' (' + N.dmy(x.start) + ' to ' + N.dmy(x.end) + ')'; }).join(', ') + '.\n' +
+    'Planets: ' + k.planets.map(function (x) { return PN[x.code] + ' ' + J.SIGNS[x.sign] + ' house ' + x.house + ' ' + x.dignity.toLowerCase() + (x.combust ? ' combust' : ''); }).join('; ') + '.\n' +
+    'ALL YOGAS AND DOSHAS IN THIS CHART (complete list): ' + a.yogas.map(function (y) { return y.name + ' [' + y.label + ']: ' + y.why; }).join(' | ') + '\n';
+}
+/* catch a wrong running dasha in the answer */
+function dashaSlip(txt, c) {
+  var now = new Date(), ch = J.dashaChain(c.maha, now, 2), md = PN[ch[0].lord], ad = ch[1] ? PN[ch[1].lord] : '', bad = [];
+  var re = /(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)\s+(Mahadasha|Maha ?dasha|MD)\b/gi, m;
+  txt.split(/(?<=[.!?\n])/).forEach(function (sent) {
+    if (!/\b(now|current|currently|running|present|presently|ongoing|this period)\b/i.test(sent)) return;
+    re.lastIndex = 0; while ((m = re.exec(sent))) { var pl = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase(); if (pl !== md && bad.indexOf(pl) < 0) bad.push(pl); }
+  });
+  return bad.length ? 'Your answer says ' + bad.join(', ') + ' Mahadasha is running now. That is wrong: the running Mahadasha is ' + md + ' (' + N.dmy(ch[0].start) + ' to ' + N.dmy(ch[0].end) + ')' + (ad ? ', Antardasha ' + ad + ' (to ' + N.dmy(ch[1].end) + ')' : '') + '. Rewrite the whole answer correctly using the FIXED FACTS.' : '';
 }
 /* ---------- Gemini model handling: find the newest model this key can use ---------- */
 var GBASE = 'https://generativelanguage.googleapis.com/v1beta/';
@@ -342,6 +375,11 @@ function gText(d) {
   return txt;
 }
 function answerAny(p, c, q) {
+  if (/\b(yogas?|dosh\w*|raj ?yoga|raja ?yoga|dhana ?yoga)\b/i.test(q)) {
+    var ka = kaOf(p), want = /raj/i.test(q) ? ka.yogas.filter(function (y) { return y.kind === 'raja' || y.kind === 'mahapurusha' || /Yogakaraka/.test(y.name); }) : /dhan/i.test(q) ? ka.yogas.filter(function (y) { return y.kind === 'dhana'; }) : /dosh/i.test(q) ? ka.yogas.filter(function (y) { return !y.good || y.kind === 'mild'; }) : ka.yogas;
+    var hy = '<p><b>' + want.length + (/raj/i.test(q) ? ' Raja yoga' : /dhan/i.test(q) ? ' Dhana yoga' : /dosh/i.test(q) ? ' dosha' : ' yoga') + (want.length === 1 ? '' : 's') + ' in your chart:</b></p><ul>' + want.map(function (y) { return '<li><b>' + esc(y.name) + '</b>: ' + esc(y.why) + '</li>'; }).join('') + '</ul><button class="btn sec sm" style="margin-top:8px" data-go="analysis">See all yogas in Kundli analysis ›</button>';
+    return { html: hy, text: htmlText(hy) };
+  }
   if (!isWholeChart(q)) return answerLocal(p, c, q);
   var a = kaOf(p), h = '<p><b>' + esc(a.snapshot.grade[0]) + '.</b> ' + esc(a.snapshot.grade[1]) + '</p>' +
     '<p><b>Strengths:</b> ' + esc(a.pros.slice(0, 4).map(function (x) { return x.t; }).join('; ')) + '.</p>' +
@@ -377,7 +415,9 @@ function askGemini(p, c, q, onLive) {
   var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
   var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name) }] }, contents: contents, generationConfig: gc });
+  var intent = qIntent(q); gc.temperature = 0.2;
+  contents[contents.length - 1].parts[0].text = fixedFacts(p, c) + '\n' + contents[contents.length - 1].parts[0].text;
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent) }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
   return gGenerate(body).catch(function (e) {
     /* deep answer too slow or cut off before any text: try once more with light reasoning */
@@ -385,14 +425,21 @@ function askGemini(p, c, q, onLive) {
     if (onLive) onLive('thought', 'Taking long, switching to a faster answer');
     var fc = JSON.parse(body); if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) fc.generationConfig.thinkingConfig.thinkingLevel = 'low'; else fc.generationConfig.thinkingConfig.thinkingBudget = 1024;
     return gGenerate(JSON.stringify(fc));
-  }).then(function (d) { G_ON = null; return { txt: gText(d), ev: ev }; }, function (e) { G_ON = null; throw e; });
+  }).then(function (d) {
+    var txt = gText(d), slip = dashaSlip(txt, c);
+    if (!slip) { G_ON = null; return { txt: txt, ev: ev }; }
+    /* the answer named the wrong running dasha: ask once more with the correction */
+    if (onLive) onLive('thought', 'Checking the answer against your dasha…');
+    var b2 = JSON.parse(body); b2.contents.push({ role: 'model', parts: [{ text: txt }] }, { role: 'user', parts: [{ text: slip }] });
+    return gGenerate(JSON.stringify(b2)).then(function (d2) { G_ON = null; var t2 = gText(d2); return { txt: dashaSlip(t2, c) ? t2 + '\n\n_(Note: the running Mahadasha is ' + PN[J.dashaChain(c.maha, new Date(), 1)[0].lord] + '.)_' : t2, ev: ev }; });
+  }, function (e) { G_ON = null; throw e; });
 }
 function aiBubbles(txt, ev) {
   var chain = '', m = txt.match(/\*{0,2}Chain:?\*{0,2}:?\s*([\s\S]*)$/);
   if (m) { chain = m[1].trim(); txt = txt.slice(0, m.index); }
-  var parts2 = txt.split(/\*{0,2}(Quick Answer|A Quick Question|What will happen|Astrological Explanation|Key Dates|What to do)\*{0,2}:?/), out = '';
+  var parts2 = txt.split(/\*{0,2}(Quick Answer|A Quick Question|What will happen|Details|What it means for you|Astrological Explanation|Key Dates|What to do)\*{0,2}:?/), out = '';
   if (parts2.length < 3) out = '<div class="msg bot sto">' + mdToHtml(txt) + '</div>';
-  else { if (parts2[0].trim()) out += '<div class="msg bot sto">' + mdToHtml(parts2[0]) + '</div>'; for (var i = 1; i < parts2.length; i += 2) { var b = mdToHtml((parts2[i + 1] || '').trim()); out += '<div class="msg bot sto' + (parts2[i] === 'Key Dates' || parts2[i] === 'What will happen' ? ' kd' : '') + (parts2[i] === 'Quick Answer' ? ' qa' : '') + '"><b class="sh">' + esc(parts2[i]) + '</b>' + b + '</div>'; } }
+  else { if (parts2[0].trim()) out += '<div class="msg bot sto">' + mdToHtml(parts2[0]) + '</div>'; for (var i = 1; i < parts2.length; i += 2) { var b = mdToHtml((parts2[i + 1] || '').trim()); out += '<div class="msg bot sto' + (parts2[i] === 'Key Dates' || parts2[i] === 'What will happen' || parts2[i] === 'Details' ? ' kd' : '') + (parts2[i] === 'Quick Answer' ? ' qa' : '') + '"><b class="sh">' + esc(parts2[i]) + '</b>' + b + '</div>'; } }
   if (chain) out += '<div class="msg bot chain"><b class="sh">Chain of logic</b><div class="ch">' + chain.split(/\s*(?:→|->)\s*/).map(function (s) { return '<span>' + esc(s.replace(/\*\*/g, '')) + '</span>'; }).join('<i>›</i>') + '</div>' + (ev ? '<details><summary>Evidence sheet used (' + esc(ev.topic) + ', ' + esc(ev.vlabel.split(' ')[0]) + ')</summary><pre class="evs">' + esc(ev.text) + '</pre></details>' : '') + '</div>';
   return out;
 }
