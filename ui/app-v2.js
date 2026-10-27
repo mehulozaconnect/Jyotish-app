@@ -421,6 +421,12 @@ function askGemini(p, c, q, onLive) {
   for (var i = 0; i < all.length - 1; i++) if (all[i].role === 'me' && all[i + 1].role === 'bot' && all[i + 1].text) { pairs.push([all[i].text, all[i + 1].text]); i++; }
   var hist = []; pairs.slice(-3).forEach(function (x) { hist.push({ role: 'user', parts: [{ text: '(Earlier question, already answered) ' + x[0].slice(0, 600) }] }, { role: 'model', parts: [{ text: x[1].slice(0, 2500) }] }); });
   var whole = isWholeChart(q) || qIntent(q) === 'consult', extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
+  if (/varsh|solar return|year chart|annual chart|varshaphal|varshphal/i.test(q)) {
+    try {
+      var ag = (q.match(/age (\d{1,2})/i) || [])[1], yr = (q.match(/year (\d{1,2}) of life/i) || [])[1], aa = ag != null ? +ag : yr != null ? +yr - 1 : age(p, new Date()), vo = varshOutcome(p, c, new Date(), aa), V = vo.vp.chart;
+      extra += '\n\nVARSHPHAL (Tajik annual chart) for age ' + aa + ', ' + N.dmy(vo.vp.at) + ' to ' + N.dmy(vo.vp.end) + ': Varsha lagna ' + J.SIGNS[V.ascSign] + '; Muntha ' + J.SIGNS[vo.vp.muntha] + ' in year house ' + vo.vp.munthaHouse + ' (' + MUNTHA_H[vo.vp.munthaHouse][1] + '); year lord ' + PN[vo.vp.yearLord] + '. Year planets: ' + V.planets.map(function (x) { return PN[x.code] + ' ' + J.SIGNS[x.sign] + ' h' + x.house + ' ' + x.dignity.toLowerCase(); }).join('; ') + '. App verdict: ' + vo.verdict[0] + '. Areas: ' + vo.areas.map(function (x) { return x.t + ' ' + x.w[0] + ' (' + x.why + ')'; }).join('; ') + '. Mudda dasha: ' + vo.months.map(function (m) { return PN[m.d.lord] + ' ' + N.dmy(m.d.start) + '–' + N.dmy(m.d.end) + ' ' + m.w[0]; }).join('; ') + '.';
+    } catch (e) { }
+  }
   var rb = ''; try { var lo = answerAny(p, c, q); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
   if (rb) extra += '\n\nRULE-BASED VERDICT FROM THE APP (cross-check; if you disagree, say why)\n' + rb;
   var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);

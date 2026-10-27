@@ -10,7 +10,7 @@ function Hub(p, tab) {
   h += '<div class="sub" style="padding-top:0">' + SG[c.k.ascSign] + ' lagna ' + c.k.ascDeg + ' · ' + SG[c.k.P.Mo.sign] + ' Moon (' + c.k.P.Mo.nak.name + ') · ' + ch.map(function (x) { return PN[x.lord]; }).join(' › ') + ' · <span style="color:var(--lavI);font-weight:600">' + esc(ayanShort()) + '</span></div>';
   h += '<div class="tabs">' + TABS.map(function (t) { return '<button data-go="p/' + p.id + '/' + t[0] + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>';
   U.shareFn = null;
-  return h + TABF[tab](p, c, now);
+  return h + (typeof outcomeCard === 'function' ? outcomeCard(p, c, now, tab) : '') + TABF[tab](p, c, now);
 }
 ACT.shareTab = function () {
   var p = person(U.cur); if (!p) return;
@@ -334,7 +334,7 @@ var MUNTHA_H = { 1: ['good', 'health, recognition and fresh starts'], 2: ['good'
 TABF.varsh = function (p, c, now) {
   var cur = age(p, now); if (U.vage == null || U.vageFor !== p.id) { U.vage = cur; U.vageFor = p.id; }
   var a = U.vage, vp = J.varshphal(c.k, c.birth, a, +p.lat, +p.lon), V = vp.chart, k = c.k;
-  var h = '<div class="tabs">' + [cur - 2, cur - 1, cur, cur + 1, cur + 2, cur + 3].filter(function (x) { return x >= 0; }).map(function (x) { return '<button data-act="vage" data-v="' + x + '" class="' + (x === a ? 'on' : '') + '">Age ' + x + (x === cur ? ' · now' : '') + '</button>'; }).join('') + '</div><div class="pad">';
+  var h = '<div class="tabs">' + [cur - 2, cur - 1, cur, cur + 1, cur + 2, cur + 3].filter(function (x) { return x >= 0; }).map(function (x) { return '<button data-act="vage" data-v="' + x + '" class="' + (x === a ? 'on' : '') + '">Age ' + x + (x === cur ? ' · now' : '') + '</button>'; }).join('') + '</div>' + (typeof outcomeCard === 'function' ? outcomeCard(p, c, now, 'varsh', true) : '') + '<div class="pad">';
   var yl = vp.yearLord, ylp = V.P[yl], mh = MUNTHA_H[vp.munthaHouse], fw = N.funcWord(c, yl);
   h += '<div class="card dark"><div class="lbl">Varsha pravesh</div><div style="font:600 17px var(--sans);margin:4px 0 3px">' + N.dmyt(vp.at) + '</div><p>Year ' + (a + 1) + ' of life, until ' + N.dmy(vp.end) + '. Varsha lagna ' + SG[V.ascSign] + ' ' + V.ascDeg + '.</p></div>';
   var rows = [{ h: 1, code: 'Asc', deg: V.ascDeg, cls: 'asc' }, { h: vp.munthaHouse, code: 'Mu', deg: '', cls: 'asc' }].concat(V.planets.map(function (x) { return { h: x.house, code: x.code, deg: J.dm(x.lon), r: x.retro && x.code !== 'Ra' && x.code !== 'Ke', cls: x.code === 'Mo' ? 'mo' : '' }; }));
