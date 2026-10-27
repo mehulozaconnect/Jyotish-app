@@ -164,6 +164,47 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void shareWhatsApp(final String text, final String phone, final String pngB64) {
+            ui.post(() -> {
+                Uri img = null;
+                if (pngB64 != null && pngB64.length() > 0) {
+                    try {
+                        File dir = new File(getCacheDir(), "share"); dir.mkdirs();
+                        File f = new File(dir, "trikaal-" + System.currentTimeMillis() + ".png");
+                        File[] old = dir.listFiles(); if (old != null) for (File x : old) x.delete();
+                        try (FileOutputStream o = new FileOutputStream(f)) { o.write(android.util.Base64.decode(pngB64, android.util.Base64.DEFAULT)); }
+                        img = Uri.parse("content://" + ShareProvider.AUTH + "/" + f.getName());
+                    } catch (Exception e) { img = null; }
+                }
+                String[] pkgs = { "com.whatsapp", "com.whatsapp.w4b" };
+                for (String pkg : pkgs) {
+                    try {
+                        getPackageManager().getPackageInfo(pkg, 0);
+                        Intent i;
+                        if (img == null && phone != null && phone.length() > 0) {
+                            i = new Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/" + phone + "?text=" + Uri.encode(text)));
+                        } else {
+                            i = new Intent(Intent.ACTION_SEND);
+                            i.setType(img != null ? "image/png" : "text/plain");
+                            i.putExtra(Intent.EXTRA_TEXT, text);
+                            if (img != null) { i.putExtra(Intent.EXTRA_STREAM, img); i.setClipData(android.content.ClipData.newRawUri("card", img)); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+                            if (phone != null && phone.length() > 0) i.putExtra("jid", phone + "@s.whatsapp.net");
+                        }
+                        i.setPackage(pkg);
+                        startActivity(i);
+                        return;
+                    } catch (Exception e) { }
+                }
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType(img != null ? "image/png" : "text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, text);
+                if (img != null) { i.putExtra(Intent.EXTRA_STREAM, img); i.setClipData(android.content.ClipData.newRawUri("card", img)); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+                Toast.makeText(MainActivity.this, "WhatsApp not found, choose an app", Toast.LENGTH_SHORT).show();
+                startActivity(Intent.createChooser(i, "Share"));
+            });
+        }
+
+        @JavascriptInterface
         public void saveFile(String name, String mime, String text) {
             ui.post(() -> {
                 pendingSave = text;

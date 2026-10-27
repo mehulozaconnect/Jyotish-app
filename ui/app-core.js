@@ -224,6 +224,7 @@ function EditScreen(id) {
   h += '<div class="note" style="margin:-4px 0 12px">' + (e.manualTz ? 'Manual offset ' + fmtOff(+e.tz) + ' is used. Clear the field to go back to the time zone rule.' : 'Offset for that date from the time zone rule: ' + fmtOff(off) + ' (includes historical war time and DST). Type a value to override, for example 5.5 or 4.85 for old Bombay time.') + '</div>';
   var rel = e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me');
   h += '<div class="field"><span>WHOSE KUNDLI IS THIS</span><div class="seg" style="width:max-content">' + [['me', 'Me'], ['family', 'Family / friend'], ['client', 'Client']].map(function (g) { return '<button data-act="erel" data-v="' + g[0] + '" class="' + (rel === g[0] ? 'on' : '') + '">' + g[1] + '</button>'; }).join('') + '</div></div>';
+  h += '<label class="field"><span>WHATSAPP NUMBER (optional, for sending readings)</span><input class="inp mono" inputmode="tel" data-in="ef" data-f="phone" value="' + esc(e.phone || '') + '" placeholder="98XXXXXXXX"></label>';
   h += '<label class="field"><span>NOTES</span><textarea class="inp" data-in="ef" data-f="notes" placeholder="Relation, source of birth time, known events">' + esc(e.notes) + '</textarea></label>';
   h += '<button class="btn acc wide" data-act="savePerson">Save and open kundli</button>';
   if (p) h += '<div style="margin-top:10px"><button class="btn sec wide" data-act="setMe">' + (DB.settings.meId === p.id ? '★ This is me' : 'Mark as me (used for My day)') + '</button></div>';
@@ -265,6 +266,7 @@ ACT.savePerson = function () {
   if (off == null || isNaN(off)) return toast('Enter the UTC offset, for example 5.5');
   var time = e.time.length === 5 ? e.time + ':00' : e.time;
   var rec = { id: e.id || ('p' + Date.now().toString(36)), name: e.name.trim(), gender: e.gender, date: e.date, time: time, place: e.place.trim(), lat: lat, lon: lon, zone: e.zone, tz: off, manualTz: !!e.manualTz, notes: e.notes || '', rel: e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me'), events: e.events || [], created: e.created || Date.now() };
+  rec.phone = String(e.phone || '').replace(/[^0-9+]/g, ''); if (e.timeOrig) rec.timeOrig = e.timeOrig;
   var i = DB.people.map(function (p) { return p.id; }).indexOf(rec.id); if (i >= 0) DB.people[i] = rec; else DB.people.push(rec);
   if (!DB.settings.meId) DB.settings.meId = rec.id;
   save(); EDIT = null; U.cur = rec.id; go('p/' + rec.id + '/report');
