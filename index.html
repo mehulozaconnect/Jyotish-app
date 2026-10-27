@@ -334,6 +334,9 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .kpair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.kpair .kentry{margin:0;flex-direction:column;align-items:flex-start;gap:8px;padding:12px}.kpair .kentry b{font-size:15px}.kpair .kentry small{font-size:11.5px}.kpair .kei{width:34px;height:34px;font-size:17px}
 .kentry.k2{background:linear-gradient(135deg,#ECEBF7,#DEDCF0);box-shadow:0 0 0 1px #CFCCE8}.kentry.k2 .kei{background:var(--indigo)}.kentry.k2 small{color:#4d4a6b}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rgrid button{text-align:left;background:#fff;border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:11px 12px;min-height:74px}.rgrid b{display:block;font:600 14px/1.25 var(--sans)}.rgrid small{display:block;font:400 11.5px/1.35 var(--sans);color:var(--mut);margin-top:4px}
+.rstory h3{margin-bottom:4px}.rs{padding:12px 0;border-top:1px solid var(--line)}.rs:first-of-type{border-top:0}
+.rs h4{font:700 15.5px/1.3 var(--sans);margin-bottom:6px;padding-left:10px;border-left:4px solid #CFC6B5}.rs.g h4{border-left-color:var(--good)}.rs.b h4{border-left-color:var(--bad)}
+.rs p{font:400 14.5px/1.6 var(--sans);color:#2e2b33}
 </style>
 </head>
 <body>
@@ -2634,6 +2637,66 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
 if (typeof module !== 'undefined') module.exports = makeKundliAnalysis;
 
 ;
+/* src/narrative.js */
+/* Trikaal: narrative engine. Turns (planet, house, tone, strength) into a readable prediction paragraph. */
+var NARR = (function () {
+  var H = {
+    1: { g: ['Your confidence and energy rise, and people notice you.', 'Health stays good, and new things you start now tend to succeed.', 'It is a good time to take charge of personal goals and improve your image.'],
+      b: ['You may feel tired, restless or short-tempered, and small health issues can bother you.', 'Self-doubt or friction with others can slow you down.', 'Avoid over-committing; rest and a steady routine keep you balanced.'] },
+    2: { g: ['Money comes in more easily and savings grow.', 'Family life is warm, and there may be a celebration or gathering at home.', 'Your words carry weight, which helps in negotiations.'],
+      b: ['Family expenses or unexpected bills can strain your savings.', 'Watch your words; harsh speech can hurt family relations.', 'Take care of eyes, teeth and throat, and go easy on rich food.'] },
+    3: { g: ['Your courage and initiative bring results; effort put in now pays off.', 'Short trips, communication, writing and networking go well.', 'Siblings, neighbours and colleagues are supportive.'],
+      b: ['Efforts may not bring quick results, and you may feel restless.', 'Misunderstandings with siblings or colleagues are possible.', 'Avoid hasty decisions and unnecessary short travel.'] },
+    4: { g: ['Peace and comfort at home increase; buying a house, vehicle or household items is favoured.', 'Your mother is supportive and her health stays good.', 'You feel emotionally settled and content.'],
+      b: ['Peace at home can be disturbed, with worries about property, vehicle or your mother\'s health.', 'You may feel mentally unsettled.', 'Postpone property deals and keep vehicle papers in order.'] },
+    5: { g: ['Your intelligence and creativity shine; studies, exams and new ideas go well.', 'Children bring happiness and good news.', 'Romance blossoms, and carefully chosen long-term investments can pay off.'],
+      b: ['Judgment may be clouded, so avoid speculation and risky investments.', 'There may be concern about children\'s health or studies.', 'Stress can affect your mood and concentration.'] },
+    6: { g: ['You overcome competitors and obstacles; disputes and litigation tend to go your way.', 'Health improves and old problems come under control.', 'A good time to clear loans and work hard on routine tasks.'],
+      b: ['Health needs attention, especially digestion and immunity.', 'Opponents, debts or workplace politics can trouble you.', 'Do not lend money, and avoid arguments at work.'] },
+    7: { g: ['Married life and partnerships are harmonious; a good time for marriage talks, deals and contracts.', 'Business partners and clients support you.', 'Work-related travel brings benefit.'],
+      b: ['Misunderstandings with your spouse or partners are likely; patience is needed.', 'Read contracts and deals carefully before signing.', 'Your partner\'s health may need attention.'] },
+    8: { g: ['Sudden gains, inheritance or insurance money are possible.', 'Interest in research, spirituality or hidden knowledge grows.', 'Long-pending issues may resolve unexpectedly.'],
+      b: ['Unexpected obstacles, delays or sudden expenses can arise.', 'Drive carefully and avoid risky activities; health needs care.', 'Keep important matters private and avoid conflicts.'] },
+    9: { g: ['Luck favours you, and help comes from elders, teachers and influential people.', 'Long journeys, pilgrimages and higher studies go well.', 'Your father\'s support and blessings are strong.'],
+      b: ['Luck may seem slow, and plans may need more effort than expected.', 'Your father\'s health or relations with mentors need care.', 'Avoid arguments over beliefs; patience brings results.'] },
+    10: { g: ['Your career rises: recognition, promotion or a new responsibility is likely.', 'Seniors and authorities favour you.', 'A good time to launch projects and take the lead at work.'],
+      b: ['Work pressure rises and recognition may be delayed.', 'Conflicts with seniors or changes at work are possible.', 'Stay disciplined and avoid hasty job changes.'] },
+    11: { g: ['Income and gains increase, and wishes are fulfilled.', 'Friends and your network bring opportunities.', 'A very good time for profits and recovering pending payments.'],
+      b: ['Gains come with delay, and friends may disappoint.', 'Elder siblings may need your support.', 'Do not expect quick profits; stay patient.'] },
+    12: { g: ['Spending goes on good causes, travel or comforts; foreign connections may help.', 'A good time for rest, meditation and spiritual practice.', 'Charity done now brings peace of mind.'],
+      b: ['Expenses rise and money can slip away; budget carefully.', 'Sleep may be disturbed, and you may feel isolated.', 'Avoid risky investments and guard against loss or theft.'] } };
+  var P = {
+    Su: ['The Sun gives authority, confidence and support from government and seniors.', 'The Sun can bring ego clashes, heat-related health issues and friction with your father or boss.', 'Offer water to the rising Sun.'],
+    Mo: ['The Moon brings emotional comfort, public support and pleasant surprises.', 'The Moon can make the mind restless and moods changeable.', 'Offer water or milk on a Shivling on Mondays.'],
+    Ma: ['Mars gives energy, courage and the drive to win, especially in property and competition.', 'Mars can bring anger, accidents, cuts or quarrels; stay calm and careful.', 'Read Hanuman Chalisa on Tuesdays.'],
+    Me: ['Mercury sharpens the mind and favours business, communication and deals.', 'Mercury can bring miscommunication, nervous strain and errors in paperwork.', 'Offer durva to Ganesha on Wednesdays.'],
+    Ju: ['Jupiter brings wisdom, growth, blessings and protection.', 'Jupiter\'s support is weaker now, so growth is slower; avoid overconfidence.', 'Apply a turmeric tilak and respect teachers on Thursdays.'],
+    Ve: ['Venus brings comfort, romance, beauty, vehicles and a pleasant social life.', 'Venus can lead to overspending on pleasures and strain in relationships.', 'Light a ghee lamp for Goddess Lakshmi on Fridays.'],
+    Sa: ['Saturn rewards steady, honest hard work with lasting results.', 'Saturn brings delays, heavier responsibilities and fatigue; patience and discipline are key.', 'Light a mustard-oil lamp under a peepal tree on Saturdays.'],
+    Ra: ['Rahu brings ambition, sudden opportunities and gains through technology or foreign links.', 'Rahu can bring confusion, anxiety and temptations; double-check before trusting people.', 'Chant Om Rahave Namah and feed the needy.'],
+    Ke: ['Ketu sharpens intuition and brings success in research, healing and spiritual pursuits.', 'Ketu can bring detachment, sudden events and hard-to-explain health issues.', 'Feed dogs and chant Om Ketave Namah.'] };
+  var OPEN = { g: ['This is a favourable period for you.', 'This should turn out to be a prosperous period for you.', 'This is a supportive time for you.'], m: ['This is a mixed period for you.', 'This period brings both gains and challenges.', 'Results in this period are mixed.'], b: ['This period needs care.', 'This is a testing period for you.', 'Go steady during this period.'] };
+  var IDX = { Su: 0, Mo: 1, Ma: 2, Me: 0, Ju: 1, Ve: 2, Sa: 0, Ra: 1, Ke: 2 };
+  function pick(a, n) { return a[n % a.length]; }
+  /* tone: 'g' | 'm' | 'b'; strong: true/false/null (natal strength); until: optional end date text */
+  function para(code, house, tone, opt) {
+    opt = opt || {}; var i = IDX[code] + house, s = [];
+    s.push(pick(OPEN[tone], i));
+    if (tone === 'g') { s.push(pick(H[house].g, i)); s.push(pick(H[house].g, i + 1)); s.push(P[code][0]); }
+    else if (tone === 'b') { s.push(pick(H[house].b, i)); s.push(pick(H[house].b, i + 1)); s.push(P[code][1]); }
+    else { s.push(pick(H[house].g, i)); s.push(pick(H[house].b, i + 1)); s.push(P[code][tone === 'm' && opt.lean === 'b' ? 1 : 0]); }
+    if (opt.strong === true) s.push('Because ' + J.PNAME[code] + ' is strong in your birth chart, the good results come more fully.');
+    if (opt.strong === false) s.push('Since ' + J.PNAME[code] + ' is weak in your birth chart, results are milder and need extra effort.');
+    if (opt.extra) s.push(opt.extra);
+    if (tone !== 'g') s.push('Remedy: ' + P[code][2]);
+    if (opt.until) s.push(opt.until);
+    return s.join(' ');
+  }
+  return { para: para, H: H, P: P };
+})();
+if (typeof module !== 'undefined') module.exports = NARR;
+
+;
 /* ui/charts.js */
 /* North and South Indian chart renderers (SVG strings) */
 var Charts = (function () {
@@ -4538,6 +4601,7 @@ OUT.varsh = function (p, c, now) {
   var h = '<div class="ocard"><div class="olbl">Outcome · year ' + (a + 1) + ' of life</div><div class="overd ' + o.verdict[1] + '">' + o.verdict[0] + '</div>' +
     '<div class="oareas">' + o.areas.map(function (x) { return '<div class="oa ' + x.w[1] + '"><b>' + x.t + '</b><span>' + x.w[0] + '</span><p>' + esc(x.line) + '</p></div>'; }).join('') + '</div>' +
     '<div class="olbl" style="margin-top:12px">Month by month (Mudda dasha)</div>' + o.months.map(function (m) { return '<div class="omon ' + m.w[1] + (m.now ? ' now' : '') + '"><span class="mono">' + mon(m.d.start) + '–' + mon(m.d.end) + '</span><b>' + PN[m.d.lord] + '</b><p>' + esc(m.line) + (m.now ? ' · <b>now</b>' : '') + '</p></div>'; }).join('');
+  if (a === age(p, now)) h += '<button class="btn acc wide" style="margin-top:10px" data-go="report/year">Read the full year prediction ›</button>';
   return { html: h, tell: o.tell, ask: 'Explain ' + nm(p) + '\'s Varshphal for year ' + (a + 1) + ' of life (age ' + a + ', ' + N.dmy(o.vp.at) + ' to ' + N.dmy(o.vp.end) + '): outcomes for career, money, health and relationships, and the good and difficult months' };
 };
 OUT.report = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + (/Challenging/.test(a.snapshot.grade[0]) ? 'b' : /Balanced/.test(a.snapshot.grade[0]) ? 'm' : 'g') + '">' + esc(a.snapshot.grade[0]) + '</div><p class="op">' + esc(a.snapshot.grade[1]) + '</p>', tell: a.pros.slice(0, 3).map(function (x) { return 'Strength: ' + x.t + '.'; }).concat(a.cons.slice(0, 2).map(function (x) { return 'Needs care: ' + x.t + '.'; })), ask: 'Key points to tell ' + nm(p) + ' from the full report' }; };
@@ -4617,9 +4681,13 @@ REP.life = function (p, c, now) {
 };
 REP.dashaphal = function (p, c, now) {
   var a = kaOf(p), k = c.k;
-  var items = a.life.map(function (m) { var x = k.P[m.code], hs = N.uniq(J.lordsOf(k.ascSign, m.code).concat([x.house])); return itm(m.lord + ' Mahadasha · ' + m.start.getFullYear() + '–' + m.end.getFullYear() + ' (age ' + m.from + '–' + m.to + ')' + (m.now ? ' · NOW' : ''), m.rate + '. Brings ' + hs.map(function (h) { return AREA_OF[h]; }).join('; ') + '. ' + cap1(KB.IN_HOUSE[m.code][x.house]) + '.', ({ G: 'g', M: 'i', T: 'b' })[m.rate.charAt(0)]); });
+  var items = a.life.map(function (m) {
+    var x = k.P[m.code], rules = m.code === 'Ra' || m.code === 'Ke' ? [] : J.lordsOf(k.ascSign, m.code), tone = m.rate.charAt(0) === 'G' ? 'g' : m.rate.charAt(0) === 'T' ? 'b' : 'm';
+    var extra = (rules.length ? 'As the lord of your ' + rules.map(N.nth).join(' and ') + ' house' + (rules.length > 1 ? 's' : '') + ', it also activates ' + rules.map(function (h) { return AREA_OF[h]; }).join(' and ') + '. ' : '') + cap1(KB.IN_HOUSE[m.code][x.house]) + '.';
+    return { t: m.lord.toUpperCase() + ' MAHADASHA · ' + m.start.getFullYear() + '–' + m.end.getFullYear() + ' (age ' + m.from + '–' + m.to + ')' + (m.now ? ' · NOW' : ''), p: NARR.para(m.code, x.house, tone, { strong: ['Exalted', 'Own sign', 'Moolatrikona'].indexOf(x.dignity) >= 0 ? true : x.dignity === 'Debilitated' ? false : null, extra: extra }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' };
+  });
   var cur = a.life.filter(function (m) { return m.now; })[0], nx = a.life.filter(function (m) { return m.start > now; })[0];
-  return { v: vrd(cur ? cur.lord + ' period: ' + cur.rate.toLowerCase() : 'Dasha phala', cur ? ({ G: 'g', M: 'm', T: 'b' })[cur.rate.charAt(0)] : 'm'), intro: 'Each Mahadasha of life, rated from the planet\'s strength and role for this chart.', sec: [{ h: 'Whole life', items: items }],
+  return { v: vrd(cur ? cur.lord + ' period: ' + cur.rate.toLowerCase() : 'Dasha phala', cur ? ({ G: 'g', M: 'm', T: 'b' })[cur.rate.charAt(0)] : 'm'), intro: 'What each Mahadasha of life brings, from the planet\'s house, lordship and strength.', sec: [{ h: 'Mahadasha by Mahadasha', story: true, items: items }],
     tell: [cur ? 'Now: ' + cur.lord + ' period until ' + cur.end.getFullYear() + ' — ' + cur.rate.toLowerCase() + '.' : '', nx ? 'Next: ' + nx.lord + ' period from ' + nx.start.getFullYear() + ' — ' + nx.rate.toLowerCase() + '.' : ''].concat(a.golden.slice(0, 2).map(function (g) { return 'Golden window: ' + g.label + ' ' + mon(g.start) + '–' + mon(g.end) + '.'; })).filter(Boolean), ask: 'Explain what each Mahadasha brings in ' + nm(p) + '\'s life, especially the current and next one' };
 };
 REP.lagna = function (p, c) {
@@ -4636,8 +4704,12 @@ REP.moon = function (p, c) {
     tell: ['Emotionally ' + KB.SIGN_TRAIT[M.sign].split(';')[0] + '.', 'Born in ' + M.nak.name + ': ' + KB.NAK_TRAIT[i] + '.'], ask: 'Explain ' + nm(p) + '\'s Moon sign and nakshatra: nature, emotions and what suits them' };
 };
 REP.planets = function (p, c) {
-  var k = c.k, items = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].map(function (x) { var q = k.P[x], s = x === 'Ra' || x === 'Ke' ? null : S.strength(c, x), f = c.func[x]; return itm(PN[x] + ' · ' + J.SIGNS[q.sign] + ', ' + N.nth(q.house) + (s ? ' · ' + s.word : ''), (f ? 'Rules ' + f.houses.map(N.nth).join(' & ') + ' (' + f.kind + '). ' : '') + cap1(KB.IN_HOUSE[x][q.house]) + '.', s ? (s.word === 'Strong' ? 'g' : s.word === 'Weak' ? 'b' : 'i') : 'i'); });
-  return { v: vrd('Planet by planet', 'm'), intro: 'What each planet does in this chart.', sec: [{ h: 'Planets', items: items }], tell: items.filter(function (x) { return x.k !== 'i'; }).slice(0, 5).map(function (x) { var cd = Object.keys(PN).filter(function (q) { return PN[q] === x.t.split(' · ')[0]; })[0], q = c.k.P[cd]; return x.t.split(' · ')[0] + (x.k === 'g' ? ' is strong: ' : ' needs support: ') + KB.IN_HOUSE[cd][q.house] + '.'; }), ask: 'Explain each planet in ' + nm(p) + '\'s chart and what it means in daily life' };
+  var k = c.k, items = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].map(function (x) {
+    var q = k.P[x], st = x === 'Ra' || x === 'Ke' ? null : S.strength(c, x), f = c.func[x], sc = rateIn(x, k, c), tone = sc >= 1.5 ? 'g' : sc >= 0 ? 'm' : 'b';
+    var extra = (f ? 'For your ' + J.SIGNS[k.ascSign] + ' lagna it rules the ' + f.houses.map(N.nth).join(' and ') + ' (' + f.houses.map(function (h) { return AREA_OF[h]; }).join('; ') + ') and acts as a ' + f.kind + '. ' : '') + cap1(KB.IN_HOUSE[x][q.house]) + '.';
+    return { t: PN[x].toUpperCase() + ' in ' + J.SIGNS[q.sign] + ' in your ' + N.nth(q.house) + ' house' + (st ? ' · ' + st.word : ''), p: NARR.para(x, q.house, tone, { strong: st ? (st.word === 'Strong' ? true : st.word === 'Weak' ? false : null) : null, extra: extra }).replace(/^This is a favourable period for you\.|^This should turn out to be a prosperous period for you\.|^This is a supportive time for you\./, 'This placement works in your favour.').replace(/^This is a mixed period for you\.|^This period brings both gains and challenges\.|^Results in this period are mixed\./, 'This placement gives mixed results.').replace(/^This period needs care\.|^This is a testing period for you\.|^Go steady during this period\./, 'This placement needs care.'), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' };
+  });
+  return { v: vrd('Planet by planet', 'm'), intro: 'What each planet does in the birth chart, through life.', sec: [{ h: 'Planets', story: true, items: items }], tell: items.filter(function (x) { return x.k !== 'i'; }).slice(0, 5).map(function (x) { return x.t.split(' in ')[0].charAt(0) + x.t.split(' in ')[0].slice(1).toLowerCase() + (x.k === 'g' ? ' works in your favour.' : ' needs support; its remedy helps.'); }), ask: 'Explain each planet in ' + nm(p) + '\'s chart and what it means in daily life' };
 };
 REP.month = function (p, c, now) {
   var L = DB.settings.loc, good = [], bad = [];
@@ -4653,7 +4725,16 @@ REP.month = function (p, c, now) {
     sec: [{ h: 'Strong days (meetings, deals, new starts)', items: good.length ? [itm(good.map(fd).join(' · '), '', 'g')] : [itm('No standout days; use the green hours on My day.', '')] }, { h: 'Toughest days (avoid big decisions)', items: bad.length ? [itm(bad.map(fd).join(' · '), '', 'b')] : [itm('No difficult days.', '')] }, { h: 'Changes this month', items: changes.concat(ev).length ? changes.concat(ev) : [itm('No major planet changes.', '')] }],
     tell: [good.length ? 'Best days: ' + good.slice(0, 5).map(fd).join(', ') + '.' : '', bad.length ? 'Go slow on: ' + bad.slice(0, 4).map(fd).join(', ') + '.' : ''].filter(Boolean), ask: 'What does the next 30 days look like for ' + nm(p) + ', with the best and worst days' };
 };
-REP.year = function (p, c, now) { var a = age(p, now), o = varshOutcome(p, c, now, a); return { v: vrd(o.verdict[0], o.verdict[1]), intro: 'Year ' + (a + 1) + ' of life, ' + N.dmy(o.vp.at) + ' – ' + N.dmy(o.vp.end) + '.', sec: [{ h: 'Life areas', items: o.areas.map(function (x) { return itm(x.t + ' · ' + x.w[0], cap1(x.line), x.w[1] === 'g' ? 'g' : x.w[1] === 'b' ? 'b' : 'i'); }) }, { h: 'Month by month', items: o.months.map(function (m) { return itm(mon(m.d.start) + '–' + mon(m.d.end) + ' · ' + PN[m.d.lord] + (m.now ? ' · now' : ''), m.line, m.w[1] === 'g' ? 'g' : m.w[1] === 'b' ? 'b' : 'i'); }) }], tell: o.tell, ask: 'Explain ' + nm(p) + '\'s Varshphal for age ' + a + ': outcomes for career, money, health and relationships, and the good and difficult months' }; };
+REP.year = function (p, c, now) {
+  var a = age(p, now), o = varshOutcome(p, c, now, a), V = o.vp.chart, k = c.k;
+  var planets = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].map(function (code) { var x = V.P[code], sc = rateIn(code, V, c), tone = sc >= 1.5 ? 'g' : sc >= 0 ? 'm' : 'b'; return { t: PN[code].toUpperCase() + ' is in ' + J.SIGNS[x.sign] + ' in the ' + N.nth(x.house) + ' house of the year', p: NARR.para(code, x.house, tone, { strong: ['Exalted', 'Own sign', 'Moolatrikona'].indexOf(x.dignity) >= 0 ? true : x.dignity === 'Debilitated' ? false : null, extra: code === o.vp.yearLord ? PN[code] + ' is the lord of this year, so its results colour the whole year.' : '' }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' }; });
+  var months = o.months.map(function (m) { var x = V.P[m.d.lord], tone = m.w[1] === 'g' ? 'g' : m.w[1] === 'b' ? 'b' : 'm'; return { t: mon(m.d.start) + ' – ' + mon(m.d.end) + ': ' + PN[m.d.lord] + ' period' + (m.now ? ' (now)' : ''), p: NARR.para(m.d.lord, x.house, tone, { until: 'Runs ' + N.dmy(m.d.start) + ' to ' + N.dmy(m.d.end) + '.' }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' }; });
+  var mh = MUNTHA_H[o.vp.munthaHouse];
+  return { v: vrd(o.verdict[0], o.verdict[1]), intro: 'Year ' + (a + 1) + ' of life, ' + N.dmy(o.vp.at) + ' – ' + N.dmy(o.vp.end) + '. Main theme: ' + mh[1] + ' (Muntha in the ' + N.nth(o.vp.munthaHouse) + ' house of the year). Year lord: ' + PN[o.vp.yearLord] + '.',
+    sec: [{ h: 'Life areas this year', items: o.areas.map(function (x) { return itm(x.t + ' · ' + x.w[0], cap1(x.line), x.w[1] === 'g' ? 'g' : x.w[1] === 'b' ? 'b' : 'i'); }) },
+      { h: 'Month by month', story: true, items: months },
+      { h: 'Planets in the year chart', story: true, items: planets }], tell: o.tell, ask: 'Explain ' + nm(p) + '\'s Varshphal for age ' + a + ': outcomes for career, money, health and relationships, and the good and difficult months' };
+};
 REP.sadesati = function (p, c, now) {
   var k = c.k, ms = k.P.Mo.sign, end = new Date(c.birth.getTime() + 90 * 365.25 * 864e5), cyc = [], cur = null;
   for (var t = c.birth.getTime(); t < end.getTime(); t += 20 * 864e5) { var d = new Date(t), m = J.houseFrom(ms, J.signOf(C.sidereal('Sa', d))), lab = m === 12 || m === 1 || m === 2 ? 'Sade Sati' : m === 8 ? 'Ashtama Shani' : m === 4 ? 'Kantaka Shani' : null; if (lab) { if (cur && cur.l === lab) cur.e = d; else { cur = { l: lab, s: d, e: d }; cyc.push(cur); } } else cur = null; }
@@ -4664,7 +4745,16 @@ REP.sadesati = function (p, c, now) {
       { h: 'Remedies during Saturn cycles', items: [itm('Saturday', 'Light a mustard-oil lamp under a peepal tree; read Hanuman Chalisa.'), itm('Mantra', KB.MANTRA.Sa[0] + ', 108 times daily.'), itm('Daan', 'Black sesame, mustard oil, black urad on Saturdays; help workers and elders.')] }],
     tell: [ss.q === 'bad' ? ss.label + ' is running' + (ss.until ? ' until ' + N.dmy(ss.until) : '') + '; keep routine, avoid shortcuts.' : 'No Sade Sati or Dhaiya right now.', nx ? 'Next Sade Sati: ' + mon(nx.s) + ' – ' + mon(nx.e) + '.' : ''].filter(Boolean), ask: 'Explain ' + nm(p) + '\'s Sade Sati periods, what each phase brings and remedies' };
 };
-REP.transit = function (p, c, now) { var o = OUT.transit(p, c, now); return { v: vrd(o.html.match(/overd \w">([^<]+)/)[1], /Supportive/.test(o.html) ? 'g' : /Testing/.test(o.html) ? 'b' : 'm'), intro: 'Effects of the slow planets right now, judged from the Moon sign.', sec: [{ h: 'Now', items: N.transitAt(c, now).filter(function (x) { return ['Ju', 'Sa', 'Ra', 'Ke'].indexOf(x.code) >= 0; }).map(function (x) { return itm(PN[x.code] + ' in ' + J.SIGNS[x.sign] + ' · ' + N.nth(x.m) + ' from Moon', cap1(KB.GOCHAR[x.code][x.m]) + '.', x.verdict === 'good' ? 'g' : x.verdict === 'bad' ? 'b' : 'i'); }) }], tell: o.tell, ask: 'How are current transits affecting ' + nm(p) + ' and what changes in the next 12 months' }; };
+REP.transit = function (p, c, now) {
+  var k = c.k, tr = N.transitAt(c, now), o = OUT.transit(p, c, now), ORD = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'];
+  var items = ORD.map(function (code) {
+    var x = tr.filter(function (t) { return t.code === code; })[0], tone = x.verdict === 'good' ? 'g' : x.verdict === 'bad' ? 'b' : 'm', nd = code === 'Ra' || code === 'Ke' ? null : k.P[code].dignity;
+    var strong = nd ? (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(nd) >= 0 ? true : nd === 'Debilitated' ? false : null) : null;
+    var end = null; try { end = J.nextIngress(code, now, code === 'Mo' ? 4 : 1200); } catch (e) { }
+    return { t: PN[code].toUpperCase() + ' is in ' + J.SIGNS[x.sign] + ' in your ' + N.nth(x.m) + ' house', p: NARR.para(code, x.m, tone, { strong: strong, lean: x.good ? 'g' : 'b', extra: x.vedha ? 'Some of the good effect is blocked (vedha) by ' + x.vedha.by.map(function (b) { return PN[b]; }).join(', ') + '.' : '', until: end ? 'This lasts until ' + N.dmy(end) + '.' : '' }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' };
+  });
+  return { v: vrd(o.html.match(/overd \w">([^<]+)/)[1], /Supportive/.test(o.html) ? 'g' : /Testing/.test(o.html) ? 'b' : 'm'), intro: 'Where each planet is today, counted from your Moon sign (' + J.SIGNS[k.P.Mo.sign] + '), and what it brings.', sec: [{ h: 'Transit today', story: true, items: items }], tell: o.tell, ask: 'How are current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
+};
 REP.mangal = function (p, c) {
   var k = c.k, P = k.P, MD = [1, 2, 4, 7, 8, 12], from = [['lagna', P.Ma.house], ['Moon', J.houseFrom(P.Mo.sign, P.Ma.sign)], ['Venus', J.houseFrom(P.Ve.sign, P.Ma.sign)]].filter(function (x) { return MD.indexOf(x[1]) >= 0; });
   var cancel = [];
@@ -4708,7 +4798,7 @@ function ReportView(id) {
   try { R = REP[id](p, c, now); } catch (e) { return topBar(t) + '<div class="pad"><p>Could not build this report: ' + esc(e.message) + '</p></div>'; }
   var h = '<div class="top"><button class="ib" data-go="reports">' + icon('back') + '</button><span class="ttl">' + esc(t) + '</span><span class="sp"></span><button class="ib" data-act="shareTab">' + icon('share') + '</button></div><div class="pad">';
   h += '<div class="ocard"><div class="olbl">' + esc(p.name) + '</div><div class="overd ' + R.v.c + '">' + esc(R.v.t) + '</div>' + (R.intro ? '<p class="op">' + esc(R.intro) + '</p>' : '') + '</div>';
-  R.sec.forEach(function (s) { h += '<div class="card"><div class="kgh"><h3 style="margin-bottom:6px">' + esc(s.h) + '</h3>' + (s.badge ? '<span class="tag ' + (s.badge[1] === 'g' ? 'tg' : s.badge[1] === 'b' ? 'tr' : 'tn') + '">' + s.badge[0] + '</span>' : '') + '</div>' + s.items.map(function (x) { return '<div class="kli"><span class="kic ' + (x.k === 'g' ? 'g' : x.k === 'b' ? 'b' : 'n') + '">' + (x.k === 'g' ? '✓' : x.k === 'b' ? '!' : '•') + '</span><div><b>' + esc(x.t) + '</b>' + (x.d ? '<p class="sm">' + esc(x.d) + '</p>' : '') + '</div></div>'; }).join('') + '</div>'; });
+  R.sec.forEach(function (s) { if (s.story) { h += '<div class="card rstory"><h3>' + esc(s.h) + '</h3>' + s.items.map(function (x) { return '<div class="rs ' + x.k + '"><h4>' + esc(x.t) + '</h4><p>' + esc(x.p) + '</p></div>'; }).join('') + '</div>'; return; } h += '<div class="card"><div class="kgh"><h3 style="margin-bottom:6px">' + esc(s.h) + '</h3>' + (s.badge ? '<span class="tag ' + (s.badge[1] === 'g' ? 'tg' : s.badge[1] === 'b' ? 'tr' : 'tn') + '">' + s.badge[0] + '</span>' : '') + '</div>' + s.items.map(function (x) { return '<div class="kli"><span class="kic ' + (x.k === 'g' ? 'g' : x.k === 'b' ? 'b' : 'n') + '">' + (x.k === 'g' ? '✓' : x.k === 'b' ? '!' : '•') + '</span><div><b>' + esc(x.t) + '</b>' + (x.d ? '<p class="sm">' + esc(x.d) + '</p>' : '') + '</div></div>'; }).join('') + '</div>'; });
   if (R.tell && R.tell.length) h += '<div class="card"><div class="olbl">' + (relOf(p) === 'me' ? 'Key takeaways' : 'What to tell ' + esc(nm(p))) + '</div><ol class="otell">' + R.tell.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>';
   h += '<button class="btn sec wide" data-act="outAsk" data-q="' + esc(R.ask + (relOf(p) === 'me' ? '' : ' — give me the key points to tell ' + nm(p))) + '">✦ Explain this in detail with AI</button></div>';
   return h;
