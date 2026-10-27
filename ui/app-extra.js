@@ -209,3 +209,81 @@ ACT.waGo = function (el) {
     return h.replace(mk, mk + '<div class="kpair" style="margin-top:10px"><button class="kentry k5" data-go="p/' + p.id + '/shadbala"><span class="kei">⚖</span><div><b>Shadbala</b><small>Planet strength: who delivers, who struggles</small></div></button><button class="kentry k6" data-go="p/' + p.id + '/btime"><span class="kei">⏱</span><div><b>Birth time</b><small>Correct it from life events</small></div></button></div>');
   };
 })();
+
+/* ---------- AI: sturdier Gemini, follow-ups, business vs job ---------- */
+var DSC = { 'Exalted': 5, 'Moolatrikona': 4.5, 'Own sign': 4, 'Friendly sign': 3, 'Neutral sign': 2, 'Enemy sign': 1, 'Debilitated': 0 };
+function bizJob(p, c, now) {
+  var k = c.k, P = k.P, A = k.ascSign, L = function (h) { return J.lordOfHouse(A, h); }, sb = null; try { sb = sbOf(c); } catch (e) { }
+  var nm1 = p.name.split(' ')[0], self = relOf(p) === 'me', you = self ? 'you' : nm1, your = self ? 'your' : nm1 + '\'s';
+  var biz = 0, job = 0, bw = [], jw = [], care = [];
+  function str(code) { var d = DSC[P[code].dignity] == null ? 2 : DSC[P[code].dignity], r = sb && sb.P[code] ? sb.P[code].ratio : 1; return d + (r >= 1.1 ? 1 : r < 0.9 ? -1 : 0); }
+  var l7 = L(7), l6 = L(6), l10 = L(10), l3 = L(3), l11 = L(11), good = [1, 4, 5, 7, 9, 10, 11];
+  var s7 = str(l7); biz += s7 - 2; if (good.indexOf(P[l7].house) >= 0) { biz += 1.5; bw.push('7th lord ' + PN[l7] + ' (business and partners) is well placed in the ' + N.nth(P[l7].house)); } else if ([6, 8, 12].indexOf(P[l7].house) >= 0) { biz -= 1.5; care.push('7th lord ' + PN[l7] + ' sits in the ' + N.nth(P[l7].house) + ': partnerships can bring disputes or losses, so keep everything in writing'); }
+  var s3 = str(l3); if (s3 >= 3) { biz += 1; bw.push('3rd lord ' + PN[l3] + ' (courage, own effort) is strong'); }
+  var sMe = str('Me'); if (sMe >= 4) { biz += 1; bw.push('Mercury (trade, deals) is strong'); } else if (sMe <= 1) { biz -= 1; care.push('Mercury is weak: be careful with contracts, accounts and quick deals'); }
+  if ([7, 10, 11, 3].indexOf(P.Ra.house) >= 0) { biz += 1; bw.push('Rahu in the ' + N.nth(P.Ra.house) + ' gives appetite for risk and new ventures'); }
+  if (P[l10].house === 7) { biz += 2; bw.push('10th lord in the 7th: career through trade and clients'); }
+  if (P[l10].house === 6) { job += 2; jw.push('10th lord in the 6th: career through service and employment'); }
+  var s6 = str(l6); if (s6 >= 3 && good.concat([6]).indexOf(P[l6].house) >= 0) { job += 1.5; jw.push('6th lord ' + PN[l6] + ' (service, daily work) is strong'); }
+  var sSa = str('Sa'); if (sSa >= 3) { job += 1; jw.push('Saturn (steady service, discipline) is strong'); }
+  if (P.Su.house === 10 || str('Su') >= 4) { job += 1; jw.push('a strong Sun favours a position with authority, even in a large organisation or government'); }
+  var s10 = str(l10); if (s10 >= 3) { job += 0.5; biz += 0.5; } else care.push('10th lord ' + PN[l10] + ' is not strong: career gains need patience whichever path is chosen');
+  if (k.planets.some(function (x) { return x.house === 10 && ['Sa', 'Su', 'Ma'].indexOf(x.code) >= 0; })) { job += 0.5; }
+  if (k.planets.some(function (x) { return x.house === 7 && ['Sa', 'Ra', 'Ke', 'Ma'].indexOf(x.code) >= 0; })) care.push(k.planets.filter(function (x) { return x.house === 7 && ['Sa', 'Ra', 'Ke', 'Ma'].indexOf(x.code) >= 0; }).map(function (x) { return PN[x.code]; }).join(' and ') + ' in the 7th: choose partners very carefully');
+  /* periods */
+  function links(lord) { var pl = P[lord], hs = J.lordsOf(A, lord).concat([pl.house]); return hs; }
+  var ch = J.dashaChain(c.maha, now, 2), md = ch[0], ad = ch[1] || ch[0], hnow = links(md.lord).concat(links(ad.lord));
+  var nowBiz = hnow.indexOf(7) >= 0 || hnow.indexOf(3) >= 0, nowJob = hnow.indexOf(6) >= 0 || hnow.indexOf(10) >= 0;
+  var win = []; J.dashas(c.birth, P.Mo.lon).forEach(function (m) { if (m.end < now) return; J.subPeriods(m).forEach(function (a) { if (a.end < now || a.start > new Date(now.getTime() + 12 * 365.25 * 864e5)) return; var hs = links(m.lord).concat(links(a.lord)); if (hs.indexOf(7) >= 0 && hs.indexOf(11) >= 0 && str(a.lord) >= 2 && win.length < 2) win.push({ s: a.start, e: a.end, l: PN[m.lord] + '–' + PN[a.lord] }); }); });
+  var diff = biz - job, verdict;
+  if (diff >= 1.5) verdict = 'Own business suits ' + you + ' better than a job.';
+  else if (diff <= -1.5) verdict = 'A job suits ' + you + ' better than own business.';
+  else verdict = 'Both can work: the best route is a job with a side business, or a business with a partner who handles operations.';
+  var timing = 'Right now ' + PN[md.lord] + '–' + PN[ad.lord] + ' (till ' + N.dmy(ad.end) + ') ' + (nowBiz && !nowJob ? 'supports starting or growing a business.' : nowJob && !nowBiz ? 'supports a job: change of role, promotion or a better offer, more than a new business.' : nowBiz && nowJob ? 'supports both; a business can start alongside the current work.' : 'is not strongly linked to either; avoid big jumps and prepare.');
+  var whenB = win.length ? 'Best windows to start a business: ' + win.map(function (w) { return w.l + ' (' + N.dmy(w.s) + ' – ' + N.dmy(w.e) + ')'; }).join('; ') + '.' : 'No strong business-start window in the next 12 years; business is better as a side activity.';
+  var todo = diff <= -1.5 ? ['Stay in employment and aim for a senior or specialist role.', 'If ' + you + ' want' + (self ? '' : 's') + ' extra income, keep a small side business with limited money at risk.'] : diff >= 1.5 ? ['Plan the business now; launch in the window shown above.', 'Keep 6 months of expenses aside before leaving a job.'] : ['Keep the job; start the business on the side and switch only when it earns steadily for 6 months.'];
+  todo.push('Strengthen ' + PN[l7] + ' (7th lord) and Mercury: donate ' + KB.DAAN_SHORT[l7][0] + ' on ' + KB.DAAN_SHORT[l7][1] + 's.');
+  return { quick: verdict, paras: [timing + ' ' + whenB, (bw.length ? 'For business: ' + bw.join('; ') + '. ' : 'Business factors are average. ') + (jw.length ? 'For a job: ' + jw.join('; ') + '.' : 'Job factors are average.'), care.length ? 'Be careful: ' + care.join('; ') + '.' : 'Be careful: do not invest borrowed money in a new venture during Rahu or Saturn sub-periods.'], short: 'Score: business ' + biz.toFixed(1) + ' vs job ' + job.toFixed(1) + ' (from 7th, 3rd, 6th, 10th lords, Mercury, Saturn, Sun and Shadbala).', todo: todo, question: null };
+}
+function lastQs(p) { var l = DB.chats[p.id] || []; return l.filter(function (m) { return m.role === 'me'; }).map(function (m) { return m.text; }); }
+function withContext(p, q) {
+  var qs = lastQs(p), prev = qs.length >= 2 ? qs[qs.length - 2] : '', words = q.trim().split(/\s+/).length;
+  if (prev && words <= 7 && !/\b(19|20)\d\d\b/.test(q) && !/\b(health|marriage|child|money|property|travel|education|study|exam)\b/i.test(q)) return prev + ' — follow-up: ' + q;
+  return q;
+}
+(function () {
+  var aa = answerAny;
+  answerAny = function (p, c, q) {
+    var qq = withContext(p, q), res;
+    if (/\bbusiness|own (work|venture|firm|company|setup)|start ?up|self.?employ|vyapar|vyavsay|dhandha|naukri|job or|or job|service or/i.test(qq)) res = storyRes(bizJob(p, c, new Date()));
+    else res = aa(p, c, qq);
+    var l = DB.chats[p.id] || [], prevBot = l.filter(function (m) { return m.role === 'bot'; }).slice(-1)[0];
+    if (res && res.story && res.story.question && prevBot) res = storyRes(Object.assign({}, res.story, { question: null }));
+    if (res && prevBot && prevBot.text && res.text && prevBot.text.indexOf(res.text.slice(0, 120)) >= 0) res.html = '<div class="msg bot"><p class="mut" style="font-size:12.5px">The offline engine has nothing new for this follow-up. Ask Gemini again for a specific answer, or ask in a fuller sentence.</p></div>';
+    return res;
+  };
+  var ag = askGemini;
+  askGemini = function (p, c, q, onLive) {
+    var qq = withContext(p, q);
+    var biz = /\bbusiness|own (work|venture|firm|company|setup)|start ?up|self.?employ|vyapar|dhandha|naukri|job or|or job/i.test(qq);
+    var q2 = qq + (biz ? '\n\nAPP SCORING FOR BUSINESS VS JOB: ' + (function () { var b = bizJob(p, c, new Date()); return b.quick + ' ' + b.paras.join(' ') + ' ' + b.short; })() : '');
+    return ag(p, c, q2, onLive).catch(function (e) {
+      if (/limit reached|API key|PERMISSION|invalid/i.test(e.message)) throw e;
+      /* second try: non-streaming, light reasoning, same model */
+      if (onLive) onLive('thought', 'Retrying with a quicker answer…');
+      var keep = DB.settings.gfast; DB.settings.gfast = true;
+      return ag(p, c, q2, null).then(function (r) { DB.settings.gfast = keep; return r; }, function (e2) {
+        DB.settings.gfast = keep;
+        /* third try: a different Flash model */
+        var cur = DB.settings.gmodel || GDEFAULT;
+        return (DB.settings.gmodels && DB.settings.gmodels.length ? Promise.resolve(DB.settings.gmodels) : gListModels()).then(function (list) {
+          var alt = list.filter(function (m) { return m !== cur && /flash/.test(m) && (DB.settings.gbad || []).indexOf(m) < 0 && gRank(m, 'flash') >= 0; }).sort(function (a, b) { return gRank(b, 'flash') - gRank(a, 'flash'); })[0];
+          if (!alt) throw e2;
+          if (onLive) onLive('thought', 'Trying ' + alt + '…');
+          DB.settings.gmodel = alt; DB.settings.gfast = true;
+          return ag(p, c, q2, null).then(function (r) { DB.settings.gmodel = cur; DB.settings.gfast = keep; return r; }, function (e3) { DB.settings.gmodel = cur; DB.settings.gfast = keep; throw e3; });
+        });
+      });
+    });
+  };
+})();
