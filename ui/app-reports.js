@@ -1,7 +1,7 @@
 /* Trikaal: Reports library (Astrology › Reports). Each report is computed from the chart and written as outcomes:
    verdict → sections of plain points → what to tell the person → AI deep-dive. */
 var RCAT = [
-  ['Life', [['life', 'Life predictions', 'Career, money, marriage, health, home'], ['dashaphal', 'Mahadasha phala', 'What each period of life brings'], ['lagna', 'Ascendant reading', 'Personality, body and life path'], ['moon', 'Moon sign and nakshatra', 'Mind, emotions and nature'], ['planets', 'Planet by planet', 'What each planet does for you']]],
+  ['Life', [['life', 'Life predictions', 'Career, money, marriage, health, home'], ['dashaphal', 'Mahadasha phala', 'What each period of life brings'], ['lagna', 'Ascendant reading', 'Personality, body and life path'], ['moon', 'Moon sign and nakshatra', 'Mind, emotions and nature'], ['planets', 'Planet by planet', 'What each planet does for you'], ['disease', 'Health risks', 'BP, sugar, thyroid and more: what to avoid, tests to get']]],
   ['Timing', [['month', 'Next 30 days', 'Good days, caution days, changes'], ['year', 'This year (Varshphal)', 'Year verdict and best months'], ['sadesati', 'Sade Sati life report', 'Every Saturn cycle with dates'], ['transit', 'Transits now', 'Jupiter, Saturn, Rahu effects']]],
   ['Doshas', [['mangal', 'Mangal dosha', 'Present or not, cancellation, remedy'], ['kaalsarp', 'Kaal Sarp dosha', 'Type, effect and remedy'], ['doshas', 'Other doshas', 'Pitru, Grahan, Guru Chandal and more']]],
   ['Remedies', [['gems', 'Gemstones', 'Which suit, which to avoid'], ['rudraksha', 'Rudraksha', 'Beads for your helpful planets'], ['lalkitab', 'Lal Kitab remedies', 'Simple daily remedies'], ['mantra', 'Mantra and daan', 'For the running dasha'], ['deity', 'Deity and yantra', 'Whom to worship, which yantra'], ['food', 'Food and colours', 'For the running dasha']]],
@@ -73,6 +73,24 @@ function tScore(c, code, sign, lon) {
   var sc = (GG[code].indexOf(h) >= 0 ? 1 : -1) + (GG[code].indexOf(m) >= 0 ? 0.7 : -0.5) + ({ 'Exalted': 1, 'Moolatrikona': 1, 'Own sign': 1, 'Debilitated': -1.5, 'Enemy sign': -0.5 }[td] || 0) + (bav == null ? 0 : bav >= 5 ? 0.5 : bav <= 3 ? -0.5 : 0);
   return { h: h, m: m, td: td, sc: sc, tone: sc >= 1 ? 'g' : sc <= -1 ? 'b' : 'm' };
 }
+REP.disease = function (p, c, now) {
+  var R = MED.analyze(c, now), top = R.filter(function (x) { return x.level !== 'Low'; }), low = R.filter(function (x) { return x.level === 'Low'; });
+  var dy = function (d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getFullYear(); };
+  var sec = top.map(function (x) {
+    var main = MED.COND.filter(function (cd) { return cd.id === x.id; })[0], pl = Object.keys(main.pl)[0];
+    return { h: x.name, badge: [x.level === 'Higher' ? 'Higher tendency' : 'Moderate tendency', x.level === 'Higher' ? 'b' : 'm'], items: [
+      itm('Why the chart shows this', x.why.length ? x.why.join('; ') + '.' : 'Several mild indicators together.', 'i'),
+      itm('When to be extra careful', x.when.length ? x.when.map(function (w) { return w.t + ' (' + dy(w.s) + ' – ' + dy(w.e) + ', age ' + w.age + ')'; }).join('; ') + '.' : 'No specific peak period in the next 30 years; keep the basics.', 'b'),
+      itm('Avoid strictly', x.avoid.join(' • '), 'b'),
+      itm('Do regularly', x.dos.join(' • '), 'g'),
+      itm('Tests to get', x.tests, 'i'),
+      itm('Remedy', 'Chant "' + KB.MANTRA[pl][0] + '" 108 times every morning, and every ' + KB.DAAN[pl][1] + ' donate ' + KB.DAAN[pl][0] + '.', 'i')] };
+  });
+  if (low.length) sec.push({ h: 'Lower tendency', items: low.map(function (x) { return itm(x.name, 'No strong indicator in the chart. Basic care: ' + x.tests, 'g'); }) });
+  return { v: vrd(top.length ? 'Watch: ' + top.slice(0, 3).map(function (x) { return x.name.split(' (')[0].split(' and ')[0]; }).join(', ') : 'No strong health risks', top.length ? (top[0].level === 'Higher' ? 'b' : 'm') : 'g'),
+    intro: 'Health tendencies shown by the birth chart, strongest first, with what to avoid, what to do and which tests to get. These are astrological tendencies, not a diagnosis: get the tests and follow your doctor.',
+    sec: sec, tell: top.slice(0, 4).map(function (x) { return x.name + ' (' + x.level.toLowerCase() + ' tendency): avoid ' + x.avoid[0].toLowerCase() + '; ' + x.tests; }), ask: 'Which health problems is ' + nm(p) + ' prone to (blood pressure, diabetes, thyroid and others), when is the risk higher, and what should be avoided' };
+};
 REP.month = function (p, c, now) {
   var k = c.k, L = DB.settings.loc, end = new Date(now.getTime() + 30 * 864e5), mid = new Date(now.getTime() + 15 * 864e5), good = [], bad = [];
   for (var i = 0; i < 30; i++) { var dd = todayStart(i), pl = J.panchangLite(dd, L.lat, L.lon), wd = new Date(pl.rise.getTime() + locOff() * 3600e3).getUTCDay(), sc0 = N.dayScore(c, pl, wd); if (sc0.v === 'push') good.push([pl.rise, sc0.score]); if (sc0.v === 'backend') bad.push([pl.rise, sc0.score - (sc0.cb === 8 ? 5 : 0)]); }

@@ -6,7 +6,7 @@ const FONTS = [['Inter', 'inter-latin-400-normal.woff2', 400], ['Inter', 'inter-
   ['Fraunces', 'fraunces-latin-500-normal.woff2', 500], ['JBM', 'jetbrains-mono-latin-500-normal.woff2', 500], ['JBM', 'jetbrains-mono-latin-600-normal.woff2', 600]];
 const fonts = FONTS.map(([fam, file, w]) => `@font-face{font-family:${fam};src:url(data:font/woff2;base64,${fs.readFileSync(path.join(fontDir, file)).toString('base64')}) format('woff2');font-weight:${w};font-display:swap}`).join('\n');
 const js = [
-  'vendor/astronomy.browser.min.js', 'src/core.js', 'src/jyotish.js', 'src/knowledge.js', 'src/analysis.js', 'src/plain.js', 'src/simple.js', 'src/story.js', 'src/evidence.js', 'src/kanalysis.js', 'src/narrative.js',
+  'vendor/astronomy.browser.min.js', 'src/core.js', 'src/jyotish.js', 'src/knowledge.js', 'src/analysis.js', 'src/plain.js', 'src/simple.js', 'src/story.js', 'src/evidence.js', 'src/kanalysis.js', 'src/narrative.js', 'src/medical.js',
   'ui/charts.js', 'ui/cities.js', 'ui/app-core.js', 'ui/app-kundli.js', 'ui/app-today.js', 'ui/app-myday.js', 'ui/app-ask.js', 'ui/app-v2.js', 'ui/app-outcome.js', 'ui/app-reports.js', 'ui/app-remind.js', 'ui/app-more.js'
 ].map((f) => '/* ' + f + ' */\n' + R(f)).join('\n;\n');
 let html = R('ui/index.tpl.html');
