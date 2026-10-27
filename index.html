@@ -4746,14 +4746,24 @@ REP.sadesati = function (p, c, now) {
     tell: [ss.q === 'bad' ? ss.label + ' is running' + (ss.until ? ' until ' + N.dmy(ss.until) : '') + '; keep routine, avoid shortcuts.' : 'No Sade Sati or Dhaiya right now.', nx ? 'Next Sade Sati: ' + mon(nx.s) + ' – ' + mon(nx.e) + '.' : ''].filter(Boolean), ask: 'Explain ' + nm(p) + '\'s Sade Sati periods, what each phase brings and remedies' };
 };
 REP.transit = function (p, c, now) {
-  var k = c.k, tr = N.transitAt(c, now), o = OUT.transit(p, c, now), ORD = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'];
-  var items = ORD.map(function (code) {
-    var x = tr.filter(function (t) { return t.code === code; })[0], tone = x.verdict === 'good' ? 'g' : x.verdict === 'bad' ? 'b' : 'm', nd = code === 'Ra' || code === 'Ke' ? null : k.P[code].dignity;
-    var strong = nd ? (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(nd) >= 0 ? true : nd === 'Debilitated' ? false : null) : null;
+  /* houses counted from the lagna (as most Indian software shows); Moon-sign gochar added as a second check */
+  var k = c.k, tr = N.transitAt(c, now), o = OUT.transit(p, c, now), ORD = ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'], GG = KB.GOCHAR_GOOD;
+  var DW = { 'Exalted': [1, 'is exalted (at its strongest)'], 'Moolatrikona': [1, 'is in its moolatrikona sign (very strong)'], 'Own sign': [1, 'is in its own sign (strong)'], 'Debilitated': [-1.5, 'is debilitated (at its weakest), so its good results are reduced'], 'Enemy sign': [-0.5, 'is in an enemy sign'] };
+  var tot = 0, items = ORD.map(function (code) {
+    var x = tr.filter(function (t) { return t.code === code; })[0], h = x.h, td = code === 'Ra' || code === 'Ke' ? null : J.dignity(code, x.lon);
+    var sc = (GG[code].indexOf(h) >= 0 ? 1 : -1) + (GG[code].indexOf(x.m) >= 0 ? 0.7 : -0.5) + (td && DW[td] ? DW[td][0] : 0) + (x.bav == null ? 0 : x.bav >= 5 ? 0.5 : x.bav <= 3 ? -0.5 : 0) + (x.vedha ? -0.5 : 0);
+    var tone = sc >= 1 ? 'g' : sc <= -1 ? 'b' : 'm'; tot += ['Ju', 'Sa', 'Ra', 'Ke'].indexOf(code) >= 0 ? sc : 0;
+    var nd = code === 'Ra' || code === 'Ke' ? null : k.P[code].dignity, strong = nd ? (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(nd) >= 0 ? true : nd === 'Debilitated' ? false : null) : null;
+    var extra = [];
+    if (td && DW[td]) { var dp = DW[td][1].split(','); extra.push(PN[code] + ' ' + dp[0].replace(/ \(/, ' in ' + J.SIGNS[x.sign] + ' (') + (dp[0].indexOf('(') < 0 ? ' in ' + J.SIGNS[x.sign] : '') + (dp[1] ? ',' + dp[1] : '') + '.'); }
+    if (x.retro && code !== 'Ra' && code !== 'Ke') extra.push(PN[code] + ' is retrograde, so matters may be delayed or revisited.');
+    extra.push('From your Moon sign it is the ' + N.nth(x.m) + ': ' + KB.GOCHAR[code][x.m] + '.');
+    if (x.vedha) extra.push('Part of the good effect is blocked (vedha) by ' + x.vedha.by.map(function (b2) { return PN[b2]; }).join(', ') + '.');
     var end = null; try { end = J.nextIngress(code, now, code === 'Mo' ? 4 : 1200); } catch (e) { }
-    return { t: PN[code].toUpperCase() + ' is in ' + J.SIGNS[x.sign] + ' in your ' + N.nth(x.m) + ' house', p: NARR.para(code, x.m, tone, { strong: strong, lean: x.good ? 'g' : 'b', extra: x.vedha ? 'Some of the good effect is blocked (vedha) by ' + x.vedha.by.map(function (b) { return PN[b]; }).join(', ') + '.' : '', until: end ? 'This lasts until ' + N.dmy(end) + '.' : '' }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' };
+    return { t: PN[code].toUpperCase() + ' is in ' + J.SIGNS[x.sign] + ' in your ' + N.nth(h) + ' house' + (td === 'Debilitated' ? ' (debilitated)' : td === 'Exalted' ? ' (exalted)' : '') + (x.retro && code !== 'Ra' && code !== 'Ke' ? ' (R)' : ''), p: NARR.para(code, h, tone, { strong: strong, lean: sc >= 0 ? 'g' : 'b', extra: extra.join(' '), until: end ? 'This lasts until ' + N.dmy(end) + '.' : '' }), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' };
   });
-  return { v: vrd(o.html.match(/overd \w">([^<]+)/)[1], /Supportive/.test(o.html) ? 'g' : /Testing/.test(o.html) ? 'b' : 'm'), intro: 'Where each planet is today, counted from your Moon sign (' + J.SIGNS[k.P.Mo.sign] + '), and what it brings.', sec: [{ h: 'Transit today', story: true, items: items }], tell: o.tell, ask: 'How are current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
+  var v = tot >= 1.5 ? ['Supportive transits', 'g'] : tot <= -1.5 ? ['Testing transits', 'b'] : ['Mixed transits', 'm'];
+  return { v: vrd(v[0], v[1]), intro: 'Where each planet is today in your chart (houses from your ' + J.SIGNS[k.ascSign] + ' ascendant), checked again from your Moon sign (' + J.SIGNS[k.P.Mo.sign] + ').', sec: [{ h: 'Transit today', story: true, items: items }], tell: o.tell, ask: 'How are current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
 };
 REP.mangal = function (p, c) {
   var k = c.k, P = k.P, MD = [1, 2, 4, 7, 8, 12], from = [['lagna', P.Ma.house], ['Moon', J.houseFrom(P.Mo.sign, P.Ma.sign)], ['Venus', J.houseFrom(P.Ve.sign, P.Ma.sign)]].filter(function (x) { return MD.indexOf(x[1]) >= 0; });
@@ -4828,7 +4838,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '2.5.1';
+var APP_VERSION = '2.5.2';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
