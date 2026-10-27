@@ -337,6 +337,7 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .rstory h3{margin-bottom:4px}.rs{padding:12px 0;border-top:1px solid var(--line)}.rs:first-of-type{border-top:0}
 .rs h4{font:700 15.5px/1.3 var(--sans);margin-bottom:6px;padding-left:10px;border-left:4px solid #CFC6B5}.rs.g h4{border-left-color:var(--good)}.rs.b h4{border-left-color:var(--bad)}
 .rs p{font:400 14.5px/1.6 var(--sans);color:#2e2b33}
+.kout{font:400 14px/1.55 var(--sans);color:#2e2b33;margin-top:4px}.kwhen{font:600 12.5px/1.45 var(--sans);color:var(--indigo);margin-top:5px;background:#EEEDF7;border-radius:8px;padding:5px 8px}
 </style>
 </head>
 <body>
@@ -2489,6 +2490,83 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
   }
 
   /* ---------- sections ---------- */
+
+  /* ---------- outcome text for each item: what it means in life, and when it shows ---------- */
+  var YOGA_MEAN = [
+    [/Yogakaraka/, 'the planet that rules both a kendra and a trikona: its periods bring status, property and good fortune together'],
+    [/Dharma-Karmadhipati/, 'luck and career join hands: work brings recognition and the right opportunities come at the right time'],
+    [/Raja yoga/, 'a Raja yoga lifts status, authority and recognition; you rise above your starting point'],
+    [/Neecha Bhanga/, 'a weakness turns into strength: early struggle in this area later becomes a source of success'],
+    [/Lakshmi/, 'prosperity, comfort and grace; money and blessings come steadily'],
+    [/Dhana yoga/, 'wealth-building: income grows and savings build up over time'],
+    [/Ruchaka/, 'courage, leadership and success in technical, property, police or sports fields'],
+    [/Bhadra/, 'sharp intellect, business skill and success through communication and trade'],
+    [/Hamsa/, 'wisdom, good character, respect and success in advisory, teaching or finance'],
+    [/Malavya/, 'comfort, charm, vehicles and success in creative, luxury or relationship-based work'],
+    [/Sasa/, 'authority through hard work, a long steady career and leadership over people'],
+    [/Gajakesari/, 'respect, wisdom and a good name; you are protected in difficult times'],
+    [/Budhaditya/, 'a sharp mind and recognition for knowledge; good for studies, writing and business'],
+    [/Chandra-Mangal/, 'a strong drive to earn; money comes through effort, property or trade'],
+    [/Adhi/, 'leadership, comfort and a respected position in life'],
+    [/Amala/, 'a clean reputation and lasting good name through your work'],
+    [/Maha parivartana/, 'two planets support each other; the areas they rule help each other grow'],
+    [/Khala parivartana/, 'an exchange that brings ups and downs before results settle'],
+    [/Dainya parivartana/, 'an exchange involving a difficult house: gains come after some struggle or expense'],
+    [/Harsha|Sarala|Vimala/, 'Vipreet Raja yoga: you rise after setbacks and gain from situations that trouble others'],
+    [/Sunapha/, 'self-earned wealth and a good name built by your own effort'],
+    [/Anapha/, 'good health, good character and a comfortable personal life'],
+    [/Durudhara/, 'support from all sides: comfort, wealth and helpful people'],
+    [/Vesi/, 'a good reputation and a truthful, balanced nature'],
+    [/Vasi/, 'generosity and popularity; people like working with you'],
+    [/Ubhayachari/, 'a balanced, capable personality that handles responsibility well'],
+    [/Saraswati/, 'learning, arts and eloquence; knowledge becomes a strength'],
+    [/Vargottama/, 'these planets give steady, reliable results through life'],
+    [/Mangal dosha/, 'Mars adds heat to marriage: strong will and quick temper need balance; matching charts and Tuesday remedies help'],
+    [/Kaal Sarp/, 'delays and ups and downs before success; results come strongly after the mid-thirties; Shiva worship helps'],
+    [/Kemadruma/, 'phases of loneliness or money worry; strong friendships and Moon remedies help'],
+    [/Shakata/, 'fortune moves in waves; save in good times for the slower ones'],
+    [/Guru Chandal/, 'advice and judgment can be clouded; choose mentors carefully and respect teachers'],
+    [/Grahan/, 'inner restlessness and doubts; meditation and Shiva or Durga worship help'],
+    [/Pitru/, 'ancestral karma: obstacles in father-related or family matters; Shraddha and service to elders help'],
+    [/Shrapit/, 'delays that clear with patience, honesty and service']];
+  function yogaMean(name) { for (var i = 0; i < YOGA_MEAN.length; i++) if (new RegExp(YOGA_MEAN[i][0].source, 'i').test(name)) return YOGA_MEAN[i][1]; return ''; }
+  function codesIn(text) { return ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].filter(function (x) { return new RegExp('\\b' + PN[x] + '\\b').test(text); }); }
+  function periodsOf(c, codes, now, horizonYears) {
+    var end = new Date(now.getTime() + (horizonYears || 30) * YEAR), out = [];
+    c.maha.forEach(function (m) { if (m.end < now || m.start > end) return; if (codes.indexOf(m.lord) >= 0) out.push({ t: PN[m.lord] + ' Mahadasha', s: m.start, e: m.end, now: m.start <= now && now < m.end });
+      else J.subPeriods(m).forEach(function (a) { if (a.end < now || a.start > end) return; if (codes.indexOf(a.lord) >= 0) out.push({ t: PN[m.lord] + '–' + PN[a.lord], s: a.start, e: a.end, now: a.start <= now && now < a.end }); }); });
+    return out.slice(0, 3);
+  }
+  function whenText(c, codes, now) { var ps = periodsOf(c, codes, now); if (!ps.length) return ''; return 'Shows most in: ' + ps.map(function (x) { return x.t + ' (' + dY(x.s) + ' – ' + dY(x.e) + (x.now ? ', running now' : '') + ')'; }).join('; ') + '.'; }
+  function planetOut(c, code, good) {
+    var k = c.k, p = k.P[code], ag = age(c, new Date()), hs = linkHouses(c, code).filter(function (h, i, a) { return a.indexOf(h) === i; });
+    var areas = hs.map(function (h) { return typeof NARR !== 'undefined' ? NARR.areaWord(h, ag, HOUSE_WORD[h]) : HOUSE_WORD[h]; });
+    var H = typeof NARR !== 'undefined' ? NARR.H[p.house] : null;
+    return (good ? 'This works in your favour for: ' : 'This weakens: ') + areas.join('; ') + '. ' + (H ? (good ? H.g[0] : H.b[0]) + ' ' : '') + (good ? '' : 'Remedy: ' + KB.MANTRA[code][0] + ' (108 times) and ' + KB.DAAN[code][0] + ' on ' + KB.DAAN[code][1] + '.');
+  }
+  function addOutcomes(c, out, now) {
+    var k = c.k;
+    out.pros.forEach(function (x) {
+      var cs = codesIn(x.t);
+      if (/^Strongest life areas/.test(x.t)) { var hs = (x.why || []).map(function (w) { return parseInt(w, 10); }).filter(Boolean); x.out = hs.map(function (h) { return NARR.H[h].g[0]; }).join(' ') + ' These areas give you the most support through life.'; return; }
+      if (/^Income tends/.test(x.t)) { x.out = 'You naturally earn more than you spend, so savings and assets build up over time. Keep investing steadily.'; return; }
+      if (/yoga|Yogakaraka/i.test(x.t) || /^Raja|^Dhana/.test(x.t)) { var cy = codesIn((x.why || []).join(' ') + ' ' + x.t); x.out = cap(yogaMean(x.t)) + '.' + (cy.length > 1 ? ' Formed by ' + list(cy.map(function (q) { return PN[q]; })) + '.' : ''); x.when = whenText(c, cy, now); return; }
+      if (/^Jupiter protects/.test(x.t)) { x.out = 'Jupiter\'s blessing protects you: problems tend to resolve, help arrives in difficult times and recovery is quick.'; x.when = whenText(c, ['Ju'], now); return; }
+      if (cs.length) { x.out = planetOut(c, cs[0], true); x.when = whenText(c, [cs[0]], now); }
+    });
+    out.cons.forEach(function (x) {
+      var cs = codesIn(x.t);
+      if (/^Weaker life areas/.test(x.t)) { var hs = (x.why || []).map(function (w) { return parseInt(w, 10); }).filter(Boolean); x.out = hs.map(function (h) { return NARR.H[h].b[0]; }).join(' ') + ' Give these areas extra care and planning.'; return; }
+      if (/^Expenses tend/.test(x.t)) { x.out = 'Money goes out as fast as it comes in. Automate savings and avoid impulse buys.'; return; }
+      var ym = yogaMean(x.t);
+      if (ym) { var cy = /Mangal/.test(x.t) ? ['Ma'] : /Kaal Sarp/.test(x.t) ? ['Ra', 'Ke'] : codesIn((x.why || []).join(' ') + ' ' + x.t); x.out = cap(ym) + '.'; x.when = whenText(c, cy, now); return; }
+      if (/lord .* in the/.test(x.t) && cs.length) { var hh = parseInt(x.t, 10), ph = parseInt(x.t.split(' in the ')[1], 10); x.out = 'Problems of ' + HOUSE_WORD[hh] + ' spill into ' + HOUSE_WORD[ph] + '. ' + (NARR.H[ph] ? NARR.H[ph].b[0] : '') + ' Watch this area in ' + PN[cs[0]] + ' periods.'; x.when = whenText(c, [cs[0]], now); return; }
+      if (cs.length) { x.out = planetOut(c, cs[0], false); x.when = whenText(c, [cs[0]], now); }
+    });
+    out.yogas.forEach(function (y) { var cy = /Mangal/.test(y.name) ? ['Ma'] : /Kaal Sarp/.test(y.name) ? ['Ra', 'Ke'] : codesIn(y.why + ' ' + y.name); y.out = cap(yogaMean(y.name) || (y.good ? 'a helpful combination' : 'a weak point that needs remedies')) + '.'; y.when = whenText(c, cy, now); });
+    out.golden.forEach(function (g) { var hs = []; HOUSE_WORD && Object.keys(HOUSE_WORD).forEach(function (h) { if (g.areas.indexOf(HOUSE_WORD[h]) >= 0 || (typeof NARR !== 'undefined' && g.areas.indexOf(NARR.areaWord(+h, g.ageFrom, '')) >= 0)) hs.push(+h); });
+      g.out = hs.slice(0, 3).map(function (h) { return NARR.H[h].g[0]; }).join(' ') + (g.now ? ' This period is running now, so make the most of it.' : ' Plan important moves for this window.'); });
+  }
   function analyze(c, now) {
     var k = c.k, P = k.P, L = k.ascSign, ll = J.lordOfHouse(L, 1), out = {};
     var allYogas = c.yogas.concat(moreYogas(c));
@@ -2552,6 +2630,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     out.golden = gold.map(function (g) { var hs = uniq(linkHouses(c, g.md).concat(linkHouses(c, g.ad))).filter(function (h) { return [1, 2, 4, 5, 7, 9, 10, 11].indexOf(h) >= 0; });
       return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: age(c, g.start), now: g.start <= now && now < g.end, rate: rateWord(g.s), areas: hs.slice(0, 4).map(function (h) { return hwAt(c, h, g.start); }), why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] }; });
 
+    try { addOutcomes(c, out, now); } catch (e) {  }
     /* timelines (next 25 years, antardasha level) */
     var horizon = new Date(now.getTime() + 25 * YEAR), health = [], success = [];
     function satAt(d) { var m = J.houseFrom(P.Mo.sign, J.signOf(C.sidereal('Sa', d))); return { 12: 'Sade Sati', 1: 'Sade Sati', 2: 'Sade Sati', 4: 'Kantaka Shani', 8: 'Ashtama Shani' }[m] || null; }
@@ -4570,11 +4649,11 @@ function AnalysisV2() {
     '<div class="khero"><span><small>Lagna</small>' + s.lagna + '</span><span><small>Moon</small>' + s.moon + '</span><span><small>Star</small>' + esc(s.nak.split(' pada')[0]) + '</span><span><small>Dasha</small>' + esc(s.dasha.split(' / ').slice(0, 2).join('–')) + '</span></div>' +
     '<p style="margin-top:8px;font-size:12.5px">Strongest: <b>' + s.best.join(', ') + '</b> · Needs support: <b>' + s.weak.join(', ') + '</b></p></div>';
   function sec(id, title, sub, body) { return '<div class="card ksec" id="ka-' + id + '"><h3>' + title + '</h3>' + (sub ? '<p class="sm" style="margin:-4px 0 8px">' + sub + '</p>' : '') + body + '</div>'; }
-  function li(kind, t, why, right) { return '<div class="kli"><span class="kic ' + kind + '">' + (kind === 'g' ? '✓' : kind === 'b' ? '!' : '•') + '</span><div><b>' + esc(t) + '</b>' + kaWhy(why) + '</div>' + (right || '') + '</div>'; }
-  h += sec('pros', 'Strengths of your kundli', a.pros.length + ' things working for you', a.pros.map(function (x) { return li('g', x.t, x.why); }).join(''));
-  h += sec('cons', 'Weak spots in your birth chart', a.cons.length + (a.cons.length === 1 ? ' area' : ' areas') + ' that need care or remedies', a.cons.map(function (x) { return li('b', x.t, x.why); }).join(''));
-  h += sec('yogas', 'All yogas in your chart', a.yogas.filter(function (y) { return y.good && y.kind !== 'mild'; }).length + ' helpful · ' + a.yogas.filter(function (y) { return !y.good || y.kind === 'mild'; }).length + ' doshas, mild or weak', a.yogas.map(function (y) { var ki = y.kind === 'mild' ? 'n' : y.good ? 'g' : 'b'; return '<div class="kli"><span class="kic ' + ki + '">' + (ki === 'g' ? '✓' : ki === 'b' ? '!' : '•') + '</span><div><b>' + esc(y.name) + '</b><p class="sm">' + esc(y.why) + '</p></div><span class="tag ' + (ki === 'g' ? 'tg' : ki === 'b' ? 'tr' : 'tn') + '">' + esc(y.label.split(' (')[0]) + '</span></div>'; }).join(''));
-  h += sec('golden', 'Golden dasha periods', 'Best Mahadasha–Antardasha combinations in the next 30 years', a.golden.map(function (g) { return '<div class="kgold' + (g.now ? ' now' : '') + '"><div class="kgh"><b>' + esc(g.label) + '</b>' + kaRate(g.rate) + '</div><div class="sm">' + kaDates(g.start, g.end) + ' · age ' + g.ageFrom + (g.now ? ' · <b style="color:var(--acc)">running now</b>' : '') + '</div><div class="kar">' + g.areas.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div>' + kaWhy(g.why) + '</div>'; }).join('') +
+  function li(kind, t, why, right, x) { x = x || {}; return '<div class="kli"><span class="kic ' + kind + '">' + (kind === 'g' ? '✓' : kind === 'b' ? '!' : '•') + '</span><div><b>' + esc(t) + '</b>' + (x.out ? '<p class="kout">' + esc(x.out) + '</p>' : '') + (x.when ? '<p class="kwhen">' + esc(x.when) + '</p>' : '') + kaWhy(why) + '</div>' + (right || '') + '</div>'; }
+  h += sec('pros', 'Strengths of your kundli', a.pros.length + ' things working for you', a.pros.map(function (x) { return li('g', x.t, x.why, '', x); }).join(''));
+  h += sec('cons', 'Weak spots in your birth chart', a.cons.length + (a.cons.length === 1 ? ' area' : ' areas') + ' that need care or remedies', a.cons.map(function (x) { return li('b', x.t, x.why, '', x); }).join(''));
+  h += sec('yogas', 'All yogas in your chart', a.yogas.filter(function (y) { return y.good && y.kind !== 'mild'; }).length + ' helpful · ' + a.yogas.filter(function (y) { return !y.good || y.kind === 'mild'; }).length + ' doshas, mild or weak', a.yogas.map(function (y) { var ki = y.kind === 'mild' ? 'n' : y.good ? 'g' : 'b'; return '<div class="kli"><span class="kic ' + ki + '">' + (ki === 'g' ? '✓' : ki === 'b' ? '!' : '•') + '</span><div><b>' + esc(y.name) + '</b>' + (y.out ? '<p class="kout">' + esc(y.out) + '</p>' : '') + '<p class="sm">' + esc(y.why) + '</p>' + (y.when ? '<p class="kwhen">' + esc(y.when) + '</p>' : '') + '</div><span class="tag ' + (ki === 'g' ? 'tg' : ki === 'b' ? 'tr' : 'tn') + '">' + esc(y.label.split(' (')[0]) + '</span></div>'; }).join(''));
+  h += sec('golden', 'Golden dasha periods', 'Best Mahadasha–Antardasha combinations in the next 30 years', a.golden.map(function (g) { return '<div class="kgold' + (g.now ? ' now' : '') + '"><div class="kgh"><b>' + esc(g.label) + '</b>' + kaRate(g.rate) + '</div><div class="sm">' + kaDates(g.start, g.end) + ' · age ' + g.ageFrom + (g.now ? ' · <b style="color:var(--acc)">running now</b>' : '') + '</div><div class="kar">' + g.areas.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div>' + (g.out ? '<p class="kout">' + esc(g.out) + '</p>' : '') + kaWhy(g.why) + '</div>'; }).join('') +
     '<div class="lbl" style="margin:14px 0 6px">Your whole life, Mahadasha by Mahadasha</div>' + a.life.map(function (m) { return '<div class="klife' + (m.now ? ' now' : '') + '"><span class="pt" style="background:' + PCOL[m.code] + '">' + m.code + '</span><div><b>' + m.lord + '</b><small>age ' + m.from + '–' + m.to + ' · ' + m.start.getFullYear() + '–' + m.end.getFullYear() + (m.now ? ' · now' : '') + '</small></div>' + kaRate(m.rate) + '</div>'; }).join(''));
   var R = a.rem, GK = { yes: ['tg', 'Suits you'], care: ['tn', 'With advice'], no: ['tr', 'Avoid'] };
   h += sec('remedies', 'Recommended remedies', 'Based on your lagna, running dasha and Saturn cycle',
@@ -4950,7 +5029,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '2.6';
+var APP_VERSION = '2.6.1';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
