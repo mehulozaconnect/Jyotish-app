@@ -75,6 +75,7 @@ function chartModel(c, id) {
 }
 function drawChart(m, style) { return style === 'south' ? Charts.south(m.items, m.ascSign, m.title.split(' (')[0]) : Charts.north(m.rows, m.signs); }
 TABF.charts = function (p, c) {
+  if (!U.chart || !/^(D\d+|CH|MO|SU)$/.test(U.chart)) U.chart = 'D1';
   var id = U.chart, style = U.style || DB.settings.style, m = chartModel(c, id), k = c.k;
   var h = '<div class="chips">' + CHARTS.map(function (x) { return '<button data-act="pickChart" data-v="' + x[0] + '" class="' + (x[0] === id ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>';
   h += '<div class="segw"><div><div style="font:600 15px var(--sans)">' + esc(m.title) + '</div><div class="mut" style="font-size:12px">' + esc(m.sub) + '</div></div><div class="seg"><button data-act="cstyle" data-v="north" class="' + (style === 'north' ? 'on' : '') + '">North</button><button data-act="cstyle" data-v="south" class="' + (style === 'south' ? 'on' : '') + '">South</button></div></div>';
