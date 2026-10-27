@@ -111,7 +111,14 @@ var HI = {
   'Strong': 'बलवान', 'Very strong': 'अति बलवान', 'Weak': 'कमज़ोर', 'Just short': 'थोड़ा कम', 'Language': 'भाषा', 'Choose person': 'व्यक्ति चुनें', 'Manage': 'प्रबंधन', '+ New kundli': '+ नई कुंडली'
 };
 function isHi() { return DB.settings.lang === 'hi'; }
-function hiCache() { return DB.hi || (DB.hi = {}); }
+function isTr() { return ['hi', 'hing', 'easy'].indexOf(DB.settings.lang) >= 0; }
+function hiCache() { DB.tr = DB.tr || {}; if (DB.hi && !DB.tr.hi) { DB.tr.hi = DB.hi; delete DB.hi; } var m = DB.settings.lang; return DB.tr[m] || (DB.tr[m] = {}); }
+var TR_PROMPT = {
+  hi: 'You translate the text of a Vedic astrology app into simple, natural Hindi (Devanagari) that an ordinary Indian family understands. Use common Hindi astrology words: lagna=लग्न, dasha=दशा, Mahadasha=महादशा, Antardasha=अंतर्दशा, house=भाव, transit=गोचर, remedy=उपाय, yoga=योग, dosha=दोष; planets: Sun सूर्य, Moon चंद्र, Mars मंगल, Mercury बुध, Jupiter गुरु, Venus शुक्र, Saturn शनि, Rahu राहु, Ketu केतु; signs in Hindi (Aries मेष …).',
+  hing: 'You rewrite the text of a Vedic astrology app into easy Hinglish: Hindi written in English (Roman) letters mixed with simple English words, the way people talk in Mumbai. Example: "Is mahine career mein growth hogi, lekin bade decisions jaldi mat lena." Use common words: Shani, Guru, Mangal, Budh, Shukra, Surya, Chandra, Rahu, Ketu; ghar/bhaav for house, dasha, gochar for transit, upay for remedy. Short sentences.',
+  easy: 'You rewrite the text of a Vedic astrology app into very easy English for someone who reads English as a second language. Use short sentences (under 15 words), everyday words, no difficult vocabulary. Explain astrology words in a few words in brackets the first time, e.g. "Saturn period (Shani dasha)". Keep the meaning exactly; do not add or remove advice.'
+};
+var TR_NAME = { hi: 'Hindi', hing: 'Hinglish', easy: 'easy English' };
 var HI_PEND = {}, HI_BUSY = false;
 function hiNodes(root) {
   var out = [], w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) {
@@ -120,11 +127,11 @@ function hiNodes(root) {
   while (w.nextNode()) out.push(w.currentNode); return out;
 }
 function hiApply(fetch) {
-  if (!isHi()) return; var names = DB.people.map(function (p) { return p.name; }), cache = hiCache(), want = [];
+  if (!isTr()) return; var names = DB.people.map(function (p) { return p.name; }), cache = hiCache(), want = [], done = {}; Object.keys(cache).forEach(function (k) { done[cache[k]] = 1; });
   [$('#app'), $('#nav')].forEach(function (root) { if (!root) return; hiNodes(root).forEach(function (n) {
     var raw = n.nodeValue, t = raw.trim(), lead = raw.match(/^\s*/)[0], tail = raw.match(/\s*$/)[0];
     if (names.indexOf(t) >= 0 || /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(t) && names.some(function (x) { return x.indexOf(t) === 0; })) return;
-    var v = HI[t] || cache[t]; if (v) { n.nodeValue = lead + v + tail; return; }
+    if (done[t]) return; var v = (isHi() ? HI[t] : null) || cache[t]; if (v) { n.nodeValue = lead + v + tail; return; }
     if (t.length <= 600) want.push(t);
   }); });
   if (fetch && want.length && DB.settings.gkey) { want.forEach(function (t) { HI_PEND[t] = 1; }); hiFetch(); }
@@ -133,23 +140,25 @@ function hiFetch() {
   if (HI_BUSY) return; var keys = Object.keys(HI_PEND), batch = [], len = 0;
   keys.forEach(function (k) { if (len < 7000 && batch.length < 120) { batch.push(k); len += k.length; } });
   if (!batch.length) return; HI_BUSY = true; batch.forEach(function (k) { delete HI_PEND[k]; });
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: 'You translate the text of a Vedic astrology app into simple, natural Hindi (Devanagari) that an ordinary Indian family understands. Use common Hindi astrology words: lagna=लग्न, dasha=दशा, Mahadasha=महादशा, Antardasha=अंतर्दशा, house=भाव, transit=गोचर, remedy=उपाय, yoga=योग, dosha=दोष; planets: Sun सूर्य, Moon चंद्र, Mars मंगल, Mercury बुध, Jupiter गुरु, Venus शुक्र, Saturn शनि, Rahu राहु, Ketu केतु; signs in Hindi (Aries मेष …). Keep numbers, dates, times, degrees and people\'s names as they are. Keep it short like the original. Return ONLY a JSON array of strings, same length and order as the input.' }] },
+  var mode = DB.settings.lang, body = JSON.stringify({ system_instruction: { parts: [{ text: TR_PROMPT[mode] + ' Keep numbers, dates, times, degrees and people\'s names as they are. Keep it short like the original. Return ONLY a JSON array of strings, same length and order as the input.' }] },
     contents: [{ role: 'user', parts: [{ text: JSON.stringify(batch) }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } });
-  if (!U.hiToast) { U.hiToast = 1; toast('Translating to Hindi…', 1800); }
+  if (!U.hiToast) { U.hiToast = 1; toast('Rewriting in ' + TR_NAME[mode] + '…', 1800); }
   gGenerate(body).then(function (d) {
     var cand = d.candidates && d.candidates[0], txt = cand && cand.content && cand.content.parts ? cand.content.parts.filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join('') : '[]';
+    if (DB.settings.lang !== mode) { HI_BUSY = false; return; }
     var arr = JSON.parse(txt.replace(/^```(json)?|```$/g, '').trim()), cache = hiCache();
     if (Array.isArray(arr)) batch.forEach(function (k, i) { if (typeof arr[i] === 'string' && arr[i].trim()) cache[k] = arr[i].trim(); });
     var ks = Object.keys(cache); if (ks.length > 4000) ks.slice(0, ks.length - 4000).forEach(function (k) { delete cache[k]; });
     save(); HI_BUSY = false; hiApply(false); if (Object.keys(HI_PEND).length) hiFetch(); else U.hiToast = 0;
-  }).catch(function (e) { HI_BUSY = false; U.hiToast = 0; HI_PEND = {}; toast('Hindi translation failed: ' + e.message, 3500); });
+  }).catch(function (e) { HI_BUSY = false; U.hiToast = 0; HI_PEND = {}; toast(TR_NAME[mode] + ' rewrite failed: ' + e.message, 3500); });
 }
 (function () {
-  var r0 = render; render = function () { r0(); if (isHi()) { hiApply(true); document.documentElement.lang = 'hi'; } else document.documentElement.lang = 'en'; };
-  var g0 = geminiFormat; geminiFormat = function (name, intent, rel, me) { return g0(name, intent, rel, me) + (isHi() ? '\nLANGUAGE: Write the whole answer in simple Hindi (Devanagari script), using common Hindi astrology words (लग्न, दशा, गोचर, उपाय, भाव). Keep dates and numbers as digits.' : ''); };
+  var r0 = render; render = function () { r0(); if (isTr()) hiApply(true); document.documentElement.lang = isHi() ? 'hi' : 'en'; };
+  var g0 = geminiFormat; geminiFormat = function (name, intent, rel, me) { var m = DB.settings.lang; return g0(name, intent, rel, me) + (m === 'hi' ? '\nLANGUAGE: Write the whole answer in simple Hindi (Devanagari script), using common Hindi astrology words (लग्न, दशा, गोचर, उपाय, भाव). Keep dates and numbers as digits.' : m === 'hing' ? '\nLANGUAGE: Write the whole answer in easy Hinglish (Hindi in English letters mixed with simple English words, the way people talk in Mumbai), e.g. "Is saal career mein growth hogi, lekin March tak jaldi decisions mat lena." Use Shani, Guru, Mangal, Budh, Shukra, Surya, Chandra, Rahu, Ketu, dasha, gochar, upay. Keep section headings in English. Short sentences.' : '\nLANGUAGE: Use very easy, everyday English. Short sentences (under 15 words). No difficult words. Avoid astrology jargon; if you must use a term, explain it in a few words in brackets, e.g. "Saturn period (Shani dasha)".'); };
 })();
 function langCard() {
-  return '<div class="card"><h3>Language</h3><div class="seg">' + [['en', 'English'], ['hi', 'हिंदी']].map(function (l) { return '<button data-notr class="' + ((DB.settings.lang || 'en') === l[0] ? 'on' : '') + '" data-act="setLang" data-v="' + l[0] + '">' + l[1] + '</button>'; }).join('') + '</div><p class="note">' + (DB.settings.gkey ? 'Hindi: menus switch at once; readings are translated by Gemini the first time you open a screen, then work offline. AI answers come in Hindi.' : 'Menus switch to Hindi now. Add your Gemini key below to get every reading and AI answer in Hindi.') + '</p></div>';
+  var m = DB.settings.lang || 'en';
+  return '<div class="card"><h3>Language</h3><div class="seg seg4">' + [['en', 'English'], ['easy', 'Easy English'], ['hing', 'Hinglish'], ['hi', 'हिंदी']].map(function (l) { return '<button data-notr class="' + (m === l[0] ? 'on' : '') + '" data-act="setLang" data-v="' + l[0] + '">' + l[1] + '</button>'; }).join('') + '</div><p class="note">' + ({ en: 'Normal app English. AI answers use simple everyday English.', easy: 'Every reading is rewritten in short, easy sentences.', hing: 'Every reading is rewritten in Hinglish, e.g. "Is mahine career mein growth hogi, lekin jaldi decisions mat lena."', hi: 'Menus switch to Hindi at once; readings are translated into Hindi.' }[m]) + (m !== 'en' ? (DB.settings.gkey ? ' Gemini rewrites each screen the first time you open it; after that it works offline. AI answers come in the same language.' : ' Add your Gemini key below to rewrite the readings; until then only the AI style changes.') : '') + '</p></div>';
 }
 ACT.setLang = function (el) { DB.settings.lang = el.dataset.v; save(); rerender(true); };
 
@@ -197,7 +206,7 @@ ACT.shareOther = function (el) { closeSheet(); (el.dataset.k === 'milan' ? share
 ACT.waGo = function (el) {
   closeSheet(); var kind = el.dataset.k, ph = el.dataset.ph, p = curP(), d = screenDigest(), title = d.title, name = p ? p.name : '', extra = '';
   if (kind === 'milan') { var bs = $('#app').querySelectorAll('.msel'); name = bs.length ? bs[0].selectedOptions[0].text + ' & ' + bs[1].selectedOptions[0].text : ''; title = isHi() ? 'कुंडली मिलान' : 'Kundli Milan'; extra = Array.prototype.slice.call($('#app').querySelectorAll('.mk')).map(function (e) { return '• ' + e.querySelector('.mkh b').innerText + ': ' + e.querySelector('.mks').innerText; }).join('\n'); }
-  else if (!isHi() && U.shareFn && !d.pts.length) { extra = U.shareFn(); }
+  else if (!isTr() && U.shareFn && !d.pts.length) { extra = U.shareFn(); }
   var img = ''; try { img = waCard(title, name, d.head || title, d.pts.length ? d.pts : (extra ? extra.split('\n').slice(1, 6) : [d.intro])); } catch (e) { }
   waSend(waText(title, name, d, extra), ph, img);
 };
