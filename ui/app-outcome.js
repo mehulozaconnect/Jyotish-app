@@ -18,12 +18,14 @@ function varshOutcome(p, c, now, a) {
   var ylS = rateIn(yl, V, c), vl = J.RULER[V.ascSign], vlS = rateIn(vl, V, c), score = ylS * 0.45 + vlS * 0.35 + (mh[0] === 'good' ? 1 : -1);
   var verdict = score >= 1.5 ? ['A good year', 'g'] : score >= 0 ? ['A mixed year', 'm'] : ['A testing year', 'b'];
   /* life areas from the year chart */
-  var areas = [[10, 'Career'], [2, 'Money'], [11, 'Gains'], [7, 'Relationships'], [1, 'Health'], [4, 'Home']].map(function (x) {
+  var stg = NARR.stage(a), KM = stg === 'child' ? NARR.CH : stg === 'teen' ? NARR.TN : null;
+  var AL = KM ? [[5, 'Studies'], [1, 'Health'], [4, 'Home & mother'], [3, 'Friends & hobbies'], [9, 'Teachers & father'], [6, 'Immunity']] : [[10, 'Career'], [2, 'Money'], [11, 'Gains'], [7, 'Relationships'], [1, 'Health'], [4, 'Home']];
+  var areas = AL.map(function (x) {
     var h = x[0], occ = V.planets.filter(function (q) { return q.house === h; }), lord = J.RULER[(V.ascSign + h - 1) % 12], s = rateIn(lord, V, c) * 0.6;
     occ.forEach(function (q) { s += ['Ju', 'Ve', 'Me'].indexOf(q.code) >= 0 ? 1 : ['Sa', 'Ma', 'Ra', 'Ke'].indexOf(q.code) >= 0 ? (h === 10 || h === 11 ? 0.3 : -1) : 0.2; });
     if (vp.munthaHouse === h) s += mh[0] === 'good' ? 1 : -1;
     var w = rword(s), why = 'Year ' + N.nth(h) + ' house: lord ' + PN[lord] + ' in the ' + N.nth(V.P[lord].house) + (occ.length ? ', with ' + occ.map(function (q) { return PN[q.code]; }).join(', ') : '');
-    var line = { Career: ['rise, recognition or a better role', 'steady work, no big jump', 'pressure or changes at work; avoid quitting in haste'], Money: ['savings grow; good for planned purchases', 'income steady; watch spends', 'cash flow tight; avoid loans and risky bets'], Gains: ['wishes and income targets met', 'some gains with effort', 'gains delayed; keep expectations modest'], Relationships: ['harmony; good for marriage or partnership steps', 'normal; small misunderstandings', 'strain likely; patience and clear talk needed'], Health: ['good energy', 'normal health; keep routine', 'health needs care; regular check-ups'], Home: ['peace at home; property moves possible', 'normal home life', 'worries at home or about mother'] }[x[1]][w[1] === 'g' ? 0 : w[1] === 'm' ? 1 : 2];
+    var line = KM ? (w[1] === 'b' ? KM[h][1] : w[1] === 'g' ? KM[h][0] : KM[h][0].replace(/\.$/, '') + '; ' + KM[h][1].charAt(0).toLowerCase() + KM[h][1].slice(1)).replace(/\.$/, '').replace(/^./, function (z) { return z.toLowerCase(); }) : { Career: ['rise, recognition or a better role', 'steady work, no big jump', 'pressure or changes at work; avoid quitting in haste'], Money: ['savings grow; good for planned purchases', 'income steady; watch spends', 'cash flow tight; avoid loans and risky bets'], Gains: ['wishes and income targets met', 'some gains with effort', 'gains delayed; keep expectations modest'], Relationships: ['harmony; good for marriage or partnership steps', 'normal; small misunderstandings', 'strain likely; patience and clear talk needed'], Health: ['good energy', 'normal health; keep routine', 'health needs care; regular check-ups'], Home: ['peace at home; property moves possible', 'normal home life', 'worries at home or about mother'] }[x[1]][w[1] === 'g' ? 0 : w[1] === 'm' ? 1 : 2];
     return { t: x[1], w: w, line: line, why: why };
   });
   /* month-wise (mudda dasha) */
@@ -34,7 +36,7 @@ function varshOutcome(p, c, now, a) {
   var best = months.filter(function (m) { return m.w[1] === 'g'; }), worst = months.filter(function (m) { return m.w[1] === 'b'; });
   var tell = [
     verdict[0] + ' (' + N.dmy(vp.at) + ' – ' + N.dmy(vp.end) + '): ' + mh[1] + ' is the main theme.',
-    'Strongest area: ' + areas.slice().sort(function (x, y) { return ({ g: 2, m: 1, b: 0 })[y.w[1]] - ({ g: 2, m: 1, b: 0 })[x.w[1]]; })[0].t.toLowerCase() + '.'];
+    (KM ? NARR.STAGE_TIP[stg] + ' ' : '') + 'Strongest area: ' + areas.slice().sort(function (x, y) { return ({ g: 2, m: 1, b: 0 })[y.w[1]] - ({ g: 2, m: 1, b: 0 })[x.w[1]]; })[0].t.toLowerCase() + '.'];
   function spans(list) { var o = []; list.forEach(function (m) { var l = o[o.length - 1]; if (l && Math.abs(l.e - m.d.start) < 864e5) l.e = m.d.end; else o.push({ s: m.d.start, e: m.d.end }); }); return o.map(function (x) { return mon(x.s) === mon(x.e) ? mon(x.s) : mon(x.s) + '–' + mon(x.e); }); }
   if (best.length) tell.push('Best months: ' + spans(best).join(', ') + ' — use them for important moves.');
   if (worst.length) tell.push('Go slow: ' + spans(worst).join(', ') + ' — avoid big decisions and keep health in check.');

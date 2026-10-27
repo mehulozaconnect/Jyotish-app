@@ -250,6 +250,7 @@ function geminiFormat(name, intent, rel, me) {
 function fixedFacts(p, c) {
   var k = c.k, now = new Date(), ch = J.dashaChain(c.maha, now, 3), LV = ['Mahadasha', 'Antardasha', 'Pratyantar'], a = kaOf(p);
   return 'FIXED FACTS (do not contradict)\n' +
+    'AGE NOW: ' + age(p, now) + ' (' + NARR.stage(age(p, now)) + '). Tailor every point to this stage of life: for a child, talk about health, temperament, studies, parents\' guidance and what the child can do; for a teen, studies, exams, career direction and habits; never talk about marriage, spouse, money or career for a child unless asked. For any past or future period, use the age at that period.\n' +
     'Lagna ' + J.SIGNS[k.ascSign] + ' (lord ' + PN[J.lordOfHouse(k.ascSign, 1)] + '); Moon sign ' + J.SIGNS[k.P.Mo.sign] + ', nakshatra ' + k.P.Mo.nak.name + '; Sun sign ' + J.SIGNS[k.P.Su.sign] + '.\n' +
     'RUNNING NOW (' + N.dmy(now) + '): ' + ch.map(function (x, i) { return LV[i] + ' ' + PN[x.lord] + ' (' + N.dmy(x.start) + ' to ' + N.dmy(x.end) + ')'; }).join(', ') + '.\n' +
     'Planets: ' + k.planets.map(function (x) { return PN[x.code] + ' ' + J.SIGNS[x.sign] + ' house ' + x.house + ' ' + x.dignity.toLowerCase() + (x.combust ? ' combust' : ''); }).join('; ') + '.\n' +

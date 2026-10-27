@@ -63,6 +63,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     var sav = c.av.sav[p.sign]; if (sav >= 30) { s += 0.5; why.push(sav + ' SAV points'); } else if (sav < 25) { s -= 0.5; why.push('only ' + sav + ' SAV points'); }
     return { s: s, why: why };
   }
+  function hwAt(c, h, d) { var ag = age(c, d); return typeof NARR !== 'undefined' ? NARR.areaWord(h, ag, HOUSE_WORD[h]) : HOUSE_WORD[h]; }
   function rateWord(s) { return s >= 3 ? 'Golden' : s >= 1.5 ? 'Good' : s >= 0 ? 'Mixed' : 'Testing'; }
   function linkHouses(c, code) { var k = c.k; return uniq(J.lordsOf(k.ascSign, code).concat([k.P[code].house])); }
 
@@ -155,7 +156,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     var perMd = {}, gold = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && a.md !== a.ad || a.start <= now && now < a.end; }).sort(function (a, b) { return b.s - a.s; })
       .filter(function (a) { perMd[a.md] = (perMd[a.md] || 0) + 1; return perMd[a.md] <= 2 || (a.start <= now && now < a.end); }).slice(0, 6).sort(function (a, b) { return a.start - b.start; });
     out.golden = gold.map(function (g) { var hs = uniq(linkHouses(c, g.md).concat(linkHouses(c, g.ad))).filter(function (h) { return [1, 2, 4, 5, 7, 9, 10, 11].indexOf(h) >= 0; });
-      return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: age(c, g.start), now: g.start <= now && now < g.end, rate: rateWord(g.s), areas: hs.slice(0, 4).map(function (h) { return HOUSE_WORD[h]; }), why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] }; });
+      return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: age(c, g.start), now: g.start <= now && now < g.end, rate: rateWord(g.s), areas: hs.slice(0, 4).map(function (h) { return hwAt(c, h, g.start); }), why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] }; });
 
     /* timelines (next 25 years, antardasha level) */
     var horizon = new Date(now.getTime() + 25 * YEAR), health = [], success = [];
@@ -178,7 +179,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
       var gs = a.s + (jupGood(mid) ? 0.5 : 0);
       if (gs >= 1.8 && good.length) {
         var g2 = uniq(good).sort(function (x, y) { return [10, 11, 2, 9, 5, 4, 7].indexOf(x) - [10, 11, 2, 9, 5, 4, 7].indexOf(y); });
-        success.push({ start: from, end: a.end, label: PN[a.md] + ' – ' + PN[a.ad], level: gs >= 3 ? 'Peak' : 'Good', areas: g2.slice(0, 3).map(function (h) { return HOUSE_WORD[h]; }), why: [PN[a.ad] + ' ' + sc[a.ad].why.slice(0, 2).join(', ')].concat(jupGood(mid) ? ['Jupiter transit supports (good house from your Moon)'] : []) });
+        success.push({ start: from, end: a.end, label: PN[a.md] + ' – ' + PN[a.ad], level: gs >= 3 ? 'Peak' : 'Good', areas: g2.slice(0, 3).map(function (h) { return hwAt(c, h, from); }), why: [PN[a.ad] + ' ' + sc[a.ad].why.slice(0, 2).join(', ')].concat(jupGood(mid) ? ['Jupiter transit supports (good house from your Moon)'] : []) });
       }
     });
     function merge(arr) { var o = []; arr.forEach(function (x) { var l = o[o.length - 1]; if (l && l.label.split(' – ')[0] === x.label.split(' – ')[0] && l.level === x.level && Math.abs(l.end - x.start) < 5 * DAY) { l.end = x.end; l.label += ', ' + x.label.split(' – ')[1]; l.areas = uniq(l.areas.concat(x.areas)).slice(0, 4); } else o.push(JSON.parse(JSON.stringify(x), function (k2, v) { return (k2 === 'start' || k2 === 'end') ? new Date(v) : v; })); }); return o; }
