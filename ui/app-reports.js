@@ -61,19 +61,59 @@ REP.planets = function (p, c) {
   });
   return { v: vrd('Planet by planet', 'm'), intro: 'What each planet does in the birth chart, through life.', sec: [{ h: 'Planets', story: true, items: items }], tell: items.filter(function (x) { return x.k !== 'i'; }).slice(0, 5).map(function (x) { return x.t.split(' in ')[0].charAt(0) + x.t.split(' in ')[0].slice(1).toLowerCase() + (x.k === 'g' ? ' works in your favour.' : ' needs support; its remedy helps.'); }), ask: 'Explain each planet in ' + nm(p) + '\'s chart and what it means in daily life' };
 };
+/* score a planet sitting in a sign for this chart: house from lagna, house from Moon, dignity, bindus */
+var AREA_H = {
+  'Career and work': { 10: ['promotion, recognition or a new responsibility is likely', 'work pressure rises and recognition is delayed'], 6: ['you beat competition at work; good for hard, routine work', 'office politics or a difficult colleague; avoid arguments at work'], 11: ['efforts bring rewards and targets are met', 'rewards come late; stay patient'], 3: ['initiative, calls and short work trips pay off', 'efforts feel slow; avoid hasty moves'] },
+  'Money': { 2: ['savings grow and money comes in', 'family expenses or unexpected bills strain savings'], 11: ['income and gains rise; pending payments come in', 'gains are delayed; do not count on them yet'], 12: ['spending on good causes, travel or comforts is fine', 'expenses rise; budget carefully'], 5: ['planned investments do well', 'avoid speculation and risky bets'] },
+  'Family and relationships': { 4: ['peace at home; good for home or vehicle purchases', 'unrest at home or worry about mother or property'], 7: ['harmony with spouse and partners', 'misunderstandings with spouse or partners; patience needed'], 2: ['warm family time and gatherings', 'family friction or expenses; mind your words'], 5: ['children bring joy and good news', 'concerns about children need attention'] },
+  'Health and energy': { 1: ['good energy and confidence', 'tiredness, restlessness or a short temper'], 6: ['health improves and old issues ease', 'digestion and immunity need care'], 8: ['recovery from a long-standing issue', 'risk of sudden health issues; drive carefully'], 12: ['good rest and sleep', 'poor sleep and fatigue; rest more'] } };
+function tScore(c, code, sign, lon) {
+  var k = c.k, GG = KB.GOCHAR_GOOD, h = J.houseFrom(k.ascSign, sign), m = J.houseFrom(k.P.Mo.sign, sign), td = code === 'Ra' || code === 'Ke' ? null : J.dignity(code, lon != null ? lon : sign * 30 + 15);
+  var bav = c.av.bav[code] ? c.av.bav[code][sign] : null;
+  var sc = (GG[code].indexOf(h) >= 0 ? 1 : -1) + (GG[code].indexOf(m) >= 0 ? 0.7 : -0.5) + ({ 'Exalted': 1, 'Moolatrikona': 1, 'Own sign': 1, 'Debilitated': -1.5, 'Enemy sign': -0.5 }[td] || 0) + (bav == null ? 0 : bav >= 5 ? 0.5 : bav <= 3 ? -0.5 : 0);
+  return { h: h, m: m, td: td, sc: sc, tone: sc >= 1 ? 'g' : sc <= -1 ? 'b' : 'm' };
+}
 REP.month = function (p, c, now) {
-  var L = DB.settings.loc, good = [], bad = [];
-  for (var i = 0; i < 30; i++) { var dd = todayStart(i), pl = J.panchangLite(dd, L.lat, L.lon), wd = new Date(pl.rise.getTime() + locOff() * 3600e3).getUTCDay(), sc = N.dayScore(c, pl, wd); if (sc.v === 'push') good.push([pl.rise, sc.score]); if (sc.v === 'backend') bad.push([pl.rise, sc.score - (sc.cb === 8 ? 5 : 0)]); }
+  var k = c.k, L = DB.settings.loc, end = new Date(now.getTime() + 30 * 864e5), mid = new Date(now.getTime() + 15 * 864e5), good = [], bad = [];
+  for (var i = 0; i < 30; i++) { var dd = todayStart(i), pl = J.panchangLite(dd, L.lat, L.lon), wd = new Date(pl.rise.getTime() + locOff() * 3600e3).getUTCDay(), sc0 = N.dayScore(c, pl, wd); if (sc0.v === 'push') good.push([pl.rise, sc0.score]); if (sc0.v === 'backend') bad.push([pl.rise, sc0.score - (sc0.cb === 8 ? 5 : 0)]); }
   var nGood = good.length, nBad = bad.length;
   good = good.sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6).map(function (x) { return x[0]; }).sort(function (a, b) { return a - b; });
   bad = bad.sort(function (a, b) { return a[1] - b[1]; }).slice(0, 6).map(function (x) { return x[0]; }).sort(function (a, b) { return a - b; });
-  var end = new Date(now.getTime() + 30 * 864e5), ch = J.dashaChain(c.maha, now, 4), changes = [];
-  ch.forEach(function (x, j) { if (j > 0 && j < 3 && x.end < end) changes.push(itm(['', 'Antardasha', 'Pratyantar', 'Sookshma'][j] + ' changes on ' + N.dmy(x.end), 'From ' + PN[x.lord] + ' to the next planet; focus shifts.')); });
-  var ev = J.events(now, end, ['Su', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra']).filter(function (e) { return e.type === 'ingress' || e.code === 'Ju' || e.code === 'Sa'; }).map(function (e) { var m = J.houseFrom(c.k.P.Mo.sign, e.sign); return itm(N.dmy(e.t) + ': ' + PN[e.code] + (e.type === 'ingress' ? ' enters ' + J.SIGNS[e.sign] : ' turns ' + (e.type === 'retro' ? 'retrograde' : 'direct')), e.type === 'ingress' ? N.nth(m) + ' from the Moon: ' + (KB.GOCHAR[e.code] ? KB.GOCHAR[e.code][m] : '') + '.' : '', e.type === 'ingress' && KB.GOCHAR_GOOD[e.code] && KB.GOCHAR_GOOD[e.code].indexOf(m) >= 0 ? 'g' : 'i'); });
   var fd = function (d) { return J.VARAS[new Date(d.getTime() + locOff() * 3600e3).getUTCDay()].slice(0, 3) + ' ' + N.dmy(d).replace(/ \d{4}$/, ''); };
-  return { v: vrd(nGood >= nBad + 3 ? 'A supportive month' : nBad > nGood + 5 ? 'A month to go steady' : 'A balanced month', nGood >= nBad + 3 ? 'g' : nBad > nGood + 5 ? 'b' : 'm'), intro: 'Next 30 days from today, using your dasha, Moon and transits.',
-    sec: [{ h: 'Strong days (meetings, deals, new starts)', items: good.length ? [itm(good.map(fd).join(' · '), '', 'g')] : [itm('No standout days; use the green hours on My day.', '')] }, { h: 'Toughest days (avoid big decisions)', items: bad.length ? [itm(bad.map(fd).join(' · '), '', 'b')] : [itm('No difficult days.', '')] }, { h: 'Changes this month', items: changes.concat(ev).length ? changes.concat(ev) : [itm('No major planet changes.', '')] }],
-    tell: [good.length ? 'Best days: ' + good.slice(0, 5).map(fd).join(', ') + '.' : '', bad.length ? 'Go slow on: ' + bad.slice(0, 4).map(fd).join(', ') + '.' : ''].filter(Boolean), ask: 'What does the next 30 days look like for ' + nm(p) + ', with the best and worst days' };
+  /* positions over the month: today and mid-month */
+  var T0 = transitRead(c, now), T1 = transitRead(c, mid), ch = J.dashaChain(c.maha, mid, 3), pd = ch[2] || ch[1], ad = ch[1];
+  var AREAS = [['Career and work', [10, 6, 11, 3]], ['Money', [2, 11, 12, 5]], ['Family and relationships', [4, 7, 2, 5]], ['Health and energy', [1, 6, 8, 12]]];
+  var areaItems = [], areaTell = [];
+  AREAS.forEach(function (A) {
+    var hs = A[1], hits = T1.filter(function (r) { return hs.indexOf(r.h) >= 0 && r.code !== 'Mo'; }), sum = 0, sent = [];
+    hits.forEach(function (r) { var w = ['Ju', 'Sa', 'Ra', 'Ke'].indexOf(r.code) >= 0 ? 1.2 : 0.6, sc = r.sc; if (A[0] === 'Health and energy' && [6, 8, 12].indexOf(r.h) >= 0 && r.code !== 'Ju') sc -= 0.5; sum += sc * w; });
+    var dl = [ad, pd].filter(Boolean).filter(function (x, j, arr) { return arr.indexOf(x) === j; }), dlinks = [];
+    dl.forEach(function (x) { var lh = N.uniq(J.lordsOf(k.ascSign, x.lord).concat([k.P[x.lord].house])).filter(function (h) { return hs.indexOf(h) >= 0; }); if (lh.length) { var f = c.func[x.lord], g = !f ? -0.3 : f.kind === 'malefic' ? -0.6 : (f.kind === 'benefic' || f.kind === 'yogakaraka') ? 0.8 : 0; sum += g; dlinks.push([x.lord, lh[0], g]); } });
+    var tone = sum >= 0.8 ? 'g' : sum <= -0.8 ? 'b' : 'm';
+    hits.sort(function (a, b) { return Math.abs(b.sc) - Math.abs(a.sc); }).slice(0, 2).forEach(function (r) { var H = NARR.H[r.h]; var bt = A[0] === 'Health and energy' && [6, 8, 12].indexOf(r.h) >= 0 && r.code !== 'Ju' ? 'b' : r.tone, ph = AREA_H[A[0]][r.h]; sent.push(PN[r.code] + ' in your ' + N.nth(r.h) + ' house' + (r.td === 'Debilitated' ? ' (debilitated)' : r.td === 'Exalted' ? ' (exalted)' : '') + ': ' + (bt === 'b' ? ph[1] : bt === 'g' ? ph[0] : ph[0] + ', though ' + ph[1]) + '.'); });
+    dlinks.slice(0, 1).forEach(function (d) { var ph = AREA_H[A[0]][d[1]]; sent.push('Your running ' + PN[d[0]] + ' period also activates this area: ' + (d[2] > 0 ? ph[0] : d[2] < 0 ? ph[1] : ph[0] + ', with some effort') + '.'); });
+    if (!sent.length) sent.push(tone === 'g' ? 'No planet disturbs this area; things move smoothly.' : 'No major planet is active here; results stay steady.');
+    var head = { g: 'Good this month.', m: 'Mixed this month.', b: 'Needs care this month.' }[tone];
+    areaItems.push({ t: A[0] + ' · ' + { g: 'Good', m: 'Mixed', b: 'Careful' }[tone], p: head + ' ' + sent.join(' '), k: tone === 'g' ? 'g' : tone === 'b' ? 'b' : 'i' });
+    areaTell.push(A[0] + ': ' + { g: 'good', m: 'mixed', b: 'needs care' }[tone] + '.');
+  });
+  /* changes during the month, read from the lagna */
+  var ev = J.events(now, end, ['Su', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra']).map(function (e) {
+    if (e.type === 'ingress') { var t = tScore(c, e.code, e.sign), H = NARR.H[t.h]; return { t: N.dmy(e.t) + ': ' + PN[e.code] + ' enters ' + J.SIGNS[e.sign] + ', your ' + N.nth(t.h) + ' house' + (t.td === 'Debilitated' ? ' (debilitated)' : t.td === 'Exalted' ? ' (exalted)' : ''), p: (t.tone === 'g' ? 'Good change. ' + H.g[0] + ' ' + H.g[1] : t.tone === 'b' ? 'Be careful. ' + H.b[0] + ' ' + H.b[1] : 'Mixed. ' + H.g[0] + ' But ' + H.b[0].charAt(0).toLowerCase() + H.b[0].slice(1)) + ' (From the Moon it is ' + N.nth(t.m) + ': ' + KB.GOCHAR[e.code][t.m] + '.)', k: t.tone === 'g' ? 'g' : t.tone === 'b' ? 'b' : 'i' }; }
+    var hh = J.houseFrom(k.ascSign, e.sign); return { t: N.dmy(e.t) + ': ' + PN[e.code] + ' turns ' + (e.type === 'retro' ? 'retrograde' : 'direct') + ' in your ' + N.nth(hh) + ' house', p: e.type === 'retro' ? 'Matters of ' + AREA_OF[hh] + ' slow down or need a second look; avoid fresh commitments there and re-check paperwork.' : 'Delayed matters of ' + AREA_OF[hh] + ' start moving again.', k: e.type === 'retro' ? 'b' : 'g' };
+  });
+  ch.forEach(function (x, j) { if (j > 0 && x.end < end) { var nx = J.dashaChain(c.maha, new Date(x.end.getTime() + 3600e3), 3)[j]; if (nx) ev.push({ t: N.dmy(x.end) + ': ' + ['', 'Antardasha', 'Pratyantar'][j] + ' changes to ' + PN[nx.lord], p: 'Focus shifts to ' + N.uniq(J.lordsOf(k.ascSign, nx.lord).concat([k.P[nx.lord].house])).map(function (h) { return AREA_OF[h]; }).join('; ') + '.', k: 'i' }); } });
+  ev.sort(function (a, b) { return new Date(a.t.split(':')[0]) - new Date(b.t.split(':')[0]); });
+  var ss = N.sadeSati(c, now), score = areaItems.reduce(function (t, x) { return t + (x.k === 'g' ? 1 : x.k === 'b' ? -1 : 0); }, 0) + (nGood - nBad) / 6;
+  var v = score >= 1.5 ? ['A good month', 'g'] : score <= -1.5 ? ['A month to go steady', 'b'] : ['A mixed month', 'm'];
+  var pdH = pd ? NARR.H[k.P[pd.lord].house] : null, pdF = pd && c.func[pd.lord];
+  var overview = v[0] + ' (' + N.dmy(now) + ' to ' + N.dmy(end) + '). ' + (pd ? 'You are in ' + PN[ch[0].lord] + ' Mahadasha, ' + PN[ad.lord] + ' Antardasha and ' + PN[pd.lord] + ' Pratyantar (until ' + N.dmy(pd.end) + '), which brings ' + AREA_OF[k.P[pd.lord].house] + ' into focus: ' + ((pdF && (pdF.kind === 'malefic')) || pd.lord === 'Ra' || pd.lord === 'Ke' ? pdH.b[0] : pdH.g[0]).charAt(0).toLowerCase() + ((pdF && pdF.kind === 'malefic') || pd.lord === 'Ra' || pd.lord === 'Ke' ? pdH.b[0] : pdH.g[0]).slice(1) + ' ' : '') + (ss.q === 'bad' ? ss.label + ' is running, so keep a steady routine and avoid shortcuts. ' : '') + (good.length ? 'Use ' + good.slice(0, 3).map(fd).join(', ') + ' for important work' : '') + (bad.length ? ' and keep ' + bad.slice(0, 3).map(fd).join(', ') + ' light.' : '.');
+  return { v: vrd(v[0], v[1]), intro: overview,
+    sec: [{ h: 'What this month brings', story: true, items: areaItems },
+      { h: 'Strong days: meetings, deals, new starts', items: good.length ? [itm(good.map(fd).join(' · '), 'Plan interviews, client meetings, signing and purchases on these days.', 'g')] : [itm('No standout days; use the green hours on My day.', '')] },
+      { h: 'Toughest days: keep them light', items: bad.length ? [itm(bad.map(fd).join(' · '), 'Avoid signing, big purchases, arguments and travel starts; do routine work.', 'b')] : [itm('No difficult days.', '')] },
+      { h: 'Changes during the month', story: true, items: ev.length ? ev : [{ t: 'No major planet changes', p: 'The planets stay where they are; this month runs on the pattern above.', k: 'i' }] }],
+    tell: [overview.split('. ').slice(0, 1)[0] + '.'].concat(areaTell).concat([good.length ? 'Best days: ' + good.slice(0, 5).map(fd).join(', ') + '.' : '', bad.length ? 'Keep light: ' + bad.slice(0, 4).map(fd).join(', ') + '.' : '']).filter(Boolean), ask: 'What does the next 30 days look like for ' + nm(p) + ' for career, money, family and health, with the best and worst days' };
 };
 REP.year = function (p, c, now) {
   var a = age(p, now), o = varshOutcome(p, c, now, a), V = o.vp.chart, k = c.k;
