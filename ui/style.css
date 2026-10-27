@@ -305,3 +305,5 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .dslot .mono{font:600 13px var(--mono);padding-top:1px}.dslot b{font:600 13.5px var(--sans)}.dslot p{font:400 12.5px/1.4 var(--sans);color:#4e4a55}.dslot em{color:var(--bad);font-style:normal}
 .dda ul{margin:6px 0 0 16px;font:400 13px/1.45 var(--sans)}.dda li{margin:4px 0}
 .dwhy summary{font:600 14px var(--sans);cursor:pointer}.dwhy[open] summary{margin-bottom:8px}
+.ctag{font:700 9.5px var(--sans);background:var(--acc);color:#fff;border-radius:6px;padding:1px 5px;vertical-align:1px;margin-left:2px}
+.cline{font:400 12.5px var(--sans);color:#6d5a40;background:#FBEBD5;border-radius:10px;padding:7px 10px;margin:0 0 8px}

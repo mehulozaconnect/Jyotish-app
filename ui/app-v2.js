@@ -207,14 +207,25 @@ function scheduleAll() {
 /* what kind of question: 'explain' (what / which / explain / list / meaning) or 'predict' (will / when / how will / should I) */
 function qIntent(q) {
   var ql = q.toLowerCase();
+  if (/\b(key ?points?|talking points?|tell (the |my |this )?client|tell (him|her|them)|what (should|do|can) i (tell|say|explain|share)|client ko|consultation|brief (me|for)|how (do|should) i explain)\b/.test(ql)) return 'consult';
   if (/\b(will|when|kab|should i|shall i|chances?|possible|how will|how is my .* (going|next)|next \d+|this year|next year|future|predict|timing|best time)\b/.test(ql)) return 'predict';
   if (/\b(what|which|explain|list|meaning|means|tell me about|describe|how many|kya|kaun|why|show)\b/.test(ql)) return 'explain';
   return 'predict';
 }
-function geminiFormat(name, intent) {
-  var core = 'You are Trikaal, an expert Vedic astrologer (Parashari and KP) talking to ' + name + '. You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
+function geminiFormat(name, intent, rel, me) {
+  var third = rel && rel !== 'me';
+  var core = (third ? 'You are Trikaal, a senior Vedic astrologer (Parashari and KP) advising ' + me + ', who is the consultant. The chart belongs to ' + (rel === 'client' ? 'his client ' : 'his family member or friend ') + name + '. Speak to ' + me + ' and refer to ' + name + ' in the third person by name (never "you" for ' + name + ').' : 'You are Trikaal, an expert Vedic astrologer (Parashari and KP) talking to ' + name + '.') + ' You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
     'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====), exactly what was asked. Earlier messages are background only.\n' +
-    'Write in plain, warm language a non-astrologer understands; explain any term in a few words the first time. Answer in the language the user writes in. Address ' + name + ' by name once.\n';
+    'Write in plain, warm language a non-astrologer understands; explain any term in a few words the first time. Answer in the language the user writes in.' + (third ? '' : ' Address ' + name + ' by name once.') + '\n';
+  if (intent === 'consult') return core +
+    'This is a CONSULTATION BRIEF: ' + me + ' wants the key points to tell ' + name + '. Give points ' + name + ' will understand and value: what is strong, what needs care, what is coming and when (month-year), and what to do. Use the KUNDLI ANALYSIS block and the running dasha. Every point must come from the sheet.\n' +
+    'Use exactly these sections with bold titles:\n' +
+    '**Quick Answer** two sentences: the overall picture of ' + name + '\'s chart and the current period, for ' + me + '.\n' +
+    '**Key points to tell the client** 6 to 8 numbered points, each one plain sentence ' + me + ' can say directly to ' + name + ', with dates where relevant (current period, next good window, any caution period).\n' +
+    '**Say it gently** sensitive points (health, marriage, doshas, Sade Sati, difficult periods) with a suggested calm, non-scary way to phrase each.\n' +
+    '**Remedies to suggest** three to five specific remedies for ' + name + ' (mantra, daan, gemstone yes/avoid) tied to the planets involved.\n' +
+    '**Questions to ask the client** two or three questions about past events (with years from the dasha list) that confirm the chart and birth time.\n' +
+    '**Chain:** one line with the main facts behind the brief.\n\n' + E.RULES;
   if (intent === 'explain') return core +
     'This is an EXPLAIN question. Answer it directly and specifically from THIS chart. If it asks "which/what yogas, planets, houses, doshas", name every one that exists in the sheet, with the actual planets and houses. Never answer with generic statements like "your chart has powerful yogas".\n' +
     'Use exactly these sections with bold titles:\n' +
@@ -409,7 +420,7 @@ function askGemini(p, c, q, onLive) {
   var all = (DB.chats[p.id] || []).slice(0, -1), pairs = [];
   for (var i = 0; i < all.length - 1; i++) if (all[i].role === 'me' && all[i + 1].role === 'bot' && all[i + 1].text) { pairs.push([all[i].text, all[i + 1].text]); i++; }
   var hist = []; pairs.slice(-3).forEach(function (x) { hist.push({ role: 'user', parts: [{ text: '(Earlier question, already answered) ' + x[0].slice(0, 600) }] }, { role: 'model', parts: [{ text: x[1].slice(0, 2500) }] }); });
-  var whole = isWholeChart(q), extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
+  var whole = isWholeChart(q) || qIntent(q) === 'consult', extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
   var rb = ''; try { var lo = answerAny(p, c, q); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
   if (rb) extra += '\n\nRULE-BASED VERDICT FROM THE APP (cross-check; if you disagree, say why)\n' + rb;
   var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
@@ -417,7 +428,8 @@ function askGemini(p, c, q, onLive) {
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
   var intent = qIntent(q); gc.temperature = 0.2;
   contents[contents.length - 1].parts[0].text = fixedFacts(p, c) + '\n' + contents[contents.length - 1].parts[0].text;
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent) }] }, contents: contents, generationConfig: gc });
+  var rel = relOf(p), meP = me(), meName = meP && meP.id !== p.id ? meP.name.split(' ')[0] : 'the astrologer';
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
   return gGenerate(body).catch(function (e) {
     /* deep answer too slow or cut off before any text: try once more with light reasoning */
@@ -437,9 +449,9 @@ function askGemini(p, c, q, onLive) {
 function aiBubbles(txt, ev) {
   var chain = '', m = txt.match(/\*{0,2}Chain:?\*{0,2}:?\s*([\s\S]*)$/);
   if (m) { chain = m[1].trim(); txt = txt.slice(0, m.index); }
-  var parts2 = txt.split(/\*{0,2}(Quick Answer|A Quick Question|What will happen|Details|What it means for you|Astrological Explanation|Key Dates|What to do)\*{0,2}:?/), out = '';
+  var parts2 = txt.split(/\*{0,2}(Quick Answer|A Quick Question|What will happen|Details|What it means for you|Key points to tell the client|Say it gently|Remedies to suggest|Questions to ask the client|Astrological Explanation|Key Dates|What to do)\*{0,2}:?/), out = '';
   if (parts2.length < 3) out = '<div class="msg bot sto">' + mdToHtml(txt) + '</div>';
-  else { if (parts2[0].trim()) out += '<div class="msg bot sto">' + mdToHtml(parts2[0]) + '</div>'; for (var i = 1; i < parts2.length; i += 2) { var b = mdToHtml((parts2[i + 1] || '').trim()); out += '<div class="msg bot sto' + (parts2[i] === 'Key Dates' || parts2[i] === 'What will happen' || parts2[i] === 'Details' ? ' kd' : '') + (parts2[i] === 'Quick Answer' ? ' qa' : '') + '"><b class="sh">' + esc(parts2[i]) + '</b>' + b + '</div>'; } }
+  else { if (parts2[0].trim()) out += '<div class="msg bot sto">' + mdToHtml(parts2[0]) + '</div>'; for (var i = 1; i < parts2.length; i += 2) { var b = mdToHtml((parts2[i + 1] || '').trim()); out += '<div class="msg bot sto' + (['Key Dates', 'What will happen', 'Details', 'Key points to tell the client'].indexOf(parts2[i]) >= 0 ? ' kd' : '') + (parts2[i] === 'Quick Answer' ? ' qa' : '') + '"><b class="sh">' + esc(parts2[i]) + '</b>' + b + '</div>'; } }
   if (chain) out += '<div class="msg bot chain"><b class="sh">Chain of logic</b><div class="ch">' + chain.split(/\s*(?:→|->)\s*/).map(function (s) { return '<span>' + esc(s.replace(/\*\*/g, '')) + '</span>'; }).join('<i>›</i>') + '</div>' + (ev ? '<details><summary>Evidence sheet used (' + esc(ev.topic) + ', ' + esc(ev.vlabel.split(' ')[0]) + ')</summary><pre class="evs">' + esc(ev.text) + '</pre></details>' : '') + '</div>';
   return out;
 }
@@ -452,9 +464,11 @@ function AiV2() {
   var p = curP(); if (!p) return topBar('Ask AI', { noPerson: true }) + noPerson();
   var msgs = DB.chats[p.id] || [], hasKey = !!DB.settings.gkey;
   var h = topBar('Ask AI', { right: '<span class="gem">' + (hasKey ? '✦ Gemini' : 'Offline') + '</span>' + (msgs.length ? '<button class="v2ib" data-act="clearAsk" aria-label="Clear conversation" style="color:var(--bad)">' + icon('trash', 18) + '</button>' : '') }) + '<div class="pad">';
+  if (relOf(p) !== 'me') h += '<div class="cline">Consulting for <b>' + esc(p.name) + '</b> · ' + (relOf(p) === 'client' ? 'client' : 'family / friend') + ' · answers are written for you to explain to them</div>';
   if (!hasKey) h += '<div class="card"><b style="font:600 15px var(--sans)">Connect Gemini for full answers</b><p class="sm" style="margin:6px 0 10px">Paste your Gemini API key (from aistudio.google.com). Every answer will then use your D1, divisional chart, all 5 dasha levels, aspects, transits and Ashtakavarga. Without a key you get the shorter offline answers.</p><input class="inp mono" id="gkeyIn" placeholder="AIza..." autocomplete="off"><button class="btn acc wide" style="margin-top:8px" data-act="saveGkey">Save key</button></div>';
   h += '</div>';
-  var Q = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
+  var Q0 = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
+  var fn = p.name.split(' ')[0], Q = relOf(p) === 'me' ? Q0 : ['Key points to tell ' + fn, 'What should I tell ' + fn + ' about career and money?', fn + '\'s golden periods and cautions', 'Which raj yogas does ' + fn + ' have?', 'Remedies I should suggest to ' + fn, 'Explain ' + fn + '\'s current dasha'];
   if (!msgs.length) h += '<div class="qchips" style="flex-wrap:wrap">' + Q.map(function (q) { return '<button data-act="askQ2">' + esc(q) + '</button>'; }).join('') + '</div>';
   h += '<div class="chat" id="chat">' + msgs.map(function (m, i) { var orphan = m.role === 'me' && (msgs[i + 1] ? msgs[i + 1].role === 'me' : !(U.pending && U.pending[p.id])); return m.role === 'me' ? '<div class="msg me">' + esc(m.text) + '</div>' + (orphan ? '<div class="msg bot"><p class="mut" style="font-size:12.5px">This question was not answered (the app was closed or the connection dropped).</p><button class="btn sec sm" style="margin-top:6px" data-act="retryOrphan" data-i="' + i + '">↻ Ask this again</button></div>' : '') : m.multi ? m.html : '<div class="msg bot">' + m.html + '</div>'; }).join('') + (U.pending && U.pending[p.id] ? '<div id="liveAns">' + liveHtml(U.live && U.live[p.id]) + '</div>' : '') + '</div><div style="height:100px"></div>';
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
@@ -548,9 +562,10 @@ function AnalysisV2() {
     F.items.map(function (x) { return '<div class="krem"><div class="kgh"><b>For ' + PN[x.code] + '</b><span class="tag ' + (x.mode === 'balance' ? 'tn' : 'tg') + '">' + (x.mode === 'balance' ? 'Balance it' : 'Strengthen it') + '</span></div><p class="sm"><b style="color:var(--good)">Favour:</b> ' + esc(x.favour) + '</p><p class="sm"><b style="color:var(--bad)">Go easy on:</b> ' + esc(x.limit) + '</p></div>'; }).join('') +
     '<div class="krem"><b>Your body type: ' + F.nadi + ' nadi (' + F.dosha + ')</b><p class="sm">' + esc(F.tip.charAt(0).toUpperCase() + F.tip.slice(1)) + '.</p></div>');
   h += sec('lucky', 'Lucky factors and other useful info', '', '<div class="klk">' + a.lucky.map(function (x) { return '<div><small>' + esc(x.t) + '</small><b>' + esc(x.d) + '</b></div>'; }).join('') + '</div>');
-  h += '<button class="btn sec wide" style="margin:4px 0 6px" data-act="kaAsk">✦ Ask AI to explain my kundli in depth</button></div>';
+  h += (relOf(p) !== 'me' ? '<button class="btn acc wide" style="margin:4px 0 8px" data-act="kaBrief">✦ Key points to tell ' + esc(p.name.split(' ')[0]) + '</button>' : '') + '<button class="btn sec wide" style="margin:4px 0 6px" data-act="kaAsk">✦ Ask AI to explain ' + (relOf(p) === 'me' ? 'my' : esc(p.name.split(' ')[0]) + '\'s') + ' kundli in depth</button></div>';
   return h;
 }
 ACT.kaJump = function (el) { var t = document.getElementById('ka-' + el.dataset.v); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); };
 ACT.kaAddRem = function () { ACT.addSuggested(); setTimeout(function () { go('remedies'); }, 600); };
+ACT.kaBrief = function () { var p = curP(); go('ai'); setTimeout(function () { var t = $('#askIn'); if (t) { t.value = 'Key points to tell ' + p.name.split(' ')[0] + ' in the consultation'; ACT.askSend(); } }, 120); };
 ACT.kaAsk = function () { go('ai'); setTimeout(function () { var t = $('#askIn'); if (t) { t.value = 'Give me a complete analysis of my kundli: strengths, weaknesses, yogas, golden periods and what I should focus on now.'; ACT.askSend(); } }, 120); };

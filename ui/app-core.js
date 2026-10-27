@@ -110,6 +110,7 @@ function calcP(p) {
   if (!CACHE[key]) { CACHE[key] = N.calc({ name: p.name, date: p.date, time: p.time, tz: +p.tz, lat: +p.lat, lon: +p.lon, gender: p.gender }); CACHE[key].id = p.id; CACHE[key].person = p; }
   return CACHE[key];
 }
+function relOf(p) { return p ? (p.rel || (p.id === DB.settings.meId ? 'me' : 'client')) : 'me'; }
 function birthLine(p) { var a = p.date.split('-').map(Number); return a[2] + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][a[1] - 1] + ' ' + a[0] + ' · ' + String(p.time).slice(0, 5) + ' · ' + (p.place || (+p.lat).toFixed(2) + ', ' + (+p.lon).toFixed(2)); }
 function initials(n) { return String(n || '?').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase(); }
 function avColor(id) { var h = 0; String(id).split('').forEach(function (c) { h = (h * 31 + c.charCodeAt(0)) >>> 0; }); return AVCOL[h % AVCOL.length]; }
@@ -221,6 +222,8 @@ function EditScreen(id) {
   h += '<div class="grid2"><label class="field"><span>LATITUDE (N +, S −)</span><input class="inp mono" inputmode="decimal" data-in="ef" data-f="lat" value="' + esc(e.lat) + '"></label><label class="field"><span>LONGITUDE (E +, W −)</span><input class="inp mono" inputmode="decimal" data-in="ef" data-f="lon" value="' + esc(e.lon) + '"></label></div>';
   h += '<div class="grid2"><label class="field"><span>TIME ZONE</span><input class="inp mono" data-in="ef" data-f="zone" value="' + esc(e.zone) + '" placeholder="Asia/Kolkata"></label><label class="field"><span>UTC OFFSET USED</span><input class="inp mono" inputmode="decimal" data-in="eoff" value="' + (off == null ? '' : off) + '" placeholder="5.5"></label></div>';
   h += '<div class="note" style="margin:-4px 0 12px">' + (e.manualTz ? 'Manual offset ' + fmtOff(+e.tz) + ' is used. Clear the field to go back to the time zone rule.' : 'Offset for that date from the time zone rule: ' + fmtOff(off) + ' (includes historical war time and DST). Type a value to override, for example 5.5 or 4.85 for old Bombay time.') + '</div>';
+  var rel = e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me');
+  h += '<div class="field"><span>WHOSE KUNDLI IS THIS</span><div class="seg" style="width:max-content">' + [['me', 'Me'], ['family', 'Family / friend'], ['client', 'Client']].map(function (g) { return '<button data-act="erel" data-v="' + g[0] + '" class="' + (rel === g[0] ? 'on' : '') + '">' + g[1] + '</button>'; }).join('') + '</div></div>';
   h += '<label class="field"><span>NOTES</span><textarea class="inp" data-in="ef" data-f="notes" placeholder="Relation, source of birth time, known events">' + esc(e.notes) + '</textarea></label>';
   h += '<button class="btn acc wide" data-act="savePerson">Save and open kundli</button>';
   if (p) h += '<div style="margin-top:10px"><button class="btn sec wide" data-act="setMe">' + (DB.settings.meId === p.id ? '★ This is me' : 'Mark as me (used for My day)') + '</button></div>';
@@ -229,6 +232,7 @@ function EditScreen(id) {
 INP.ef = function (el) { EDIT[el.dataset.f] = el.value; if (el.dataset.f === 'date' || el.dataset.f === 'time' || el.dataset.f === 'zone') updOff(); };
 INP.eoff = function (el) { if (el.value.trim() === '') { EDIT.manualTz = false; } else { EDIT.manualTz = true; EDIT.tz = parseFloat(el.value); } };
 function updOff() { if (EDIT.manualTz) return; var o = zoneOffsetForLocal(EDIT.zone, EDIT.date, EDIT.time), i = document.querySelector('[data-in="eoff"]'); if (i) i.value = o == null ? '' : o; }
+ACT.erel = function (el) { EDIT.rel = el.dataset.v; el.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === el); }); };
 ACT.egender = function (el) { EDIT.gender = el.dataset.v; el.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === el); }); };
 INP.place = function (el) {
   EDIT.place = el.value; var q = el.value.trim().toLowerCase(), box = $('#sugg'); if (!q) { box.innerHTML = ''; return; }
@@ -260,7 +264,7 @@ ACT.savePerson = function () {
   var off = e.manualTz ? +e.tz : zoneOffsetForLocal(e.zone, e.date, e.time);
   if (off == null || isNaN(off)) return toast('Enter the UTC offset, for example 5.5');
   var time = e.time.length === 5 ? e.time + ':00' : e.time;
-  var rec = { id: e.id || ('p' + Date.now().toString(36)), name: e.name.trim(), gender: e.gender, date: e.date, time: time, place: e.place.trim(), lat: lat, lon: lon, zone: e.zone, tz: off, manualTz: !!e.manualTz, notes: e.notes || '', events: e.events || [], created: e.created || Date.now() };
+  var rec = { id: e.id || ('p' + Date.now().toString(36)), name: e.name.trim(), gender: e.gender, date: e.date, time: time, place: e.place.trim(), lat: lat, lon: lon, zone: e.zone, tz: off, manualTz: !!e.manualTz, notes: e.notes || '', rel: e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me'), events: e.events || [], created: e.created || Date.now() };
   var i = DB.people.map(function (p) { return p.id; }).indexOf(rec.id); if (i >= 0) DB.people[i] = rec; else DB.people.push(rec);
   if (!DB.settings.meId) DB.settings.meId = rec.id;
   save(); EDIT = null; U.cur = rec.id; go('p/' + rec.id + '/report');
