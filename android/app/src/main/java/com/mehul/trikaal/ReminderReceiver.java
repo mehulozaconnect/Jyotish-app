@@ -21,7 +21,37 @@ public class ReminderReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm.getNotificationChannel(CH) == null) nm.createNotificationChannel(new NotificationChannel(CH, "Remedy reminders", NotificationManager.IMPORTANCE_DEFAULT));
+            if (nm.getNotificationChannel("daily") == null) nm.createNotificationChannel(new NotificationChannel("daily", "Daily briefing", NotificationManager.IMPORTANCE_DEFAULT));
+            if (nm.getNotificationChannel("transits") == null) nm.createNotificationChannel(new NotificationChannel("transits", "Transit and dasha alerts", NotificationManager.IMPORTANCE_HIGH));
         }
+    }
+
+    /* one-time notifications (daily briefings, transit alerts): stored so they survive a reboot */
+    static PendingIntent piOnce(Context c, String id, String title, String body, String route, boolean create) {
+        Intent i = new Intent(c, ReminderReceiver.class).setAction("trikaal.once." + id);
+        i.putExtra("id", id).putExtra("title", title).putExtra("body", body).putExtra("route", route).putExtra("once", true);
+        int flags = PendingIntent.FLAG_IMMUTABLE | (create ? PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_NO_CREATE);
+        return PendingIntent.getBroadcast(c, ("o" + id).hashCode(), i, flags);
+    }
+
+    static void scheduleOnce(Context c, String id, String title, String body, long at, String route) {
+        if (at <= System.currentTimeMillis()) return;
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        PendingIntent p = piOnce(c, id, title, body, route, true);
+        if (Build.VERSION.SDK_INT >= 23) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, p); else am.set(AlarmManager.RTC_WAKEUP, at, p);
+        c.getSharedPreferences("once", Context.MODE_PRIVATE).edit().putString(id, at + "\u0001" + title + "\u0001" + body + "\u0001" + route).apply();
+    }
+
+    static void clearOnce(Context c, String prefix) {
+        SharedPreferences sp = c.getSharedPreferences("once", Context.MODE_PRIVATE);
+        SharedPreferences.Editor ed = sp.edit();
+        for (String id : sp.getAll().keySet()) {
+            if (!id.startsWith(prefix)) continue;
+            PendingIntent p = piOnce(c, id, "", "", "", false);
+            if (p != null) { ((AlarmManager) c.getSystemService(Context.ALARM_SERVICE)).cancel(p); p.cancel(); }
+            ed.remove(id);
+        }
+        ed.apply();
     }
 
     static PendingIntent pi(Context c, String id, String title, String body, String days, boolean create) {
@@ -54,6 +84,23 @@ public class ReminderReceiver extends BroadcastReceiver {
             for (String id : sp.getAll().keySet()) {
                 try { String[] v = sp.getString(id, "").split("\u0001", -1); schedule(c, id, v[0], v[1], Integer.parseInt(v[2]), Integer.parseInt(v[3]), v[4]); } catch (Exception e) { }
             }
+            SharedPreferences so = c.getSharedPreferences("once", Context.MODE_PRIVATE);
+            for (String id : so.getAll().keySet()) {
+                try { String[] v = so.getString(id, "").split("\u0001", -1); scheduleOnce(c, id, v[1], v[2], Long.parseLong(v[0]), v[3]); } catch (Exception e) { }
+            }
+            return;
+        }
+        if (i.getBooleanExtra("once", false)) {
+            String id = i.getStringExtra("id"), route = i.getStringExtra("route");
+            c.getSharedPreferences("once", Context.MODE_PRIVATE).edit().remove(id).apply();
+            channel(c);
+            Intent open = new Intent(c, MainActivity.class).putExtra("route", route == null ? "" : route).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent cp = PendingIntent.getActivity(c, id.hashCode(), open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            String chan = id.startsWith("t|") ? "transits" : "daily";
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, chan) : new Notification.Builder(c);
+            String body = i.getStringExtra("body");
+            b.setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(i.getStringExtra("title")).setContentText(body).setStyle(new Notification.BigTextStyle().bigText(body)).setContentIntent(cp).setAutoCancel(true);
+            ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(id.hashCode(), b.build());
             return;
         }
         String days = i.getStringExtra("days");
@@ -67,7 +114,7 @@ public class ReminderReceiver extends BroadcastReceiver {
         Intent open = new Intent(c, MainActivity.class).putExtra("route", "remedies").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent cp = PendingIntent.getActivity(c, 7, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH) : new Notification.Builder(c);
-        b.setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(i.getStringExtra("title")).setContentText(i.getStringExtra("body")).setContentIntent(cp).setAutoCancel(true);
+        b.setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(i.getStringExtra("title")).setContentText(i.getStringExtra("body")).setStyle(new Notification.BigTextStyle().bigText(i.getStringExtra("body"))).setContentIntent(cp).setAutoCancel(true);
         ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(i.getStringExtra("id").hashCode(), b.build());
     }
 }

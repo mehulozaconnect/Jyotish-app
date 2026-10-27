@@ -196,6 +196,16 @@ public class MainActivity extends Activity {
         public void cancelReminder(String id) { ReminderReceiver.cancel(MainActivity.this, id); }
 
         @JavascriptInterface
+        public void scheduleOnce(String id, String title, String body, double at, String route) {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                ui.post(() -> requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, 21));
+            ReminderReceiver.scheduleOnce(MainActivity.this, id, title, body, (long) at, route);
+        }
+
+        @JavascriptInterface
+        public void clearOnce(String prefix) { ReminderReceiver.clearOnce(MainActivity.this, prefix); }
+
+        @JavascriptInterface
         public void print(String title) {
             ui.post(() -> {
                 PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);

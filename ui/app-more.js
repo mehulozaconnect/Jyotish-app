@@ -14,13 +14,14 @@ function MoreScreen() {
     '<div class="field"><span>ANSWER STYLE</span>' + sel('setGfast', [['0', 'Deep: most careful reasoning (slower)'], ['1', 'Fast: quicker answers, lighter reasoning']], s.gfast ? '1' : '0') + '</div>' +
     '<button class="btn sec wide" data-act="testGkey">Test the key and find the best model</button>' +
     '<div class="note">The test checks which Gemini models your key can use and picks the newest Pro model. On a free key Google gives no Pro quota, so the app uses the newest Flash model instead. If Google retires a model, the app switches by itself.</div></div>';
+  h += '<div class="card"><h3>Reminders</h3><button class="btn sec wide" data-go="reminders">Reminders and alerts</button></div>';
   h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
   h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div></div>';
   h += '<div class="card"><h3>Accuracy</h3><p style="font-size:12.8px">Planet and lagna positions are checked against Swiss Ephemeris (the engine used by Jagannatha Hora and most professional software): planets within a few arc-seconds, lagna within arc-seconds for a correct birth time. Panchang ends, dashas and transits come from the same engine. Readings and remedies follow classical rules and show their logic; like any astrology, they are interpretations, not certainties.</p></div>';
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '2.6.2';
+var APP_VERSION = '2.7';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };

@@ -37,6 +37,7 @@ function render() {
     else if (scr === 'ai') html = AiV2();
     else if (scr === 'analysis') { html = AnalysisV2(); navOn = 'astro'; }
     else if (scr === 'reports') { html = ReportsV2(); navOn = 'astro'; }
+    else if (scr === 'reminders') { html = RemindersV2(); navOn = 'remedies'; }
     else if (scr === 'report') { html = ReportView(p[1]); navOn = 'astro'; }
     else { html = AstroV2(p[1]); navOn = 'astro'; }
   } catch (e) { html = '<div class="empty"><h2>Something went wrong</h2>' + esc(e.message) + '<br><br><button class="btn" data-go="astro">Back</button></div>'; if (window.console) console.error(e); }
@@ -140,6 +141,7 @@ function RemediesV2() {
   var p = curP(); if (!p) return topBar('Remedies', { noPerson: true }) + noPerson();
   var rs = remsFor(p.id), now = new Date(), today = rs.filter(function (r) { return activeOn(r, now); }), done = today.filter(function (r) { return r.done && r.done[dkey(now)]; }).length;
   var h = topBar('Remedies') + '<div class="pad">';
+  h += '<button class="kentry k2" data-go="reminders" style="margin-bottom:10px"><span class="kei">🔔</span><div><b>Reminders and alerts</b><small>Morning briefing, transit and dasha alerts, remedy reminders · choose who gets them</small></div><span>›</span></button>';
   if (!rs.length) h += '<div class="card"><b style="font:600 16px var(--sans)">No remedies yet</b><p class="sm" style="margin:6px 0 12px">Add your own, or start with the ones your chart suggests for this period.</p><button class="btn acc wide" data-act="addSuggested">Add suggested remedies for ' + esc(p.name.split(' ')[0]) + '</button></div>';
   else {
     var st = streak(p.id);
