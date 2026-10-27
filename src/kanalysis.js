@@ -158,6 +158,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
       if (/yoga|Yogakaraka/i.test(x.t) || /^Raja|^Dhana/.test(x.t)) { var cy = codesIn((x.why || []).join(' ') + ' ' + x.t); x.out = cap(yogaMean(x.t)) + '.' + (cy.length > 1 ? ' Formed by ' + list(cy.map(function (q) { return PN[q]; })) + '.' : ''); x.when = whenText(c, cy, now); return; }
       if (/^Jupiter protects/.test(x.t)) { x.out = 'Jupiter\'s blessing protects you: problems tend to resolve, help arrives in difficult times and recovery is quick.'; x.when = whenText(c, ['Ju'], now); return; }
       if (cs.length) { x.out = planetOut(c, cs[0], true); x.when = whenText(c, [cs[0]], now); }
+      if (cs.length && cs[0] !== 'Ra' && cs[0] !== 'Ke') { var dh = J.lordsOf(k.ascSign, cs[0]).filter(function (h) { return DUS.indexOf(h) >= 0; }); if (dh.length) x.watch = 'Watch: ' + PN[cs[0]] + ' also rules your ' + nth(dh[0]) + ' house, so ' + NARR.H[dh[0]].b[0].charAt(0).toLowerCase() + NARR.H[dh[0]].b[0].slice(1); }
     });
     out.cons.forEach(function (x) {
       var cs = codesIn(x.t);
@@ -170,7 +171,9 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     });
     out.yogas.forEach(function (y) { var cy = /Mangal/.test(y.name) ? ['Ma'] : /Kaal Sarp/.test(y.name) ? ['Ra', 'Ke'] : codesIn(y.why + ' ' + y.name); y.out = cap(yogaMean(y.name) || (y.good ? 'a helpful combination' : 'a weak point that needs remedies')) + '.'; y.when = whenText(c, cy, now); });
     out.golden.forEach(function (g) { var hs = []; HOUSE_WORD && Object.keys(HOUSE_WORD).forEach(function (h) { if (g.areas.indexOf(HOUSE_WORD[h]) >= 0 || (typeof NARR !== 'undefined' && g.areas.indexOf(NARR.areaWord(+h, g.ageFrom, '')) >= 0)) hs.push(+h); });
-      g.out = hs.slice(0, 3).map(function (h) { return NARR.H[h].g[0]; }).join(' ') + (g.now ? ' This period is running now, so make the most of it.' : ' Plan important moves for this window.'); });
+      g.out = hs.slice(0, 3).map(function (h) { return NARR.H[h].g[0]; }).join(' ') + (g.now ? ' This period is running now, so make the most of it.' : ' Plan important moves for this window.');
+      var gm = codesIn(g.label), dh2 = []; gm.forEach(function (q) { if (q === 'Ra' || q === 'Ke') return; J.lordsOf(k.ascSign, q).forEach(function (h) { if (DUS.indexOf(h) >= 0 && dh2.indexOf(h) < 0) dh2.push(h); }); });
+      g.watch = dh2.length ? 'Watch: ' + dh2.slice(0, 2).map(function (h) { return NARR.H[h].b[0].charAt(0).toLowerCase() + NARR.H[h].b[0].slice(1).replace(/\.$/, ''); }).join('; ') + '.' : 'Watch: do not over-commit or over-spend just because things are going well.'; });
   }
   function analyze(c, now) {
     var k = c.k, P = k.P, L = k.ascSign, ll = J.lordOfHouse(L, 1), out = {};
@@ -235,7 +238,17 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     out.golden = gold.map(function (g) { var hs = uniq(linkHouses(c, g.md).concat(linkHouses(c, g.ad))).filter(function (h) { return [1, 2, 4, 5, 7, 9, 10, 11].indexOf(h) >= 0; });
       return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: age(c, g.start), now: g.start <= now && now < g.end, rate: rateWord(g.s), areas: hs.slice(0, 4).map(function (h) { return hwAt(c, h, g.start); }), why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] }; });
 
-    try { addOutcomes(c, out, now); } catch (e) {  }
+    /* difficult periods: weakest Mahadasha-Antardasha combinations in the next 30 years */
+    var perMd2 = {}, tough = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && a.s < 1.6 && a.md !== a.ad; }).sort(function (a, b) { return a.s - b.s; })
+      .filter(function (a) { perMd2[a.md] = (perMd2[a.md] || 0) + 1; return perMd2[a.md] <= 2; }).slice(0, 5).sort(function (a, b) { return a.start - b.start; });
+    out.tough = tough.map(function (g) {
+      var ag2 = age(c, g.start), hs = uniq(linkHouses(c, g.ad).concat(linkHouses(c, g.md))), bad = hs.filter(function (h) { return DUS.indexOf(h) >= 0; }), pick2 = (bad.length ? bad : hs).slice(0, 2);
+      var st2 = typeof NARR !== 'undefined' ? NARR.stage(ag2) : 'adult', KM = st2 === 'child' ? NARR.CH : st2 === 'teen' ? NARR.TN : null;
+      var txt = pick2.map(function (h) { return KM ? KM[h][1] : NARR.H[h].b[0]; }).join(' ');
+      return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: ag2, now: g.start <= now && now < g.end, areas: pick2.map(function (h) { return hwAt(c, h, g.start); }),
+        out: txt + ' Avoid big risks, loans and hasty decisions in this window.', remedy: 'Remedy: chant "' + KB.MANTRA[g.ad][0] + '" 108 times daily and, every ' + KB.DAAN[g.ad][1] + ', donate ' + KB.DAAN[g.ad][0] + '.', why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] };
+    });
+    try { addOutcomes(c, out, now); } catch (e) { }
     /* timelines (next 25 years, antardasha level) */
     var horizon = new Date(now.getTime() + 25 * YEAR), health = [], success = [];
     function satAt(d) { var m = J.houseFrom(P.Mo.sign, J.signOf(C.sidereal('Sa', d))); return { 12: 'Sade Sati', 1: 'Sade Sati', 2: 'Sade Sati', 4: 'Kantaka Shani', 8: 'Ashtama Shani' }[m] || null; }

@@ -82,7 +82,7 @@ var NARR = (function () {
     opt = opt || {}; var st = stage(opt.age);
     if (st === 'child' || st === 'teen') {
       var M = st === 'child' ? CH : TN, x = M[house], s2 = [pick(OPEN[tone], IDX[code] + house).replace(' for you', st === 'child' ? ' for the child' : '')];
-      if (tone === 'g') s2.push(x[0]); else if (tone === 'b') s2.push(x[1]); else s2.push(x[0], x[1].charAt(0).toUpperCase() + x[1].slice(1));
+      if (tone === 'g') { s2.push(x[0]); s2.push('Still, watch: ' + x[1].charAt(0).toLowerCase() + x[1].slice(1)); } else if (tone === 'b') s2.push(x[1]); else s2.push(x[0], x[1].charAt(0).toUpperCase() + x[1].slice(1));
       s2.push(PC[code][tone === 'b' || (tone === 'm' && opt.lean === 'b') ? 1 : 0]);
       if (opt.strong === true) s2.push('Because ' + J.PNAME[code] + ' is strong in the birth chart, the good results come more fully.');
       if (opt.strong === false) s2.push('Since ' + J.PNAME[code] + ' is weak in the birth chart, give extra care in this area.');
@@ -95,7 +95,7 @@ var NARR = (function () {
     var HX = H[house]; if (st === 'senior' && SN[house]) HX = { g: [SN[house][0]].concat(H[house].g.slice(1)), b: [SN[house][1]].concat(H[house].b.slice(1)) };
     var i = IDX[code] + house, s = [];
     s.push(pick(OPEN[tone], i));
-    if (tone === 'g') { s.push(pick(HX.g, i)); s.push(pick(HX.g, i + 1)); s.push(P[code][0]); }
+    if (tone === 'g') { s.push(pick(HX.g, i)); s.push(pick(HX.g, i + 1)); s.push(P[code][0]); var cw = pick(HX.b, i + 2); s.push('Still, be careful: ' + cw.charAt(0).toLowerCase() + cw.slice(1)); }
     else if (tone === 'b') { s.push(pick(HX.b, i)); s.push(pick(HX.b, i + 1)); s.push(P[code][1]); }
     else { s.push(pick(HX.g, i)); s.push(pick(HX.b, i + 1)); s.push(P[code][tone === 'm' && opt.lean === 'b' ? 1 : 0]); }
     if (opt.strong === true) s.push('Because ' + J.PNAME[code] + ' is strong in your birth chart, the good results come more fully.');
