@@ -2291,7 +2291,9 @@ function makeEvidence(A, C, J, KB, N) {
     if (/this year|next year|coming year/.test(q)) return 365; if (/when|kab|by when/.test(q)) return 1095;
     return 180;
   }
-  function pos(p) { return PN[p.code] + ' ' + SG[p.sign] + ' ' + p.degs + (p.retro && p.code !== 'Ra' && p.code !== 'Ke' ? ' retrograde' : '') + (p.combust ? ' combust' : '') + ', ' + p.dignity.toLowerCase() + ', nakshatra ' + p.nak.name + ' pada ' + p.nak.pada + ' (star lord ' + PN[p.nak.lord] + ', KP sub lord ' + PN[p.kp.sub] + ')'; }
+  var KPON = false; /* KP data only when the question asks for KP */
+  function isKP(q) { return /\bkp\b|krishnamurti|sub ?lord|cuspal|significator|ruling planets?|\bprashna\b/i.test(q); }
+  function pos(p) { return PN[p.code] + ' ' + SG[p.sign] + ' ' + p.degs + (p.retro && p.code !== 'Ra' && p.code !== 'Ke' ? ' retrograde' : '') + (p.combust ? ' combust' : '') + ', ' + p.dignity.toLowerCase() + ', nakshatra ' + p.nak.name + ' pada ' + p.nak.pada + ' (star lord ' + PN[p.nak.lord] + (KPON ? ', KP sub lord ' + PN[p.kp.sub] : '') + ')'; }
   function aspectsOnSign(k, sign) { var h = J.houseFrom(k.ascSign, sign); return k.planets.filter(function (p) { return p.house !== h && J.aspectedHouses(p.code, p.house).indexOf(h) >= 0; }).map(function (p) { var d = J.houseFrom(p.sign, sign); return PN[p.code] + ' (' + nth(d) + ' aspect from ' + SG[p.sign] + ')'; }); }
   function conj(k, p) { return k.planets.filter(function (x) { return x.code !== p.code && x.sign === p.sign; }).map(function (x) { var d = Math.abs(x.lon - p.lon); return PN[x.code] + ' (' + d.toFixed(1) + '° apart)'; }); }
   function links(c, code, houses) {
@@ -2301,10 +2303,11 @@ function makeEvidence(A, C, J, KB, N) {
     var a = asp.filter(function (h) { return houses.indexOf(h) >= 0; }); if (a.length) out.push('aspects ' + a.map(nth).join(', '));
     var lordsHere = houses.map(function (h) { return J.lordOfHouse(k.ascSign, h); }).filter(function (l) { return l !== code && k.P[l].sign === p.sign; }); lordsHere = uniq(lordsHere); if (lordsHere.length) out.push('conjunct ' + lordsHere.map(function (l) { return PN[l]; }).join(', ') + ' (topic house lord)');
     if (code === 'Ra' || code === 'Ke') { var d = J.RULER[p.sign]; out.push('acts for its sign lord ' + PN[d] + ' (rules ' + J.lordsOf(k.ascSign, d).map(nth).join(', ') + ')'); }
-    var kh = kp.filter(function (h) { return houses.indexOf(h) >= 0; }); out.push('KP signifies ' + kp.join(',') + (kh.length ? ' (topic houses ' + kh.join(',') + ')' : ' (no topic house)'));
+    var kh = kp.filter(function (h) { return houses.indexOf(h) >= 0; }); if (KPON) out.push('KP signifies ' + kp.join(',') + (kh.length ? ' (topic houses ' + kh.join(',') + ')' : ' (no topic house)'));
     return out.join('; ');
   }
   function build(p, c, q, now) {
+    KPON = isKP(q);
     var k = c.k, T = topicOf(q), houses = T[2], vn = T[3], days = horizon(q), end = new Date(now.getTime() + days * DAY), L = [], func = c.func;
     function fn(code) { return code === 'Ra' || code === 'Ke' ? 'node' : func[code].kind + (func[code].maraka ? ', maraka' : ''); }
     L.push('QUESTION TOPIC: ' + T[0] + '. Topic houses: ' + houses.join(', ') + '. Divisional chart: ' + T[4] + ', plus D9. Natural significators: ' + T[5].map(function (x) { return PN[x]; }).join(', ') + '. Period asked: ' + dmy(now) + ' to ' + dmy(end) + '.');
@@ -2312,7 +2315,7 @@ function makeEvidence(A, C, J, KB, N) {
     houses.forEach(function (h) {
       if (h > 12) return;
       var sign = (k.ascSign + h - 1) % 12, lord = J.lordOfHouse(k.ascSign, h), lp = k.P[lord], occ = k.planets.filter(function (x) { return x.house === h; });
-      L.push('House ' + h + ' (' + SG[sign] + ', SAV ' + c.av.sav[sign] + ' bindus): occupants ' + (occ.length ? occ.map(pos).join('; ') : 'none') + '. Aspected by ' + (aspectsOnSign(k, sign).join(', ') || 'none') + '. Lord ' + PN[lord] + ' in house ' + lp.house + ': ' + pos(lp) + '; lord conjunct ' + (conj(k, lp).join(', ') || 'none') + '; lord aspected by ' + (aspectsOnSign(k, lp.sign).join(', ') || 'none') + '. KP cusp ' + h + ' sub lord ' + PN[c.kp.cusps[h - 1].kp.sub] + ' signifies ' + c.sig.sig[c.kp.cusps[h - 1].kp.sub].join(','));
+      L.push('House ' + h + ' (' + SG[sign] + ', SAV ' + c.av.sav[sign] + ' bindus): occupants ' + (occ.length ? occ.map(pos).join('; ') : 'none') + '. Aspected by ' + (aspectsOnSign(k, sign).join(', ') || 'none') + '. Lord ' + PN[lord] + ' in house ' + lp.house + ': ' + pos(lp) + '; lord conjunct ' + (conj(k, lp).join(', ') || 'none') + '; lord aspected by ' + (aspectsOnSign(k, lp.sign).join(', ') || 'none') + (KPON ? '. KP cusp ' + h + ' sub lord ' + PN[c.kp.cusps[h - 1].kp.sub] + ' signifies ' + c.sig.sig[c.kp.cusps[h - 1].kp.sub].join(',') : '') + '.');
     });
     /* Moon chart (Chandra lagna): the same topic houses counted from the natal Moon, with transits over them */
     var ms = k.P.Mo.sign, TR = N.transitAt(c, now);
@@ -2374,13 +2377,13 @@ function makeEvidence(A, C, J, KB, N) {
     '- Judge every matter from three places: the house, its lord, and its natural significator (karaka), in D1, then confirm in the divisional chart listed and in D9. A result promised in D1 but weak in the divisional chart is partial.\n' +
     '- Strength: exalted, moolatrikona, own sign, vargottama, kendra/trikona placement and benefic aspect strengthen; debilitation, combustion, 6/8/12 placement and malefic aspect weaken. Use the functional nature for this lagna, not natural benefic/malefic, when judging results.\n' +
     '- Aspects: all planets aspect the 7th; Mars also 4th and 8th; Jupiter 5th and 9th; Saturn 3rd and 10th; Rahu and Ketu 5th, 7th and 9th.\n' +
-    '- Timing: an event happens in the dasha of planets linked to the topic houses (owner, occupant, aspect, conjunction with the house lord, or KP signification), when Mahadasha, Antardasha and Pratyantar agree, and when transits support it (Jupiter and Saturn both touching the house or its lord = double transit). Sookshma and Prana narrow the date.\n' +
-    '- KP: a matter is promised when the cusp sub lord signifies the favourable houses; it fructifies in the joint periods of significators.\n' +
+    '- Timing: an event happens in the dasha of planets linked to the topic houses (owner, occupant, aspect, conjunction with the house lord), when Mahadasha, Antardasha and Pratyantar agree, and when transits support it (Jupiter and Saturn both touching the house or its lord = double transit). Sookshma and Prana narrow the date.\n' +
     '- Ashtakavarga: total SAV is 337, average 28 per house; 28+ strong, below 25 weak; 11th more than 12th means income exceeds expenses. A transiting planet gives good results in signs where its own BAV is 5+ and weak results at 3 or less.\n' +
     '- Gochar is judged from the natal Moon; Sade Sati is Saturn in the 12th, 1st and 2nd from the Moon.\n' +
     '- Moon chart (Chandra lagna): read the same topic houses counted from the Moon. A matter shown from both the lagna and the Moon is strong and reliable; shown from only one, it is partial or delayed. A dasha lord placed in a topic house from the Moon also activates the matter.\n' +
     '- Transit is the trigger: the dasha promises, the transit delivers. Before predicting a date, check that slow planets (Jupiter, Saturn, Rahu/Ketu) are in or aspecting the topic house or its lord from the lagna AND from the Moon, with good BAV. If the dasha supports but transit does not, give the later date when transit joins.\n';
-  return { build: build, topicOf: topicOf, horizon: horizon, RULES: RULES, vargaAsked: vargaAsked, VN: VN };
+  var RULES_KP = '- KP (only because KP was asked): a matter is promised when the cusp sub lord signifies the favourable houses; it fructifies in the joint periods of significators. KP uses the KP ayanamsa and Placidus cusps.\n';
+  return { isKP: isKP, RULES_KP: RULES_KP, build: build, topicOf: topicOf, horizon: horizon, RULES: RULES, vargaAsked: vargaAsked, VN: VN };
 }
 if (typeof module !== 'undefined') module.exports = makeEvidence;
 
@@ -3796,13 +3799,13 @@ function storyAnswer(p, c, q, ql, now, dt, ev, pl, kpm) {
 var HELP = '<p>I answer from ' + 'the chart with the logic shown. Try:</p><ul><li>Tell me about this person</li><li>How is ' + 'the health? When will it improve?</li><li>Why did he have an accident on 15 Jul 2026 at 11:30?</li><li>By when will he recover? Which planet did this?</li><li>When will I get a promotion?</li><li>How is this month’s transit for me?</li><li>Saturn in my chart</li><li>Which gemstone and rudraksha suit me?</li><li>Good muhurat to buy a car</li></ul>';
 
 /* ---------- Claude ---------- */
-function dossier(p, c) {
+function dossier(p, c, kp) {
   var k = c.k, now = new Date(), L = [], P = k.P;
   L.push('PERSON: ' + p.name + ' (' + (p.gender === 'F' ? 'female' : 'male') + '), born ' + p.date + ' ' + p.time + ' local (' + fmtOff(+p.tz) + ') at ' + (p.place || '') + ' lat ' + p.lat + ' lon ' + p.lon + '.' + (p.notes ? ' Notes: ' + p.notes : ''));
-  L.push('TODAY: ' + N.dmyt(now) + ' (' + fmtOff(locOff()) + '). Ayanamsa ' + C.AYAN_INFO[k.ayan].name + ' ' + J.dms(k.ayanamsa, true) + '. Nodes: ' + C.getNode() + '. Whole-sign houses for Parashari, Placidus for KP/bhava.');
-  L.push('LAGNA: ' + SG[k.ascSign] + ' ' + k.ascDegs + ', ' + k.ascNak.name + ' pada ' + k.ascNak.pada + ', KP sign/star/sub ' + k.ascKP.sign + '/' + k.ascKP.star + '/' + k.ascKP.sub);
-  L.push('PLANETS (sign deg | house | bhava | nakshatra-pada | star lord | sub lord | dignity | D9 | D10):');
-  k.planets.forEach(function (x) { L.push('  ' + x.name + ': ' + SG[x.sign] + ' ' + x.degs + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + (x.combust ? ' combust' : '') + ' | H' + x.house + ' | B' + x.bhava + ' | ' + x.nak.name + '-' + x.nak.pada + ' | ' + x.nak.lord + ' | ' + x.kp.sub + ' | ' + x.dignity + ' | ' + SG3[J.varga(x.lon, 9).sign] + ' | ' + SG3[J.varga(x.lon, 10).sign]); });
+  L.push('TODAY: ' + N.dmyt(now) + ' (' + fmtOff(locOff()) + '). Ayanamsa ' + C.AYAN_INFO[k.ayan].name + ' ' + J.dms(k.ayanamsa, true) + '. Nodes: ' + C.getNode() + '. Whole-sign houses for Parashari.' + (kp === false ? '' : ', Placidus for KP/bhava'));
+  L.push('LAGNA: ' + SG[k.ascSign] + ' ' + k.ascDegs + ', ' + k.ascNak.name + ' pada ' + k.ascNak.pada + (kp === false ? '' : ', KP sign/star/sub ' + k.ascKP.sign + '/' + k.ascKP.star + '/' + k.ascKP.sub));
+  L.push('PLANETS (sign deg | house | ' + (kp === false ? '' : 'bhava | ') + 'nakshatra-pada | star lord | ' + (kp === false ? '' : 'sub lord | ') + 'dignity | D9 | D10):');
+  k.planets.forEach(function (x) { L.push('  ' + x.name + ': ' + SG[x.sign] + ' ' + x.degs + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + (x.combust ? ' combust' : '') + ' | H' + x.house + (kp === false ? '' : ' | B' + x.bhava) + ' | ' + x.nak.name + '-' + x.nak.pada + ' | ' + x.nak.lord + (kp === false ? '' : ' | ' + x.kp.sub) + ' | ' + x.dignity + ' | ' + SG3[J.varga(x.lon, 9).sign] + ' | ' + SG3[J.varga(x.lon, 10).sign]); });
   L.push('D9 lagna ' + SG[J.varga(k.asc, 9).sign] + ', D10 lagna ' + SG[J.varga(k.asc, 10).sign] + '.');
   L.push('FUNCTIONAL NATURE for ' + SG[k.ascSign] + ' lagna: ' + J.P7.map(function (x) { return PN[x] + ' ' + c.func[x].kind + ' (rules ' + c.func[x].houses.join('&') + ')'; }).join('; ') + '. Badhaka ' + c.func.badhaka.house + 'th lord ' + PN[c.func.badhaka.lord] + '.');
   L.push('YOGAS: ' + c.yogas.map(function (y) { return y.name + ' [' + y.why + ']'; }).join(' '));
@@ -3814,8 +3817,8 @@ function dossier(p, c) {
   var tr = N.transitAt(c, now); L.push('TRANSITS NOW: ' + tr.map(function (x) { return PN[x.code] + ' ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? 'R' : '') + ' H' + x.h + ' from lagna, ' + x.m + ' from Moon, ' + x.verdict + (x.bav != null ? ', BAV ' + x.bav : '') + (x.vedha ? ', vedha' : ''); }).join('; '));
   L.push('SADE SATI: ' + N.sadeSati(c, now).label + '.');
   L.push('UPCOMING INGRESSES (2y): ' + J.events(now, new Date(now.getTime() + 730 * 864e5), ['Ju', 'Sa', 'Ra']).filter(function (e) { return e.type === 'ingress'; }).map(function (e) { return PN[e.code] + '→' + SG[e.sign] + ' ' + N.dmy(e.t); }).join(', '));
-  L.push('KP CUSPS (sign deg, CSL): ' + c.kp.cusps.map(function (x) { return x.house + ' ' + SG3[x.sign] + ' ' + x.deg + ' ' + x.kp.sub; }).join('; '));
-  L.push('KP SIGNIFICATORS (planet: houses): ' + J.PC.map(function (x) { return x + ': ' + c.sig.sig[x].join(','); }).join('; '));
+  if (kp !== false) L.push('KP CUSPS (sign deg, CSL): ' + c.kp.cusps.map(function (x) { return x.house + ' ' + SG3[x.sign] + ' ' + x.deg + ' ' + x.kp.sub; }).join('; '));
+  if (kp !== false) L.push('KP SIGNIFICATORS (planet: houses): ' + J.PC.map(function (x) { return x + ': ' + c.sig.sig[x].join(','); }).join('; '));
   var H = N.healthAnalysis(c, now); L.push('HEALTH: ' + H.overall + '. Sensitive: ' + H.zones.filter(function (z) { return z.level !== 'good'; }).slice(0, 4).map(function (z) { return 'H' + z.house + ' ' + z.body.split(';')[0] + ' (' + z.why.join(' ') + ')'; }).join(' | '));
   if (p.events && p.events.length) L.push('KNOWN EVENTS: ' + p.events.map(function (e) { return KB.EVENTS[e.type].l + ' ' + e.date + ' ' + e.time; }).join('; '));
   return L.join('\n');
@@ -4118,7 +4121,7 @@ function qIntent(q) {
 }
 function geminiFormat(name, intent, rel, me) {
   var third = rel && rel !== 'me';
-  var core = (third ? 'You are Trikaal, a senior Vedic astrologer (Parashari and KP) advising ' + me + ', who is the consultant. The chart belongs to ' + (rel === 'client' ? 'his client ' : 'his family member or friend ') + name + '. Speak to ' + me + ' and refer to ' + name + ' in the third person by name (never "you" for ' + name + ').' : 'You are Trikaal, an expert Vedic astrologer (Parashari and KP) talking to ' + name + '.') + ' You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
+  var core = (third ? 'You are Trikaal, a senior Vedic astrologer (Parashari system, N.C. Lahiri ayanamsa) advising ' + me + ', who is the consultant. The chart belongs to ' + (rel === 'client' ? 'his client ' : 'his family member or friend ') + name + '. Speak to ' + me + ' and refer to ' + name + ' in the third person by name (never "you" for ' + name + ').' : 'You are Trikaal, an expert Vedic astrologer (Parashari system, N.C. Lahiri ayanamsa) talking to ' + name + '.') + ' You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
     'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====), exactly what was asked. Earlier messages are background only.\n' +
     'Write in plain, warm language a non-astrologer understands; explain any term in a few words the first time. Answer in the language the user writes in.' + (third ? '' : ' Address ' + name + ' by name once.') + '\n';
   if (intent === 'consult') return core +
@@ -4332,14 +4335,15 @@ function askGemini(p, c, q, onLive) {
     } catch (e) { }
   }
   var rb = ''; try { var lo = answerAny(p, c, q); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
+  if (rb && !E.isKP(q)) rb = rb.split(/(?<=[.!?])\s+/).filter(function (x) { return !/\bKP\b|sub ?lord|significator|cusp/i.test(x); }).join(' ');
   if (rb) extra += '\n\nRULE-BASED VERDICT FROM THE APP (cross-check; if you disagree, say why)\n' + rb;
-  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
+  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c, E.isKP(q)) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
   var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
   var intent = qIntent(q); gc.temperature = 0.2;
   contents[contents.length - 1].parts[0].text = fixedFacts(p, c) + '\n' + contents[contents.length - 1].parts[0].text;
   var rel = relOf(p), meP = me(), meName = meP && meP.id !== p.id ? meP.name.split(' ')[0] : 'the astrologer';
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) }] }, contents: contents, generationConfig: gc });
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) + (E.isKP(q) ? '\n' + E.RULES_KP : '\nThis is a Parashari reading with the N.C. Lahiri ayanamsa and whole-sign houses. Do NOT use or mention KP, sub lords, cusps, cuspal sub lords or significators.') }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
   return gGenerate(body).catch(function (e) {
     /* deep answer too slow or cut off before any text: try once more with light reasoning */
@@ -4600,10 +4604,10 @@ REP.life = function (p, c, now) {
   var R = N.report(c, now), a = kaOf(p), sec = [], tell = [];
   [['career', 'Career'], ['money', 'Money'], ['marriage', 'Marriage and partners'], ['children', 'Children and learning'], ['health', 'Health']].forEach(function (x) {
     var s = R.filter(function (y) { return y.id === x[0]; })[0]; if (!s) return;
-    var pr = s.items.filter(function (i) { return i.k === 'pro'; }).length, co = s.items.filter(function (i) { return i.k === 'con'; }).length, v = pr >= co + 2 ? ['Strong', 'g'] : co > pr ? ['Needs care', 'b'] : ['Mixed', 'm'];
+    var nk = s.items.filter(function (i) { return !/^KP\b/.test(i.t); }), pr = nk.filter(function (i) { return i.k === 'pro'; }).length, co = nk.filter(function (i) { return i.k === 'con'; }).length, v = pr >= co + 2 ? ['Strong', 'g'] : co > pr ? ['Needs care', 'b'] : ['Mixed', 'm'];
     var kw = { career: /career/, money: /wealth|income|gains/, marriage: /marriage/, children: /children/, health: /self and health/ }[x[0]];
     var when = a.success.filter(function (w) { return w.areas.some(function (ar) { return kw.test(ar); }); })[0];
-    var items = s.items.slice(0, 5).map(function (i) { return itm(i.t, (i.why || []).join(' '), i.k === 'pro' ? 'g' : i.k === 'con' ? 'b' : 'i'); });
+    var items = s.items.filter(function (i) { return !/^KP\b/.test(i.t); }).slice(0, 5).map(function (i) { return itm(i.t, (i.why || []).join(' '), i.k === 'pro' ? 'g' : i.k === 'con' ? 'b' : 'i'); });
     if (x[0] === 'health') { var hw = a.health[0]; if (hw) items.push(itm('Care period: ' + mon(hw.start) + '–' + mon(hw.end), hw.areas.join('; '), 'b')); }
     else if (when) items.push(itm('Best period: ' + mon(when.start) + '–' + mon(when.end), when.label + ' period', 'g'));
     sec.push({ h: x[1], badge: v, items: items });

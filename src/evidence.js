@@ -42,7 +42,9 @@ function makeEvidence(A, C, J, KB, N) {
     if (/this year|next year|coming year/.test(q)) return 365; if (/when|kab|by when/.test(q)) return 1095;
     return 180;
   }
-  function pos(p) { return PN[p.code] + ' ' + SG[p.sign] + ' ' + p.degs + (p.retro && p.code !== 'Ra' && p.code !== 'Ke' ? ' retrograde' : '') + (p.combust ? ' combust' : '') + ', ' + p.dignity.toLowerCase() + ', nakshatra ' + p.nak.name + ' pada ' + p.nak.pada + ' (star lord ' + PN[p.nak.lord] + ', KP sub lord ' + PN[p.kp.sub] + ')'; }
+  var KPON = false; /* KP data only when the question asks for KP */
+  function isKP(q) { return /\bkp\b|krishnamurti|sub ?lord|cuspal|significator|ruling planets?|\bprashna\b/i.test(q); }
+  function pos(p) { return PN[p.code] + ' ' + SG[p.sign] + ' ' + p.degs + (p.retro && p.code !== 'Ra' && p.code !== 'Ke' ? ' retrograde' : '') + (p.combust ? ' combust' : '') + ', ' + p.dignity.toLowerCase() + ', nakshatra ' + p.nak.name + ' pada ' + p.nak.pada + ' (star lord ' + PN[p.nak.lord] + (KPON ? ', KP sub lord ' + PN[p.kp.sub] : '') + ')'; }
   function aspectsOnSign(k, sign) { var h = J.houseFrom(k.ascSign, sign); return k.planets.filter(function (p) { return p.house !== h && J.aspectedHouses(p.code, p.house).indexOf(h) >= 0; }).map(function (p) { var d = J.houseFrom(p.sign, sign); return PN[p.code] + ' (' + nth(d) + ' aspect from ' + SG[p.sign] + ')'; }); }
   function conj(k, p) { return k.planets.filter(function (x) { return x.code !== p.code && x.sign === p.sign; }).map(function (x) { var d = Math.abs(x.lon - p.lon); return PN[x.code] + ' (' + d.toFixed(1) + '° apart)'; }); }
   function links(c, code, houses) {
@@ -52,10 +54,11 @@ function makeEvidence(A, C, J, KB, N) {
     var a = asp.filter(function (h) { return houses.indexOf(h) >= 0; }); if (a.length) out.push('aspects ' + a.map(nth).join(', '));
     var lordsHere = houses.map(function (h) { return J.lordOfHouse(k.ascSign, h); }).filter(function (l) { return l !== code && k.P[l].sign === p.sign; }); lordsHere = uniq(lordsHere); if (lordsHere.length) out.push('conjunct ' + lordsHere.map(function (l) { return PN[l]; }).join(', ') + ' (topic house lord)');
     if (code === 'Ra' || code === 'Ke') { var d = J.RULER[p.sign]; out.push('acts for its sign lord ' + PN[d] + ' (rules ' + J.lordsOf(k.ascSign, d).map(nth).join(', ') + ')'); }
-    var kh = kp.filter(function (h) { return houses.indexOf(h) >= 0; }); out.push('KP signifies ' + kp.join(',') + (kh.length ? ' (topic houses ' + kh.join(',') + ')' : ' (no topic house)'));
+    var kh = kp.filter(function (h) { return houses.indexOf(h) >= 0; }); if (KPON) out.push('KP signifies ' + kp.join(',') + (kh.length ? ' (topic houses ' + kh.join(',') + ')' : ' (no topic house)'));
     return out.join('; ');
   }
   function build(p, c, q, now) {
+    KPON = isKP(q);
     var k = c.k, T = topicOf(q), houses = T[2], vn = T[3], days = horizon(q), end = new Date(now.getTime() + days * DAY), L = [], func = c.func;
     function fn(code) { return code === 'Ra' || code === 'Ke' ? 'node' : func[code].kind + (func[code].maraka ? ', maraka' : ''); }
     L.push('QUESTION TOPIC: ' + T[0] + '. Topic houses: ' + houses.join(', ') + '. Divisional chart: ' + T[4] + ', plus D9. Natural significators: ' + T[5].map(function (x) { return PN[x]; }).join(', ') + '. Period asked: ' + dmy(now) + ' to ' + dmy(end) + '.');
@@ -63,7 +66,7 @@ function makeEvidence(A, C, J, KB, N) {
     houses.forEach(function (h) {
       if (h > 12) return;
       var sign = (k.ascSign + h - 1) % 12, lord = J.lordOfHouse(k.ascSign, h), lp = k.P[lord], occ = k.planets.filter(function (x) { return x.house === h; });
-      L.push('House ' + h + ' (' + SG[sign] + ', SAV ' + c.av.sav[sign] + ' bindus): occupants ' + (occ.length ? occ.map(pos).join('; ') : 'none') + '. Aspected by ' + (aspectsOnSign(k, sign).join(', ') || 'none') + '. Lord ' + PN[lord] + ' in house ' + lp.house + ': ' + pos(lp) + '; lord conjunct ' + (conj(k, lp).join(', ') || 'none') + '; lord aspected by ' + (aspectsOnSign(k, lp.sign).join(', ') || 'none') + '. KP cusp ' + h + ' sub lord ' + PN[c.kp.cusps[h - 1].kp.sub] + ' signifies ' + c.sig.sig[c.kp.cusps[h - 1].kp.sub].join(','));
+      L.push('House ' + h + ' (' + SG[sign] + ', SAV ' + c.av.sav[sign] + ' bindus): occupants ' + (occ.length ? occ.map(pos).join('; ') : 'none') + '. Aspected by ' + (aspectsOnSign(k, sign).join(', ') || 'none') + '. Lord ' + PN[lord] + ' in house ' + lp.house + ': ' + pos(lp) + '; lord conjunct ' + (conj(k, lp).join(', ') || 'none') + '; lord aspected by ' + (aspectsOnSign(k, lp.sign).join(', ') || 'none') + (KPON ? '. KP cusp ' + h + ' sub lord ' + PN[c.kp.cusps[h - 1].kp.sub] + ' signifies ' + c.sig.sig[c.kp.cusps[h - 1].kp.sub].join(',') : '') + '.');
     });
     /* Moon chart (Chandra lagna): the same topic houses counted from the natal Moon, with transits over them */
     var ms = k.P.Mo.sign, TR = N.transitAt(c, now);
@@ -125,12 +128,12 @@ function makeEvidence(A, C, J, KB, N) {
     '- Judge every matter from three places: the house, its lord, and its natural significator (karaka), in D1, then confirm in the divisional chart listed and in D9. A result promised in D1 but weak in the divisional chart is partial.\n' +
     '- Strength: exalted, moolatrikona, own sign, vargottama, kendra/trikona placement and benefic aspect strengthen; debilitation, combustion, 6/8/12 placement and malefic aspect weaken. Use the functional nature for this lagna, not natural benefic/malefic, when judging results.\n' +
     '- Aspects: all planets aspect the 7th; Mars also 4th and 8th; Jupiter 5th and 9th; Saturn 3rd and 10th; Rahu and Ketu 5th, 7th and 9th.\n' +
-    '- Timing: an event happens in the dasha of planets linked to the topic houses (owner, occupant, aspect, conjunction with the house lord, or KP signification), when Mahadasha, Antardasha and Pratyantar agree, and when transits support it (Jupiter and Saturn both touching the house or its lord = double transit). Sookshma and Prana narrow the date.\n' +
-    '- KP: a matter is promised when the cusp sub lord signifies the favourable houses; it fructifies in the joint periods of significators.\n' +
+    '- Timing: an event happens in the dasha of planets linked to the topic houses (owner, occupant, aspect, conjunction with the house lord), when Mahadasha, Antardasha and Pratyantar agree, and when transits support it (Jupiter and Saturn both touching the house or its lord = double transit). Sookshma and Prana narrow the date.\n' +
     '- Ashtakavarga: total SAV is 337, average 28 per house; 28+ strong, below 25 weak; 11th more than 12th means income exceeds expenses. A transiting planet gives good results in signs where its own BAV is 5+ and weak results at 3 or less.\n' +
     '- Gochar is judged from the natal Moon; Sade Sati is Saturn in the 12th, 1st and 2nd from the Moon.\n' +
     '- Moon chart (Chandra lagna): read the same topic houses counted from the Moon. A matter shown from both the lagna and the Moon is strong and reliable; shown from only one, it is partial or delayed. A dasha lord placed in a topic house from the Moon also activates the matter.\n' +
     '- Transit is the trigger: the dasha promises, the transit delivers. Before predicting a date, check that slow planets (Jupiter, Saturn, Rahu/Ketu) are in or aspecting the topic house or its lord from the lagna AND from the Moon, with good BAV. If the dasha supports but transit does not, give the later date when transit joins.\n';
-  return { build: build, topicOf: topicOf, horizon: horizon, RULES: RULES, vargaAsked: vargaAsked, VN: VN };
+  var RULES_KP = '- KP (only because KP was asked): a matter is promised when the cusp sub lord signifies the favourable houses; it fructifies in the joint periods of significators. KP uses the KP ayanamsa and Placidus cusps.\n';
+  return { isKP: isKP, RULES_KP: RULES_KP, build: build, topicOf: topicOf, horizon: horizon, RULES: RULES, vargaAsked: vargaAsked, VN: VN };
 }
 if (typeof module !== 'undefined') module.exports = makeEvidence;

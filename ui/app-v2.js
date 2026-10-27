@@ -216,7 +216,7 @@ function qIntent(q) {
 }
 function geminiFormat(name, intent, rel, me) {
   var third = rel && rel !== 'me';
-  var core = (third ? 'You are Trikaal, a senior Vedic astrologer (Parashari and KP) advising ' + me + ', who is the consultant. The chart belongs to ' + (rel === 'client' ? 'his client ' : 'his family member or friend ') + name + '. Speak to ' + me + ' and refer to ' + name + ' in the third person by name (never "you" for ' + name + ').' : 'You are Trikaal, an expert Vedic astrologer (Parashari and KP) talking to ' + name + '.') + ' You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
+  var core = (third ? 'You are Trikaal, a senior Vedic astrologer (Parashari system, N.C. Lahiri ayanamsa) advising ' + me + ', who is the consultant. The chart belongs to ' + (rel === 'client' ? 'his client ' : 'his family member or friend ') + name + '. Speak to ' + me + ' and refer to ' + name + ' in the third person by name (never "you" for ' + name + ').' : 'You are Trikaal, an expert Vedic astrologer (Parashari system, N.C. Lahiri ayanamsa) talking to ' + name + '.') + ' You are given FIXED FACTS and an EVIDENCE SHEET computed precisely from the chart. Use ONLY these. Never invent a position, yoga, aspect, dasha or date, and never contradict the FIXED FACTS (especially which Mahadasha, Antardasha and Pratyantar are running now). If something is not in the sheet, say so.\n' +
     'ANSWER ONLY THE CURRENT QUESTION (marked ==== CURRENT QUESTION ====), exactly what was asked. Earlier messages are background only.\n' +
     'Write in plain, warm language a non-astrologer understands; explain any term in a few words the first time. Answer in the language the user writes in.' + (third ? '' : ' Address ' + name + ' by name once.') + '\n';
   if (intent === 'consult') return core +
@@ -430,14 +430,15 @@ function askGemini(p, c, q, onLive) {
     } catch (e) { }
   }
   var rb = ''; try { var lo = answerAny(p, c, q); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
+  if (rb && !E.isKP(q)) rb = rb.split(/(?<=[.!?])\s+/).filter(function (x) { return !/\bKP\b|sub ?lord|significator|cusp/i.test(x); }).join(' ');
   if (rb) extra += '\n\nRULE-BASED VERDICT FROM THE APP (cross-check; if you disagree, say why)\n' + rb;
-  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
+  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c, E.isKP(q)) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
   var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
   var intent = qIntent(q); gc.temperature = 0.2;
   contents[contents.length - 1].parts[0].text = fixedFacts(p, c) + '\n' + contents[contents.length - 1].parts[0].text;
   var rel = relOf(p), meP = me(), meName = meP && meP.id !== p.id ? meP.name.split(' ')[0] : 'the astrologer';
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) }] }, contents: contents, generationConfig: gc });
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) + (E.isKP(q) ? '\n' + E.RULES_KP : '\nThis is a Parashari reading with the N.C. Lahiri ayanamsa and whole-sign houses. Do NOT use or mention KP, sub lords, cusps, cuspal sub lords or significators.') }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
   return gGenerate(body).catch(function (e) {
     /* deep answer too slow or cut off before any text: try once more with light reasoning */

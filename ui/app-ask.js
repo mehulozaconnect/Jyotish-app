@@ -165,13 +165,13 @@ function storyAnswer(p, c, q, ql, now, dt, ev, pl, kpm) {
 var HELP = '<p>I answer from ' + 'the chart with the logic shown. Try:</p><ul><li>Tell me about this person</li><li>How is ' + 'the health? When will it improve?</li><li>Why did he have an accident on 15 Jul 2026 at 11:30?</li><li>By when will he recover? Which planet did this?</li><li>When will I get a promotion?</li><li>How is this month’s transit for me?</li><li>Saturn in my chart</li><li>Which gemstone and rudraksha suit me?</li><li>Good muhurat to buy a car</li></ul>';
 
 /* ---------- Claude ---------- */
-function dossier(p, c) {
+function dossier(p, c, kp) {
   var k = c.k, now = new Date(), L = [], P = k.P;
   L.push('PERSON: ' + p.name + ' (' + (p.gender === 'F' ? 'female' : 'male') + '), born ' + p.date + ' ' + p.time + ' local (' + fmtOff(+p.tz) + ') at ' + (p.place || '') + ' lat ' + p.lat + ' lon ' + p.lon + '.' + (p.notes ? ' Notes: ' + p.notes : ''));
-  L.push('TODAY: ' + N.dmyt(now) + ' (' + fmtOff(locOff()) + '). Ayanamsa ' + C.AYAN_INFO[k.ayan].name + ' ' + J.dms(k.ayanamsa, true) + '. Nodes: ' + C.getNode() + '. Whole-sign houses for Parashari, Placidus for KP/bhava.');
-  L.push('LAGNA: ' + SG[k.ascSign] + ' ' + k.ascDegs + ', ' + k.ascNak.name + ' pada ' + k.ascNak.pada + ', KP sign/star/sub ' + k.ascKP.sign + '/' + k.ascKP.star + '/' + k.ascKP.sub);
-  L.push('PLANETS (sign deg | house | bhava | nakshatra-pada | star lord | sub lord | dignity | D9 | D10):');
-  k.planets.forEach(function (x) { L.push('  ' + x.name + ': ' + SG[x.sign] + ' ' + x.degs + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + (x.combust ? ' combust' : '') + ' | H' + x.house + ' | B' + x.bhava + ' | ' + x.nak.name + '-' + x.nak.pada + ' | ' + x.nak.lord + ' | ' + x.kp.sub + ' | ' + x.dignity + ' | ' + SG3[J.varga(x.lon, 9).sign] + ' | ' + SG3[J.varga(x.lon, 10).sign]); });
+  L.push('TODAY: ' + N.dmyt(now) + ' (' + fmtOff(locOff()) + '). Ayanamsa ' + C.AYAN_INFO[k.ayan].name + ' ' + J.dms(k.ayanamsa, true) + '. Nodes: ' + C.getNode() + '. Whole-sign houses for Parashari.' + (kp === false ? '' : ', Placidus for KP/bhava'));
+  L.push('LAGNA: ' + SG[k.ascSign] + ' ' + k.ascDegs + ', ' + k.ascNak.name + ' pada ' + k.ascNak.pada + (kp === false ? '' : ', KP sign/star/sub ' + k.ascKP.sign + '/' + k.ascKP.star + '/' + k.ascKP.sub));
+  L.push('PLANETS (sign deg | house | ' + (kp === false ? '' : 'bhava | ') + 'nakshatra-pada | star lord | ' + (kp === false ? '' : 'sub lord | ') + 'dignity | D9 | D10):');
+  k.planets.forEach(function (x) { L.push('  ' + x.name + ': ' + SG[x.sign] + ' ' + x.degs + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ' R' : '') + (x.combust ? ' combust' : '') + ' | H' + x.house + (kp === false ? '' : ' | B' + x.bhava) + ' | ' + x.nak.name + '-' + x.nak.pada + ' | ' + x.nak.lord + (kp === false ? '' : ' | ' + x.kp.sub) + ' | ' + x.dignity + ' | ' + SG3[J.varga(x.lon, 9).sign] + ' | ' + SG3[J.varga(x.lon, 10).sign]); });
   L.push('D9 lagna ' + SG[J.varga(k.asc, 9).sign] + ', D10 lagna ' + SG[J.varga(k.asc, 10).sign] + '.');
   L.push('FUNCTIONAL NATURE for ' + SG[k.ascSign] + ' lagna: ' + J.P7.map(function (x) { return PN[x] + ' ' + c.func[x].kind + ' (rules ' + c.func[x].houses.join('&') + ')'; }).join('; ') + '. Badhaka ' + c.func.badhaka.house + 'th lord ' + PN[c.func.badhaka.lord] + '.');
   L.push('YOGAS: ' + c.yogas.map(function (y) { return y.name + ' [' + y.why + ']'; }).join(' '));
@@ -183,8 +183,8 @@ function dossier(p, c) {
   var tr = N.transitAt(c, now); L.push('TRANSITS NOW: ' + tr.map(function (x) { return PN[x.code] + ' ' + SG[x.sign] + ' ' + J.dm(x.lon) + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? 'R' : '') + ' H' + x.h + ' from lagna, ' + x.m + ' from Moon, ' + x.verdict + (x.bav != null ? ', BAV ' + x.bav : '') + (x.vedha ? ', vedha' : ''); }).join('; '));
   L.push('SADE SATI: ' + N.sadeSati(c, now).label + '.');
   L.push('UPCOMING INGRESSES (2y): ' + J.events(now, new Date(now.getTime() + 730 * 864e5), ['Ju', 'Sa', 'Ra']).filter(function (e) { return e.type === 'ingress'; }).map(function (e) { return PN[e.code] + '→' + SG[e.sign] + ' ' + N.dmy(e.t); }).join(', '));
-  L.push('KP CUSPS (sign deg, CSL): ' + c.kp.cusps.map(function (x) { return x.house + ' ' + SG3[x.sign] + ' ' + x.deg + ' ' + x.kp.sub; }).join('; '));
-  L.push('KP SIGNIFICATORS (planet: houses): ' + J.PC.map(function (x) { return x + ': ' + c.sig.sig[x].join(','); }).join('; '));
+  if (kp !== false) L.push('KP CUSPS (sign deg, CSL): ' + c.kp.cusps.map(function (x) { return x.house + ' ' + SG3[x.sign] + ' ' + x.deg + ' ' + x.kp.sub; }).join('; '));
+  if (kp !== false) L.push('KP SIGNIFICATORS (planet: houses): ' + J.PC.map(function (x) { return x + ': ' + c.sig.sig[x].join(','); }).join('; '));
   var H = N.healthAnalysis(c, now); L.push('HEALTH: ' + H.overall + '. Sensitive: ' + H.zones.filter(function (z) { return z.level !== 'good'; }).slice(0, 4).map(function (z) { return 'H' + z.house + ' ' + z.body.split(';')[0] + ' (' + z.why.join(' ') + ')'; }).join(' | '));
   if (p.events && p.events.length) L.push('KNOWN EVENTS: ' + p.events.map(function (e) { return KB.EVENTS[e.type].l + ' ' + e.date + ' ' + e.time; }).join('; '));
   return L.join('\n');

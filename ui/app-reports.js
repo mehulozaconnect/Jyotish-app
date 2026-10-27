@@ -18,10 +18,10 @@ REP.life = function (p, c, now) {
   var R = N.report(c, now), a = kaOf(p), sec = [], tell = [];
   [['career', 'Career'], ['money', 'Money'], ['marriage', 'Marriage and partners'], ['children', 'Children and learning'], ['health', 'Health']].forEach(function (x) {
     var s = R.filter(function (y) { return y.id === x[0]; })[0]; if (!s) return;
-    var pr = s.items.filter(function (i) { return i.k === 'pro'; }).length, co = s.items.filter(function (i) { return i.k === 'con'; }).length, v = pr >= co + 2 ? ['Strong', 'g'] : co > pr ? ['Needs care', 'b'] : ['Mixed', 'm'];
+    var nk = s.items.filter(function (i) { return !/^KP\b/.test(i.t); }), pr = nk.filter(function (i) { return i.k === 'pro'; }).length, co = nk.filter(function (i) { return i.k === 'con'; }).length, v = pr >= co + 2 ? ['Strong', 'g'] : co > pr ? ['Needs care', 'b'] : ['Mixed', 'm'];
     var kw = { career: /career/, money: /wealth|income|gains/, marriage: /marriage/, children: /children/, health: /self and health/ }[x[0]];
     var when = a.success.filter(function (w) { return w.areas.some(function (ar) { return kw.test(ar); }); })[0];
-    var items = s.items.slice(0, 5).map(function (i) { return itm(i.t, (i.why || []).join(' '), i.k === 'pro' ? 'g' : i.k === 'con' ? 'b' : 'i'); });
+    var items = s.items.filter(function (i) { return !/^KP\b/.test(i.t); }).slice(0, 5).map(function (i) { return itm(i.t, (i.why || []).join(' '), i.k === 'pro' ? 'g' : i.k === 'con' ? 'b' : 'i'); });
     if (x[0] === 'health') { var hw = a.health[0]; if (hw) items.push(itm('Care period: ' + mon(hw.start) + '–' + mon(hw.end), hw.areas.join('; '), 'b')); }
     else if (when) items.push(itm('Best period: ' + mon(when.start) + '–' + mon(when.end), when.label + ' period', 'g'));
     sec.push({ h: x[1], badge: v, items: items });
