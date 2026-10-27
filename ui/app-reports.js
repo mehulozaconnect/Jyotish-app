@@ -139,7 +139,7 @@ function ReportsV2() {
   var p = curP(); if (!p) return topBar('Reports', { noPerson: true }) + noPerson();
   var h = topBar('Reports') + '<div class="pad"><p class="sm" style="margin:-2px 0 10px">Ready readings for <b>' + esc(p.name) + '</b>. Each one ends with what to tell ' + (relOf(p) === 'me' ? 'yourself' : nm(p)) + '.</p>';
   RCAT.forEach(function (cat) { h += '<div class="lbl" style="margin:12px 0 6px">' + cat[0] + '</div><div class="rgrid">' + cat[1].map(function (r) { return '<button data-go="report/' + r[0] + '"><b>' + r[1] + '</b><small>' + r[2] + '</small></button>'; }).join('') + '</div>'; });
-  return h + '</div>';
+  return h + '<p class="note" style="text-align:center;margin-top:14px">Trikaal ' + APP_VERSION + '</p></div>';
 }
 function ReportView(id) {
   var p = curP(); if (!p || !REP[id]) { go('reports'); return ''; }

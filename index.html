@@ -4789,7 +4789,7 @@ function ReportsV2() {
   var p = curP(); if (!p) return topBar('Reports', { noPerson: true }) + noPerson();
   var h = topBar('Reports') + '<div class="pad"><p class="sm" style="margin:-2px 0 10px">Ready readings for <b>' + esc(p.name) + '</b>. Each one ends with what to tell ' + (relOf(p) === 'me' ? 'yourself' : nm(p)) + '.</p>';
   RCAT.forEach(function (cat) { h += '<div class="lbl" style="margin:12px 0 6px">' + cat[0] + '</div><div class="rgrid">' + cat[1].map(function (r) { return '<button data-go="report/' + r[0] + '"><b>' + r[1] + '</b><small>' + r[2] + '</small></button>'; }).join('') + '</div>'; });
-  return h + '</div>';
+  return h + '<p class="note" style="text-align:center;margin-top:14px">Trikaal ' + APP_VERSION + '</p></div>';
 }
 function ReportView(id) {
   var p = curP(); if (!p || !REP[id]) { go('reports'); return ''; }
@@ -4828,7 +4828,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '2.0';
+var APP_VERSION = '2.5.1';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
