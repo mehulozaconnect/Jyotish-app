@@ -201,3 +201,11 @@ ACT.waGo = function (el) {
   var img = ''; try { img = waCard(title, name, d.head || title, d.pts.length ? d.pts : (extra ? extra.split('\n').slice(1, 6) : [d.intro])); } catch (e) { }
   waSend(waText(title, name, d, extra), ph, img);
 };
+/* quick entries on the Astrology home */
+(function () {
+  var a0 = AstroV2; AstroV2 = function (id) {
+    var h = a0(id), p = curP(), mk = 'Mangal dosha, remedies</small></div><span>›</span></button>';
+    if (!p || h.indexOf(mk) < 0) return h;
+    return h.replace(mk, mk + '<div class="kpair" style="margin-top:10px"><button class="kentry k5" data-go="p/' + p.id + '/shadbala"><span class="kei">⚖</span><div><b>Shadbala</b><small>Planet strength: who delivers, who struggles</small></div></button><button class="kentry k6" data-go="p/' + p.id + '/btime"><span class="kei">⏱</span><div><b>Birth time</b><small>Correct it from life events</small></div></button></div>');
+  };
+})();
