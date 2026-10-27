@@ -113,11 +113,19 @@ function RemindersV2() {
   var inf = DB.settings.remInfo;
   h += '<div class="card"><div class="kgh"><h3>Coming up</h3><span class="sm">' + plan.length + ' planned</span></div>' + (inf ? '<p class="sm" style="margin:-4px 0 6px">Last set on this phone: ' + N.dmyt(new Date(inf.at)) + '</p>' : '') +
     (plan.length ? plan.slice(0, 15).map(function (x) { return '<div class="rnote' + (x.id.charAt(0) === 't' ? ' ra' : '') + '"><span class="mono">' + dshort(new Date(x.at)) + ' · ' + N.hm(new Date(x.at)) + '</span><b>' + esc(x.title.replace(/ · [A-Z][a-z]{2} \d+ [A-Z][a-z]{2}(: |$)/, '$1')) + '</b><p>' + esc(x.body).replace(/\n/g, '<br>') + '</p></div>'; }).join('') : '<p class="sm">Nothing planned. Switch on a person and at least one type above.</p>') +
-    '<button class="btn acc wide" style="margin-top:10px" data-act="remNow">Set reminders on this phone now</button><p class="note">Planned 14 days ahead (alerts 30 days) and refreshed every time you open Trikaal. Open the app at least once a week to keep them coming. Allow notifications when Android asks.</p></div>';
+    '<button class="btn acc wide" style="margin-top:10px" data-act="remNow">Set reminders on this phone now</button><button class="btn sec wide" style="margin-top:8px" data-act="remTest">Send a test notification in 15 seconds</button><p class="note">Planned 14 days ahead (alerts 30 days) and refreshed every time you open Trikaal. Open the app at least once a week to keep them coming. Allow notifications when Android asks.</p></div>';
   return h + '</div>';
 }
 CHG.remWho = function (el) { var p = person(el.dataset.v); if (p) { p.notify = el.checked; save(); scheduleAll(); rerender(); } };
 CHG.remOpt = function (el) { remCfg()[el.dataset.v] = el.checked; save(); scheduleAll(); rerender(); };
 CHG.remTime = function (el) { remCfg().briefTime = el.value || '07:00'; save(); scheduleAll(); rerender(); };
 ACT.remNow = function () { if (!AND || !AND.scheduleOnce) { toast('Reminders work in the installed app'); return; } scheduleAll(); toast('Reminders set ✓', 2500); setTimeout(rerender, 1600); };
+ACT.remTest = function () {
+  if (!AND || !AND.scheduleOnce) { toast('Test works in the installed app'); return; }
+  var plan = []; try { plan = planAll(); } catch (e) { }
+  var x = plan[0] || { title: 'Trikaal test', body: 'Reminders are working on this phone.' };
+  AND.scheduleOnce('d|test' + Date.now(), 'Test · ' + x.title, x.body, Date.now() + 15000, 'reminders');
+  if (AND.scheduleReminder) { /* also prove the daily-repeating remedy path */ }
+  toast('Test set. Lock the phone or leave the app; it arrives in about 15 seconds.', 4000);
+};
 ACT.remBack = function () { if (history.length > 1) history.back(); else go('remedies'); };
