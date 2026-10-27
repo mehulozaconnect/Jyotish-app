@@ -369,7 +369,7 @@ function makeAnalysis(A, C, J, KB) {
     var pc = J.panchang(dayStart, lat, lon), wd = loc(pc.rise).getUTCDay(), sc = dayScore(c, pc, wd), parts = J.dayParts(pc.rise, pc.set, wd), hs = J.horas(pc.rise, pc.set, pc.nextRise, wd);
     var tr = transitAt(c, now && now >= pc.rise && now < pc.nextRise ? now : new Date(pc.rise.getTime() + 4 * 3600e3)), ch = J.dashaChain(c.maha, pc.rise, 4);
     var why = sc.factors.map(function (f) { return { label: f.label, val: f.val, why: f.why }; });
-    var slow = tr.filter(function (x) { return x.code === 'Sa' || x.code === 'Ju' || x.code === 'Ra'; }).map(function (x) { return PN[x.code] + ' ' + nth(x.m) + ' from Moon (' + x.verdict + '): ' + x.text; });
+    var slow = tr.filter(function (x) { return x.code === 'Sa' || x.code === 'Ju' || x.code === 'Ra'; }).map(function (x) { return PN[x.code] + ' in your ' + nth(x.h) + ' house (' + nth(x.m) + ' from Moon, ' + x.verdict + '): ' + x.text; });
     var focus = []; var sk = ch[3] || ch[2];
     if (sk) focus.push('Dasha today: ' + ch.map(function (x) { return PN[x.lord]; }).join(' › ') + '. ' + PN[sk.lord] + ' (' + lordNote(c, sk.lord) + ') colours the day.');
     var mo = tr.filter(function (x) { return x.code === 'Mo'; })[0]; if (mo) focus.push('Moon in your ' + nth(mo.h) + ' (' + houseTopic(mo.h).split(',')[0] + '): ' + KB.GOCHAR.Mo[mo.m] + '.');

@@ -65,11 +65,23 @@ OUT.dasha = function (p, c, now) {
   return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + (md ? ({ G: 'g', M: 'm', T: 'b' })[md.rate.charAt(0)] : 'm') + '">' + PN[ch[0].lord] + ' period: ' + (md ? md.rate.toLowerCase() : 'mixed') + '</div><p class="op">Running until ' + N.dmy(ch[0].end) + (ch[1] ? '; ' + PN[ch[1].lord] + ' sub-period until ' + N.dmy(ch[1].end) : '') + '.' + (g ? ' Next golden window: <b>' + esc(g.label) + ', ' + N.dmy(g.start) + '</b>.' : '') + '</p>',
     tell: [PN[ch[0].lord] + ' Mahadasha (until ' + N.dmy(ch[0].end) + ') focuses on ' + AREA_OF[c.k.P[ch[0].lord].house] + '.', ch[1] ? PN[ch[1].lord] + ' sub-period (until ' + N.dmy(ch[1].end) + ') brings ' + AREA_OF[c.k.P[ch[1].lord].house] + ' into focus.' : '', g ? 'Best period ahead: ' + g.label + ' from ' + N.dmy(g.start) + ' (' + g.areas.slice(0, 2).join(', ') + ').' : ''].filter(Boolean), ask: 'What does ' + nm(p) + '\'s current dasha bring, and what changes at the next sub-period' };
 };
+/* one shared transit reading: house from the lagna first, Moon-sign gochar second, transit dignity, bindus, vedha */
+function transitRead(c, now) {
+  var GG = KB.GOCHAR_GOOD, W = { 'Exalted': 1, 'Moolatrikona': 1, 'Own sign': 1, 'Debilitated': -1.5, 'Enemy sign': -0.5 };
+  return N.transitAt(c, now).map(function (x) {
+    var td = x.code === 'Ra' || x.code === 'Ke' ? null : J.dignity(x.code, x.lon);
+    var sc = (GG[x.code].indexOf(x.h) >= 0 ? 1 : -1) + (GG[x.code].indexOf(x.m) >= 0 ? 0.7 : -0.5) + (td && W[td] ? W[td] : 0) + (x.bav == null ? 0 : x.bav >= 5 ? 0.5 : x.bav <= 3 ? -0.5 : 0) + (x.vedha ? -0.5 : 0);
+    var tone = sc >= 1 ? 'g' : sc <= -1 ? 'b' : 'm', H = NARR.H[x.h];
+    var line = tone === 'g' ? H.g[0] : tone === 'b' ? H.b[0] : H.g[0].replace(/\.$/, '') + ', but ' + H.b[0].charAt(0).toLowerCase() + H.b[0].slice(1);
+    return { code: x.code, x: x, h: x.h, m: x.m, td: td, sc: sc, tone: tone, line: line, label: PN[x.code] + ' in your ' + N.nth(x.h) + ' house (' + J.SIGNS[x.sign] + (td === 'Debilitated' ? ', debilitated' : td === 'Exalted' ? ', exalted' : td === 'Own sign' || td === 'Moolatrikona' ? ', own sign' : '') + (x.retro && x.code !== 'Ra' && x.code !== 'Ke' ? ', retrograde' : '') + ')' };
+  });
+}
 OUT.transit = function (p, c, now) {
-  var ss = N.sadeSati(c, now), tr = N.transitAt(c, now), ju = tr.filter(function (x) { return x.code === 'Ju'; })[0], sa = tr.filter(function (x) { return x.code === 'Sa'; })[0];
-  var good = (ju.verdict === 'good' ? 1 : 0) + (sa.verdict === 'good' ? 1 : 0) - (ss.q === 'bad' ? 1 : 0);
-  return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + (good > 0 ? 'g' : good < 0 ? 'b' : 'm') + '">' + (good > 0 ? 'Supportive transits' : good < 0 ? 'Testing transits' : 'Mixed transits') + '</div><p class="op">Jupiter: ' + esc(KB.GOCHAR.Ju[ju.m]) + '. Saturn: ' + esc(KB.GOCHAR.Sa[sa.m]) + '.</p>',
-    tell: ['Jupiter now ' + N.nth(ju.m) + ' from the Moon: ' + KB.GOCHAR.Ju[ju.m] + '.', 'Saturn now ' + N.nth(sa.m) + ' from the Moon: ' + KB.GOCHAR.Sa[sa.m] + '.', ss.q === 'bad' ? ss.label + (ss.until ? ' until ' + N.dmy(ss.until) : '') + ': steady routine and Saturday Hanuman Chalisa help.' : 'No Sade Sati or Dhaiya now.'], ask: 'How are the current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
+  var ss = N.sadeSati(c, now), R = transitRead(c, now), slow = R.filter(function (r) { return ['Ju', 'Sa', 'Ra', 'Ke'].indexOf(r.code) >= 0; });
+  var tot = slow.reduce(function (t, r) { return t + r.sc; }, 0) - (ss.q === 'bad' ? 0.5 : 0), v = tot >= 1.5 ? ['Supportive transits', 'g'] : tot <= -1.5 ? ['Testing transits', 'b'] : ['Mixed transits', 'm'];
+  var tell = slow.filter(function (r) { return r.code !== 'Ke'; }).map(function (r) { return r.label + ': ' + r.line.charAt(0).toLowerCase() + r.line.slice(1).replace(/\.$/, '') + '. (From the Moon it is ' + N.nth(r.m) + ': ' + KB.GOCHAR[r.code][r.m] + '.)'; });
+  tell.push(ss.q === 'bad' ? ss.label + (ss.until ? ' until ' + N.dmy(ss.until) : '') + ': steady routine and Saturday Hanuman Chalisa help.' : 'No Sade Sati or Dhaiya now.');
+  return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + v[1] + '">' + v[0] + '</div><p class="op">' + slow.filter(function (r) { return r.code === 'Ju' || r.code === 'Sa'; }).map(function (r) { return '<b>' + esc(r.label) + '</b>: ' + esc(r.line); }).join(' ') + '</p>', tell: tell, ask: 'How are the current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
 };
 OUT.health = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><p class="op">' + (a.health.length ? 'Care periods ahead: <b>' + a.health.slice(0, 2).map(function (x) { return mon(x.start) + '–' + mon(x.end); }).join(', ') + '</b>.' : 'No strongly sensitive health periods in the next years.') + '</p>', tell: a.health.slice(0, 3).map(function (x) { return mon(x.start) + '–' + mon(x.end) + ': take care of ' + x.areas[0] + '.'; }).concat(a.saturn.slice(0, 2).map(function (x) { return x.label + ' ' + mon(x.start) + '–' + mon(x.end) + ': keep routine and rest.'; })).concat(['These are astrological indications, not a diagnosis.']), ask: 'Health outlook for ' + nm(p) + ' with periods to be careful and what to do' }; };
 OUT.av = function (p, c) {
