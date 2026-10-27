@@ -330,3 +330,4 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .kwatch{font:500 12.8px/1.45 var(--sans);color:#8a2f25;background:var(--badS);border-radius:8px;padding:6px 9px;margin-top:6px}
 .kgold.tough.now{background:#FBEFEC}
 .msg.bot.sto.bc,.msg.bot.bc{box-shadow:0 0 0 1.5px #E5B4AC;background:#FDF5F3}
+.kentry.k3{background:linear-gradient(135deg,#FDECE9,#F8DCD6);box-shadow:0 0 0 1px #EFC3BA}.kentry.k3 .kei{background:var(--bad)}.kentry.k3 small{color:#7a3a30}

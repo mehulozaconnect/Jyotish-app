@@ -63,7 +63,8 @@ function AstroV2(id) {
   var c = calcP(p), k = c.k; id = id || U.chart || 'D1'; U.chart = id;
   var h = topBar('Astrology');
   h += '<div class="chips v2chips">' + [['D1', 'D1 Rashi'], ['D9', 'D9'], ['D10', 'D10'], ['CH', 'Chalit'], ['MO', 'Moon'], ['ALL', 'All charts ›']].map(function (x) { return '<button data-go="astro/' + x[0] + '" class="' + (x[0] === id ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
-  h += '<div class="kpair"><button class="kentry" data-go="analysis"><span class="kei">✦</span><div><b>Kundli analysis</b><small>Strengths, yogas, golden periods, timelines</small></div></button><button class="kentry k2" data-go="reports"><span class="kei">☰</span><div><b>Reports</b><small>20 ready readings: doshas, Sade Sati, remedies, months</small></div></button></div>';
+  h += '<div class="kpair"><button class="kentry" data-go="analysis"><span class="kei">✦</span><div><b>Kundli analysis</b><small>Strengths, yogas, golden periods, timelines</small></div></button><button class="kentry k2" data-go="reports"><span class="kei">☰</span><div><b>Reports</b><small>21 ready readings: doshas, Sade Sati, remedies, months</small></div></button></div>';
+  h += '<button class="kentry k3" data-go="report/disease"><span class="kei">✚</span><div><b>Health risks</b><small>BP, diabetes, thyroid, kidneys and more: what to avoid, tests to get</small></div><span>›</span></button>';
   if (id === 'ALL') {
     h += '<div class="mgrid">' + MINI.map(function (x) { var m = chartModel(c, x[0]); return '<button data-go="astro/' + x[0] + '">' + miniNorth(m.rows, m.ascSign) + '<b>' + (x[0] === 'CH' ? 'Chalit' : x[0] === 'MO' ? 'Moon' : x[0] === 'SU' ? 'Sun' : x[0]) + '</b><small>' + x[1] + '</small></button>'; }).join('') + '</div>';
   } else {

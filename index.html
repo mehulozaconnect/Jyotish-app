@@ -344,6 +344,7 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .kwatch{font:500 12.8px/1.45 var(--sans);color:#8a2f25;background:var(--badS);border-radius:8px;padding:6px 9px;margin-top:6px}
 .kgold.tough.now{background:#FBEFEC}
 .msg.bot.sto.bc,.msg.bot.bc{box-shadow:0 0 0 1.5px #E5B4AC;background:#FDF5F3}
+.kentry.k3{background:linear-gradient(135deg,#FDECE9,#F8DCD6);box-shadow:0 0 0 1px #EFC3BA}.kentry.k3 .kei{background:var(--bad)}.kentry.k3 small{color:#7a3a30}
 </style>
 </head>
 <body>
@@ -4288,7 +4289,8 @@ function AstroV2(id) {
   var c = calcP(p), k = c.k; id = id || U.chart || 'D1'; U.chart = id;
   var h = topBar('Astrology');
   h += '<div class="chips v2chips">' + [['D1', 'D1 Rashi'], ['D9', 'D9'], ['D10', 'D10'], ['CH', 'Chalit'], ['MO', 'Moon'], ['ALL', 'All charts ›']].map(function (x) { return '<button data-go="astro/' + x[0] + '" class="' + (x[0] === id ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div><div class="pad">';
-  h += '<div class="kpair"><button class="kentry" data-go="analysis"><span class="kei">✦</span><div><b>Kundli analysis</b><small>Strengths, yogas, golden periods, timelines</small></div></button><button class="kentry k2" data-go="reports"><span class="kei">☰</span><div><b>Reports</b><small>20 ready readings: doshas, Sade Sati, remedies, months</small></div></button></div>';
+  h += '<div class="kpair"><button class="kentry" data-go="analysis"><span class="kei">✦</span><div><b>Kundli analysis</b><small>Strengths, yogas, golden periods, timelines</small></div></button><button class="kentry k2" data-go="reports"><span class="kei">☰</span><div><b>Reports</b><small>21 ready readings: doshas, Sade Sati, remedies, months</small></div></button></div>';
+  h += '<button class="kentry k3" data-go="report/disease"><span class="kei">✚</span><div><b>Health risks</b><small>BP, diabetes, thyroid, kidneys and more: what to avoid, tests to get</small></div><span>›</span></button>';
   if (id === 'ALL') {
     h += '<div class="mgrid">' + MINI.map(function (x) { var m = chartModel(c, x[0]); return '<button data-go="astro/' + x[0] + '">' + miniNorth(m.rows, m.ascSign) + '<b>' + (x[0] === 'CH' ? 'Chalit' : x[0] === 'MO' ? 'Moon' : x[0] === 'SU' ? 'Sun' : x[0]) + '</b><small>' + x[1] + '</small></button>'; }).join('') + '</div>';
   } else {
@@ -4904,7 +4906,7 @@ OUT.transit = function (p, c, now) {
   tell.push(ss.q === 'bad' ? ss.label + (ss.until ? ' until ' + N.dmy(ss.until) : '') + ': steady routine and Saturday Hanuman Chalisa help.' : 'No Sade Sati or Dhaiya now.');
   return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + v[1] + '">' + v[0] + '</div><p class="op">' + slow.filter(function (r) { return r.code === 'Ju' || r.code === 'Sa'; }).map(function (r) { return '<b>' + esc(r.label) + '</b>: ' + esc(r.line); }).join(' ') + '</p>', tell: tell, ask: 'How are the current transits affecting ' + nm(p) + ' and what changes in the next 12 months' };
 };
-OUT.health = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><p class="op">' + (a.health.length ? 'Care periods ahead: <b>' + a.health.slice(0, 2).map(function (x) { return mon(x.start) + '–' + mon(x.end); }).join(', ') + '</b>.' : 'No strongly sensitive health periods in the next years.') + '</p>', tell: a.health.slice(0, 3).map(function (x) { return mon(x.start) + '–' + mon(x.end) + ': take care of ' + x.areas[0] + '.'; }).concat(a.saturn.slice(0, 2).map(function (x) { return x.label + ' ' + mon(x.start) + '–' + mon(x.end) + ': keep routine and rest.'; })).concat(['These are astrological indications, not a diagnosis.']), ask: 'Health outlook for ' + nm(p) + ' with periods to be careful and what to do' }; };
+OUT.health = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><button class="btn acc wide" style="margin:4px 0 8px" data-go="report/disease">Health risks: BP, diabetes, thyroid… ›</button><p class="op">' + (a.health.length ? 'Care periods ahead: <b>' + a.health.slice(0, 2).map(function (x) { return mon(x.start) + '–' + mon(x.end); }).join(', ') + '</b>.' : 'No strongly sensitive health periods in the next years.') + '</p>', tell: a.health.slice(0, 3).map(function (x) { return mon(x.start) + '–' + mon(x.end) + ': take care of ' + x.areas[0] + '.'; }).concat(a.saturn.slice(0, 2).map(function (x) { return x.label + ' ' + mon(x.start) + '–' + mon(x.end) + ': keep routine and rest.'; })).concat(['These are astrological indications, not a diagnosis.']), ask: 'Health outlook for ' + nm(p) + ' with periods to be careful and what to do' }; };
 OUT.av = function (p, c) {
   var hs = []; for (var h = 1; h <= 12; h++) hs.push([h, N.savOf(c, h)]); hs.sort(function (a, b) { return b[1] - a[1]; });
   var s11 = N.savOf(c, 11), s12 = N.savOf(c, 12);
@@ -5315,7 +5317,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '2.9';
+var APP_VERSION = '2.9.1';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
