@@ -74,22 +74,25 @@ function tScore(c, code, sign, lon) {
   return { h: h, m: m, td: td, sc: sc, tone: sc >= 1 ? 'g' : sc <= -1 ? 'b' : 'm' };
 }
 REP.disease = function (p, c, now) {
-  var R = MED.analyze(c, now), top = R.filter(function (x) { return x.level !== 'Low'; }), low = R.filter(function (x) { return x.level === 'Low'; });
+  var R = MED.analyze(c, now), top = R.filter(function (x) { return x.level !== 'Low' || x.now; }), low = R.filter(function (x) { return x.level === 'Low' && !x.now; });
   var dy = function (d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getFullYear(); };
   var sec = top.map(function (x) {
     var main = MED.COND.filter(function (cd) { return cd.id === x.id; })[0], pl = Object.keys(main.pl)[0];
-    return { h: x.name, badge: [x.level === 'Higher' ? 'Higher tendency' : 'Moderate tendency', x.level === 'Higher' ? 'b' : 'm'], items: [
+    return { h: x.name, badge: [x.now ? x.now : x.level + ' tendency', x.now || x.level === 'Higher' ? 'b' : 'm'], items: [
+      itm(x.now ? 'Right now: ' + x.now.toLowerCase() : 'Right now', x.trig.length ? x.trig.join('; ') + '. ' + (x.now ? 'Follow the avoid list strictly now and get the tests done soon.' : 'Keep an eye on it.') : 'Nothing is triggering this right now.', x.now ? 'b' : 'g'),
+      itm('Next 3 years: be careful in', x.soon.length ? x.soon.map(function (w) { return w.t + ' (' + N.dmy(w.s) + ' – ' + N.dmy(w.e) + ')'; }).join('; ') + '.' : 'No specific trigger period in the next 3 years.', x.soon.length ? 'b' : 'g'),
       itm('Why the chart shows this', x.why.length ? x.why.join('; ') + '.' : 'Several mild indicators together.', 'i'),
-      itm('When to be extra careful', x.when.length ? x.when.map(function (w) { return w.t + ' (' + dy(w.s) + ' – ' + dy(w.e) + ', age ' + w.age + ')'; }).join('; ') + '.' : 'No specific peak period in the next 30 years; keep the basics.', 'b'),
+      itm('Later in life', x.when.length ? x.when.map(function (w) { return w.t + ' (' + dy(w.s) + ' – ' + dy(w.e) + ', age ' + w.age + ')'; }).join('; ') + '.' : 'No specific peak period in the next 30 years; keep the basics.', 'b'),
       itm('Avoid strictly', x.avoid.join(' • '), 'b'),
       itm('Do regularly', x.dos.join(' • '), 'g'),
       itm('Tests to get', x.tests, 'i'),
       itm('Remedy', 'Chant "' + KB.MANTRA[pl][0] + '" 108 times every morning, and every ' + KB.DAAN[pl][1] + ' donate ' + KB.DAAN[pl][0] + '.', 'i')] };
   });
   if (low.length) sec.push({ h: 'Lower tendency', items: low.map(function (x) { return itm(x.name, 'No strong indicator in the chart. Basic care: ' + x.tests, 'g'); }) });
-  return { v: vrd(top.length ? 'Watch: ' + top.slice(0, 3).map(function (x) { return x.name.split(' (')[0].split(' and ')[0]; }).join(', ') : 'No strong health risks', top.length ? (top[0].level === 'Higher' ? 'b' : 'm') : 'g'),
+  var act = top.filter(function (x) { return x.now; });
+  return { v: vrd(act.length ? 'Act now: ' + act.slice(0, 3).map(function (x) { return x.name.split(' (')[0].split(' and ')[0]; }).join(', ') : top.length ? 'Watch: ' + top.slice(0, 3).map(function (x) { return x.name.split(' (')[0].split(' and ')[0]; }).join(', ') : 'No strong health risks', top.length ? (top[0].level === 'Higher' ? 'b' : 'm') : 'g'),
     intro: 'Health tendencies shown by the birth chart, strongest first, with what to avoid, what to do and which tests to get. These are astrological tendencies, not a diagnosis: get the tests and follow your doctor.',
-    sec: sec, tell: top.slice(0, 4).map(function (x) { return x.name + ' (' + x.level.toLowerCase() + ' tendency): avoid ' + x.avoid[0].toLowerCase() + '; ' + x.tests; }), ask: 'Which health problems is ' + nm(p) + ' prone to (blood pressure, diabetes, thyroid and others), when is the risk higher, and what should be avoided' };
+    sec: sec, tell: top.slice(0, 4).map(function (x) { return x.name + ' (' + (x.now ? x.now.toLowerCase() : x.level.toLowerCase() + ' tendency') + '): avoid ' + x.avoid[0].toLowerCase() + '; ' + x.tests; }), ask: 'Which health problems is ' + nm(p) + ' prone to (blood pressure, diabetes, thyroid and others), when is the risk higher, and what should be avoided' };
 };
 REP.month = function (p, c, now) {
   var k = c.k, L = DB.settings.loc, end = new Date(now.getTime() + 30 * 864e5), mid = new Date(now.getTime() + 15 * 864e5), good = [], bad = [];
