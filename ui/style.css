@@ -383,3 +383,5 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .marem2{padding:8px 0;border-top:1px solid var(--line)}.marem2:first-of-type{border-top:0}.marem2 small{font-size:12.5px}
 .mctk{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:9px 4px;border-top:1px solid var(--line);font:14px var(--sans)}.mctk span{width:24px;height:24px;border-radius:7px;box-shadow:0 0 0 2px #CFC6B6;display:grid;place-content:center;color:#fff;font-weight:700;flex:none}.mctk.on span{background:var(--good);box-shadow:none}.mctk small{display:block;color:var(--mut);font-size:12px}
 .maalertc{background:#FFF4F1;box-shadow:0 0 0 1px #F2CFC6;font:13.5px/1.45 var(--sans);color:#6b2f25}
+.mcread{background:linear-gradient(160deg,#FFFDF8,#F7F1FB);box-shadow:0 0 0 1px #E4DAF2}.mcread h3{color:#4a3590}.mcread p,.mcread li{font:14.5px/1.6 var(--sans)}.mcread strong,.mcread b{color:#2B2A5E}.mcread ul{margin:4px 0 8px 18px}
+.mcwait{font:13px/1.45 var(--sans);color:#5a3fa0;background:#F1ECFB;border-radius:10px;padding:8px 10px}

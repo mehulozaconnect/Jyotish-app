@@ -121,13 +121,16 @@ function makeMedCase(J, C, MA) {
   function analyze(c, R, id, now) {
     var pr = P.filter(function (x) { return x.id === id; })[0]; if (!pr) return null;
     now = now || new Date();
-    var k = c.k, A = k.ascSign, st = R.st, layers = { sign: [], house: [], karaka: [] }, prot = [], score = 0;
+    var k = c.k, A = k.ascSign, st = R.st, layers = { sign: [], house: [], karaka: [] }, prot = [], score = 0, story = [];
+    var NAT = { Sa: 'slowness, dryness and wear and tear', Ma: 'heat, inflammation and sudden strain', Ra: 'over-sensitivity and irregular, hard-to-name symptoms', Ke: 'sudden, sharp or hidden trouble', Su: 'heat and pressure', Mo: 'fluid and mood swings', Me: 'nervous tension', Ju: 'excess and expansion', Ve: 'indulgence and imbalance' };
+    var DUS = { 6: 'the house of illness and daily strain', 8: 'the house of chronic and hidden problems', 12: 'the house of loss of energy, sleep and hospital' };
     /* karaka layer */
     Object.keys(pr.k).forEach(function (x) {
       var s = st[x], w = pr.k[x], v = s.state === 'afflicted' ? 2 : s.state === 'weak' ? 1.2 : s.state === 'average' ? 0.3 : 0;
       if (pr.ex && s.dir === 'more') v += 0.8;
-      if (x !== 'Ra' && x !== 'Ke' && (/Debilitated|Enemy/.test(MA.signDignity(x, MA.d6(k.P[x].lon))) || /Debilitated|Enemy/.test(MA.signDignity(x, J.varga(k.P[x].lon, 30).sign))) && v > 0) { v += 0.4; layers.karaka.push(PN[x] + ' is also weak in D6/D30'); }
-      if (v >= 0.8) layers.karaka.push(PN[x] + ' (karaka) is ' + s.state + (s.why.length ? ': ' + s.why.join(', ') : '') + (pr.ex && s.dir === 'more' ? ' and leans to excess' : ''));
+      var d6w = x !== 'Ra' && x !== 'Ke' && (/Debilitated|Enemy/.test(MA.signDignity(x, MA.d6(k.P[x].lon))) || /Debilitated|Enemy/.test(MA.signDignity(x, J.varga(k.P[x].lon, 30).sign)));
+      if (v >= 0.8 && w >= 0.5) { story.push(PN[x] + ' is the planet behind ' + MA.PL[x].rules.split(',').slice(0, 3).join(',') + '. In your chart it is ' + s.state + (s.why.length ? ' (' + s.why.join(', ') + ')' : '') + '. ' + (s.dir === 'more' ? 'So the trouble leans towards too much: ' + MA.PL[x].more.split(',').slice(0, 3).join(',') + '.' : 'So the trouble leans towards weakness: ' + MA.PL[x].less.split(',').slice(0, 3).join(',') + '.')); }
+      if (v >= 0.8 && w >= 0.5) { if (d6w) v += 0.4; layers.karaka.push(PN[x] + ' (karaka) is ' + s.state + (s.why.length ? ': ' + s.why.join(', ') : '') + (pr.ex && s.dir === 'more' ? ' and leans to excess' : '') + (d6w ? '; weak in D6/D30 as well' : '')); }
       if (s.prot) prot.push('Jupiter protects ' + PN[x]);
       score += v * w;
     });
@@ -139,6 +142,7 @@ function makeMedCase(J, C, MA) {
       if ([6, 8, 12].indexOf(lh) >= 0 && [6, 8, 12].indexOf(h) < 0) { v += 0.7; w.push('its lord ' + PN[lord] + ' is in the ' + nth(lh)); }
       if (sav < 25) { v += 0.5; w.push('only ' + sav + ' Ashtakavarga points'); }
       if (MA.jupOnHouse(k, h)) { v -= 0.7; prot.push('Jupiter guards the ' + nth(h) + ' house'); }
+      if (v >= 0.7) story.push('Your ' + nth(h) + ' house governs the ' + MA.HOUSE_BODY[h - 1].split(',').slice(0, 2).join(' and ') + '. ' + (occ.length ? occ.map(function (x) { return PN[x]; }).join(' and ') + ' sitting there brings ' + occ.map(function (x) { return NAT[x]; }).join(' and ') + ' to this part of the body. ' : '') + (asp.length ? asp.map(function (x) { return PN[x]; }).join(' and ') + ' also looks at it, adding ' + asp.map(function (x) { return NAT[x]; }).join(' and ') + '. ' : '') + ([6, 8, 12].indexOf(lh) >= 0 && [6, 8, 12].indexOf(h) < 0 ? 'Its lord ' + PN[lord] + ' sits in your ' + nth(lh) + ', ' + DUS[lh] + ', which ties this body area to that kind of trouble. ' : '') + (sav < 25 ? 'It also has low Ashtakavarga support (' + sav + ' points), so it feels difficult transits more. ' : ''));
       if (v >= 0.7) layers.house.push(nth(h) + ' house (' + MA.HOUSE_BODY[h - 1].split(',')[0] + '): ' + w.join('; '));
       score += Math.max(0, v) * 0.8;
     });
@@ -147,6 +151,7 @@ function makeMedCase(J, C, MA) {
       var hs = J.houseFrom(A, sg), occ = MA.inHouse(k, hs).filter(function (x) { return MAL.indexOf(x) >= 0 && st[x].state !== 'strong'; }), lord = J.RULER[sg], v = 0, w = [];
       if (occ.length) { v += 0.8 * occ.length; w.push(occ.map(function (x) { return PN[x]; }).join(', ') + ' in it'); }
       if (st[lord].state === 'afflicted') { v += 0.5; w.push('its lord ' + PN[lord] + ' is afflicted'); }
+      if (v > 0) story.push(SG[sg] + ' is the zodiac sign for the ' + MA.SIGN_BODY[sg].split(',').slice(0, 2).join(' and ') + '. ' + (occ.length ? occ.map(function (x) { return PN[x]; }).join(' and ') + ' placed there adds ' + occ.map(function (x) { return NAT[x]; }).join(' and ') + '. ' : '') + (st[lord].state === 'afflicted' ? 'Its ruler ' + PN[lord] + ' is under pressure too. ' : ''));
       if (v > 0) layers.sign.push(SG[sg] + ' (body sign for ' + MA.SIGN_BODY[sg].split(',')[0] + '): ' + w.join('; '));
       score += v;
     });
@@ -215,7 +220,7 @@ function makeMedCase(J, C, MA) {
     });
     var dosha = pr.d ? (R.dosha.main === pr.d ? 'Your ' + R.dosha.type + ' body type leans the same way as this problem (' + pr.d + '), so lifestyle matters a lot: ' + MA.DOSHA[pr.d].care + '.' : 'Your body type is ' + R.dosha.type + '; this problem is ' + pr.d + '-type, so treat it without over-correcting your base: ' + MA.DOSHA[pr.d].care + '.') : '';
     var bestMonths = R.calendar.filter(function (m) { return [3, 6, 11].indexOf(m.hm) >= 0; }).map(function (m) { return my(m.from); }).slice(0, 3);
-    return { pr: pr, tend: tend, tq: tq, layers: layers, nL: nL, prot: uniq(prot), score: Math.round(norm2 * 10) / 10, dosha: dosha, recovery: R.lagna,
+    return { story: story, pr: pr, tend: tend, tq: tq, layers: layers, nL: nL, prot: uniq(prot), score: Math.round(norm2 * 10) / 10, dosha: dosha, recovery: R.lagna,
       nowWord: nowWord, nowQ: nowWord === 'Active now' ? 'b' : nowWord === 'Watch now' ? 'm' : 'g', runL: runL, trNow: trNow, agree: agree, ahead: ahead.slice(0, 4), sens: sens, easy: easy, rem: rem, bestMonths: bestMonths };
   }
   function rank(c, R, opt) {

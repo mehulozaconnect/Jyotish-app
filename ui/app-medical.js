@@ -162,8 +162,11 @@ function MedCaseScreen(id) {
     (a.nowWord === 'Active now' ? 'The running ' + MA.PN[a.runL[0].lord] + '–' + MA.PN[run.lord] + ' period' + (a.trNow.some(function (t) { return !t.good; }) ? ' and current transits' : '') + ' make it more sensitive now: be regular with tests and routine.' : a.nowWord === 'Watch now' ? 'The current period touches it lightly: keep the routine and tests on time.' : 'Nothing in the current period stirs it up; maintain good habits.') +
     (a.easy.length ? ' Best period for treatment and lifestyle change: ' + MA.PN[a.easy[0].md] + '–' + MA.PN[a.easy[0].ad] + ' from ' + dm(a.easy[0].start) + '.' : '') + ' Recovery power ' + a.recovery.score + '/5.') + '</p></div>';
   /* chart */
-  h += '<div class="card"><div class="kgh"><h3>What the chart shows</h3><span class="sm">' + a.nL + ' of 3 layers</span></div>' + [['sign', 'Sign (where in the body)'], ['house', 'House (in ' + n1 + '\'s chart)'], ['karaka', 'Planet (the force behind it)']].map(function (L) { var it = a.layers[L[0]]; return '<div class="mclayer ' + (it.length ? 'on' : '') + '"><b>' + (it.length ? '●' : '○') + ' ' + L[1] + '</b>' + (it.length ? '<ul class="mawhy">' + it.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<small>No pressure here.</small>') + '</div>'; }).join('') +
+  h += mcReading(p, c, R, a);
+  var chartCard = '';
+  chartCard += '<div class="card"><div class="kgh"><h3>What the chart shows</h3><span class="sm">' + a.nL + ' of 3 layers</span></div>' + [['sign', 'Sign (where in the body)'], ['house', 'House (in ' + n1 + '\'s chart)'], ['karaka', 'Planet (the force behind it)']].map(function (L) { var it = a.layers[L[0]]; return '<div class="mclayer ' + (it.length ? 'on' : '') + '"><b>' + (it.length ? '●' : '○') + ' ' + L[1] + '</b>' + (it.length ? '<ul class="mawhy">' + it.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<small>No pressure here.</small>') + '</div>'; }).join('') +
     (a.prot.length ? '<p class="maprot">🛡 ' + esc(a.prot.join('; ')) + '</p>' : '') + (a.dosha ? '<p style="font-size:13.5px">' + esc(a.dosha) + '</p>' : '') + '</div>';
+  h += techBlock('Show the astrology behind this (' + a.nL + ' of 3 layers)', chartCard.replace(/^<div class="card">/, '<div>'));
   /* timing */
   h += '<div class="card"><h3>When: dasha is the season, transit is the weather</h3>';
   h += '<div class="lbl" style="margin:6px 0 4px">Now</div>' + a.runL.slice(0, 3).map(function (r) { return '<div class="rs ' + (r.s >= 1.5 ? 'b' : r.s > 0 ? 'i' : 'g') + '"><h4>' + ['Mahadasha', 'Antardasha', 'Pratyantar'][r.lvl] + ' ' + MA.PN[r.lord] + ' · till ' + dm(r.end) + '</h4><p>' + esc(r.why.length ? r.why.join('; ') + '.' : 'Not linked to this problem.') + '</p></div>'; }).join('');
@@ -210,3 +213,40 @@ ACT.mcTick = function (el) { var p = curP(), tk = DB.mtrack[p.id + '|' + el.data
       short: 'Open Astrology › Medical astrology › ' + pr.n + ' for the dated timeline and 90-day plan.', todo: pr.dos.slice(0, 3).concat(a.rem.slice(0, 1).map(function (r) { return MA.PN[r.code] + ' (' + r.mode + '): ' + r.acts[0]; })).concat(['See a doctor at once if: ' + pr.alert]), question: null });
   };
 })();
+
+/* ---------- the reading: AI-written consultation, with an explained fallback ---------- */
+function mcKey(p, id) { var d = new Date(); return p.id + '|' + p.time + '|' + id + '|' + d.getFullYear() + '-' + d.getMonth() + '|' + (DB.settings.lang || 'en'); }
+function mcFallback(p, a) {
+  var n1 = p.name.split(' ')[0], pr = a.pr, run = a.runL, dm = function (d) { return N.dmy(d); }, P = [];
+  P.push('**What is going on and why**\n' + (a.story.length ? a.story.join(' ') : 'Your chart does not show strong pressure on this area.') + (a.prot.length ? ' On the positive side, ' + a.prot.join('; ').toLowerCase() + ', which softens it.' : '') + ' Your overall recovery power is ' + a.recovery.score + ' out of 5' + (a.recovery.score >= 4 ? ', so the body bounces back well when you act early.' : a.recovery.score >= 2 ? ': average, so steady habits matter.' : ': low, so prevention matters more than usual.') + (a.dosha ? ' ' + a.dosha : ''));
+  var linked = run.filter(function (r) { return r.s > 0; });
+  P.push('**What to expect and when**\n' + (linked.length ? 'Right now ' + linked.map(function (r) { return MA.PN[r.lord] + ' (' + ['Mahadasha', 'Antardasha', 'Pratyantar'][r.lvl] + ' till ' + dm(r.end) + ')'; }).join(' and ') + ' ' + (linked.length > 1 ? 'are' : 'is') + ' connected to this problem: ' + linked[0].why.join('; ').toLowerCase() + '. ' : 'The running dasha is not connected to this problem, so it should stay quiet if habits are good. ') + (a.trNow.length ? a.trNow.map(function (t) { return t.t; }).join(' ') + ' ' : '') + (a.agree ? 'Because the dasha and the transits point the same way, take this period seriously. ' : '') + (a.sens.length ? 'More sensitive stretches ahead: ' + a.sens.slice(0, 3).map(function (s) { return dm(s.start) + ' – ' + dm(s.end); }).join('; ') + '. Get your tests done just before each one. ' : '') + (a.easy.length ? 'Best stretch to start treatment or a new routine: ' + dm(a.easy[0].start) + ' – ' + dm(a.easy[0].end) + '.' : ''));
+  P.push('**Your plan**\n- ' + pr.tests[0] + ' (' + pr.doc + ').\n- Avoid: ' + pr.avoid.slice(0, 3).join('; ').toLowerCase() + '.\n- Every day: ' + pr.dos.slice(0, 3).join('; ').toLowerCase() + '.\n- Food: ' + pr.food + '.' + (pr.yoga && pr.yoga !== '—' ? '\n- Yoga: ' + pr.yoga + '.' : ''));
+  P.push('**Remedies and why**\n' + a.rem.map(function (r) { var d = MA.PL[r.code]; return '- ' + MA.PN[r.code] + ': ' + (r.mode === 'pacify' ? 'it is a troublemaker for your lagna (' + r.role + '), so we calm it — chant its mantra (108 times on ' + d.day + 's) and donate ' + d.daan + ' every ' + d.day + '. Never wear ' + d.gem + '.' : r.mode === 'strengthen' ? 'it is a friend of your chart but weak, so we strengthen it — chant its mantra daily and eat ' + d.foods + ' on ' + d.day + 's.' : 'it is doing its job, so just keep it steady — chant its mantra on ' + d.day + 's and keep the routine.'); }).join('\n') + '\nDo this for 40 days, then review at 90 days with your doctor\'s reports.');
+  P.push('**Be careful**\n' + pr.alert);
+  return P.join('\n\n');
+}
+function mcReading(p, c, R, a) {
+  var key = mcKey(p, a.pr.id), cache = DB.mcAI || {}, txt = cache[key], busy = U.mcBusy === key;
+  var h = '<div class="card mcread"><div class="kgh"><h3>' + (txt ? '✦ Your reading' : 'Your reading') + '</h3>' + (txt ? '<button class="btn sec sm" data-act="mcRe" data-id="' + a.pr.id + '">Rewrite</button>' : '') + '</div>';
+  if (txt) h += mdToHtml(txt);
+  else {
+    if (hasAI()) { h += '<p class="mcwait">' + (U.mcErr && U.mcErr.k === key ? esc('AI could not write it: ' + U.mcErr.e) + ' <button class="btn sec sm" data-act="mcRe" data-id="' + a.pr.id + '">Try again</button>' : '<span class="typing"><i></i><i></i><i></i></span> The AI astrologer is studying your chart for this problem (about 30–60 seconds). Here is the quick reading meanwhile:') + '</p>'; if (!busy && !(U.mcErr && U.mcErr.k === key)) U.after = (U.after || []).concat([function () { mcGen(p, a.pr.id); }]); }
+    h += mdToHtml(mcFallback(p, a));
+  }
+  return h + '</div>';
+}
+function mcGen(p, id) {
+  var key = mcKey(p, id); if (U.mcBusy === key) return; U.mcBusy = key; U.mcErr = null;
+  var c = calcP(p), R = maOf(p), a = MC.analyze(c, R, id, new Date()), n1 = p.name.split(' ')[0], rel = relOf(p), ageN = age(p, new Date());
+  var sys = 'You are Trikaal, a senior Vedic astrologer who specialises in medical astrology (Parashari, N.C. Lahiri ayanamsa, whole-sign houses), giving a personal consultation. ' + (rel === 'me' ? 'Speak directly to ' + n1 + ' as "you".' : 'Write for the astrologer to explain to ' + n1 + ' (' + (rel === 'client' ? 'a client' : 'family') + '), speaking about ' + n1 + ' by name.') + ' Age ' + ageN + ': tailor everything to this stage of life.\n' + MA.RULES +
+    'STYLE: warm, deep and specific, like a wise family astrologer who has studied the whole chart. Never list raw data; explain what each factor MEANS for the body and daily life and how the factors connect into one story. Use simple everyday words; explain any astrology term in a few words. Concrete dates. No generic filler: every sentence must come from this chart.' + (geminiFormat('', '', '', '').split('\n').filter(function (l) { return /^LANGUAGE/.test(l); }).join('\n') ? '\n' + geminiFormat('', '', '', '').split('\n').filter(function (l) { return /^LANGUAGE/.test(l); }).join('\n') : '') +
+    '\nFORMAT (markdown, about 450–650 words, these headings exactly):\n**In one line**\n**What is going on in your body and why** (connect the indicators into a story: which body part, why this chart is sensitive there, whether it leans to excess or weakness, what protects it, recovery power and body type)\n**What to expect and when** (now, then each sensitive period and easier period with exact dates; what it may feel like; when to get tests)\n**Your personal plan** (specific daily routine, food, yoga, what to avoid strictly, which doctor and tests and how often; fit it to the body type, age and current period)\n**Remedies and why they help** (for each planet: why calm or strengthen it, exactly what, how many times, which day, how long; gemstone only if allowed)\n**See a doctor at once if**';
+  var user = fixedFacts(p, c) + '\n' + MA.text(R, p.name) + '\n\n' + MC.text(a, p.name) + '\n\nWrite the consultation for: ' + a.pr.n + '.';
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
+  gGenerate(body).then(function (d) {
+    var t = gText(d).trim(); DB.mcAI = DB.mcAI || {}; var ks = Object.keys(DB.mcAI); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function (k) { delete DB.mcAI[k]; });
+    DB.mcAI[key] = t; save(); U.mcBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
+  }).catch(function (e) { U.mcBusy = null; U.mcErr = { k: key, e: e.message }; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true); });
+}
+ACT.mcRe = function (el) { var p = curP(), key = mcKey(p, el.dataset.id); if (DB.mcAI) delete DB.mcAI[key]; U.mcErr = null; U.mcBusy = null; rerender(true); };

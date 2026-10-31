@@ -423,7 +423,7 @@ function addAiButtons() {
   if (!hasAI() || !AI_ROUTES.test(parts()[0] || 'astro')) return;
   var cards = document.querySelectorAll('#app .card, #app .ocard');
   Array.prototype.forEach.call(cards, function (cd) {
-    if (cd.querySelector('.aiask') || cd.closest('.chat') || cd.querySelector('input,select,textarea') || (cd.innerText || '').length < 80) return;
+    if (cd.classList.contains('mcread') || cd.classList.contains('ocard') && location.hash.indexOf('medical/case') >= 0 || cd.querySelector('.aiask') || cd.closest('.chat') || cd.querySelector('input,select,textarea') || (cd.innerText || '').length < 80) return;
     var b = document.createElement('button'); b.className = 'aiask'; b.setAttribute('data-act', 'aiCardAsk'); b.setAttribute('data-notr', ''); b.textContent = '✦ Ask AI about this'; cd.appendChild(b);
   });
 }
