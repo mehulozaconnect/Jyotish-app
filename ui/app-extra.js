@@ -320,7 +320,7 @@ function claudeBody(body) {
   (b.contents || []).forEach(function (c) { var role = c.role === 'model' ? 'assistant' : 'user', t = c.parts.map(function (p) { return p.text || ''; }).join('\n'); if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\n\n' + t; else msgs.push({ role: role, content: t }); });
   if (msgs.length && msgs[0].role !== 'user') msgs.unshift({ role: 'user', content: '(conversation start)' });
   var gc = b.generationConfig || {}, json = gc.responseMimeType === 'application/json';
-  return { model: DB.settings.cmodel || CMODELS[0][0], max_tokens: json ? 8000 : 6000, temperature: gc.temperature != null ? Math.min(1, gc.temperature) : 0.3, system: sys + (json ? '\nReturn ONLY valid JSON, no other text.' : ''), messages: msgs };
+  return { model: DB.settings.cmodel || CMODELS[0][0], max_tokens: json ? 8000 : 6000, system: sys + (json ? '\nReturn ONLY valid JSON, no other text.' : ''), messages: msgs };
 }
 function claudeCall(body) {
   var cb = claudeBody(body), on = G_ON, H = { 'content-type': 'application/json', 'x-api-key': DB.settings.ckey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
