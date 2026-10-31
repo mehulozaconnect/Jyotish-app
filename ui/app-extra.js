@@ -314,7 +314,7 @@ function withContext(p, q) {
 /* ================= AI: two providers, failover, rate limits, health log ================= */
 var CMODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recommended)'], ['claude-opus-5-5', 'Claude Opus 5.5 (best, costlier)'], ['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 (fastest, cheapest)']];
 function hasAI() { return !!DB.settings.ckey; }
-function aiLog(x) { x.t = Date.now(); DB.ailog = (DB.ailog || []).concat([x]).slice(-30); try { save(); } catch (e) { } }
+function aiLog(x) { x.t = Date.now(); DB.ailog = (DB.ailog || []).concat([x]).slice(-10); try { save(); } catch (e) { } }
 function claudeBody(body) {
   var b = JSON.parse(body), sys = b.system_instruction ? b.system_instruction.parts.map(function (p) { return p.text; }).join('\n') : '', msgs = [];
   (b.contents || []).forEach(function (c) { var role = c.role === 'model' ? 'assistant' : 'user', t = c.parts.map(function (p) { return p.text || ''; }).join('\n'); if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\n\n' + t; else msgs.push({ role: role, content: t }); });
@@ -401,7 +401,9 @@ function aiCard() {
   h += '<div class="field"><span>CLAUDE MODEL</span>' + sel('setCmodel', CMODELS, s.cmodel || CMODELS[0][0]) + '</div>';
   h += '<p class="note">All AI in Trikaal (answers, health analysis, daily brief, translations) uses Claude. Anthropic bills each call to your account: Sonnet is the best balance, Haiku is cheapest, Opus is the most thorough and costliest.</p>';
   h += '<button class="btn sec wide" data-act="aiTest">Test AI now</button>';
-  if (log.length) h += '<div class="lbl" style="margin:12px 0 4px">Last AI calls</div>' + log.map(function (x) { var d = new Date(x.t); return '<div class="ailog ' + (x.ok ? 'ok' : 'bad') + '"><b>' + (x.ok ? '✓' : '✗') + '</b><span>' + (x.p === 'gemini' ? 'Gemini' : 'Claude') + ' · ' + esc(x.m) + ' · ' + (x.k === 'bg' ? 'background' : 'question') + ' · ' + (x.ms / 1000).toFixed(1) + 's<small>' + N.dmy(d) + ' ' + N.hm(d) + (x.e ? ' · ' + esc(x.e) : '') + '</small></span></div>'; }).join('');
+  if (log.length) { var last = log[0], okN = log.filter(function (x) { return x.ok; }).length;
+    h += '<div class="aistat ' + (last.ok ? 'ok' : 'bad') + '"><b>' + (last.ok ? '✓ AI is working' : '✗ Last AI call failed') + '</b><small>' + (last.ok ? 'Last answer took ' + (last.ms / 1000).toFixed(0) + ' s' : esc(String(last.e || '').slice(0, 90))) + ' · ' + okN + ' of ' + log.length + ' recent calls OK</small></div>';
+    h += '<details class="ailogd"><summary>Show recent calls</summary>' + log.map(function (x) { var d = new Date(x.t); return '<div class="ailog ' + (x.ok ? 'ok' : 'bad') + '"><b>' + (x.ok ? '✓' : '✗') + '</b><span>' + (x.p === 'gemini' ? 'Gemini' : 'Claude') + ' · ' + esc(x.m) + ' · ' + (x.k === 'bg' ? 'background' : 'question') + ' · ' + (x.ms / 1000).toFixed(1) + 's<small>' + N.dmy(d) + ' ' + N.hm(d) + (x.e ? ' · ' + esc(x.e) : '') + '</small></span></div>'; }).join('') + '<button class="btn sec sm" data-act="aiLogClear" style="margin-top:8px">Clear list</button></details>'; }
   return h + '</div>';
 }
 INP.setCkey = function (el) { DB.settings.ckey = el.value.trim(); save(); };
@@ -471,3 +473,5 @@ function briefLoad(p) {
 
 /* Claude is the only AI engine */
 if (DB.settings.gkey) { delete DB.settings.gkey; DB.settings.aiProv = 'claude'; try { save(); } catch (e) { } }
+
+ACT.aiLogClear = function () { DB.ailog = []; save(); rerender(true); };
