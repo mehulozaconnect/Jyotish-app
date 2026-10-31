@@ -224,6 +224,7 @@ function EditScreen(id) {
   h += '<div class="note" style="margin:-4px 0 12px">' + (e.manualTz ? 'Manual offset ' + fmtOff(+e.tz) + ' is used. Clear the field to go back to the time zone rule.' : 'Offset for that date from the time zone rule: ' + fmtOff(off) + ' (includes historical war time and DST). Type a value to override, for example 5.5 or 4.85 for old Bombay time.') + '</div>';
   var rel = e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me');
   h += '<div class="field"><span>WHOSE KUNDLI IS THIS</span><div class="seg" style="width:max-content">' + [['me', 'Me'], ['family', 'Family / friend'], ['client', 'Client']].map(function (g) { return '<button data-act="erel" data-v="' + g[0] + '" class="' + (rel === g[0] ? 'on' : '') + '">' + g[1] + '</button>'; }).join('') + '</div></div>';
+  h += '<div class="field"><span>SPOUSE / PARTNER (for joint readings)</span><select class="inp" data-ch="efSpouse"><option value="">None</option>' + DB.people.filter(function (x) { return x.id !== e.id; }).map(function (x) { return '<option value="' + x.id + '"' + (e.spouse === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></div>';
   h += '<label class="field"><span>WHATSAPP NUMBER (optional, for sending readings)</span><input class="inp mono" inputmode="tel" data-in="ef" data-f="phone" value="' + esc(e.phone || '') + '" placeholder="98XXXXXXXX"></label>';
   h += '<label class="field"><span>NOTES</span><textarea class="inp" data-in="ef" data-f="notes" placeholder="Relation, source of birth time, known events">' + esc(e.notes) + '</textarea></label>';
   h += '<button class="btn acc wide" data-act="savePerson">Save and open kundli</button>';
@@ -267,6 +268,7 @@ ACT.savePerson = function () {
   var time = e.time.length === 5 ? e.time + ':00' : e.time;
   var rec = { id: e.id || ('p' + Date.now().toString(36)), name: e.name.trim(), gender: e.gender, date: e.date, time: time, place: e.place.trim(), lat: lat, lon: lon, zone: e.zone, tz: off, manualTz: !!e.manualTz, notes: e.notes || '', rel: e.rel || (e.id && e.id === DB.settings.meId ? 'me' : DB.settings.meId ? 'client' : 'me'), events: e.events || [], created: e.created || Date.now() };
   rec.phone = String(e.phone || '').replace(/[^0-9+]/g, ''); if (e.timeOrig) rec.timeOrig = e.timeOrig;
+  rec.spouse = e.spouse || ''; DB.people.forEach(function (x) { if (x.id !== rec.id && x.spouse === rec.id && x.id !== rec.spouse) x.spouse = ''; }); if (rec.spouse) { var sp = DB.people.filter(function (x) { return x.id === rec.spouse; })[0]; if (sp) sp.spouse = rec.id; }
   var i = DB.people.map(function (p) { return p.id; }).indexOf(rec.id); if (i >= 0) DB.people[i] = rec; else DB.people.push(rec);
   if (!DB.settings.meId) DB.settings.meId = rec.id;
   save(); EDIT = null; U.cur = rec.id; go('p/' + rec.id + '/report');
@@ -276,3 +278,5 @@ ACT.delPerson = function () {
   sheet('<div class="pad"><h3 style="font:600 17px var(--sans);margin:6px 0 6px">Delete ' + esc(EDIT.name) + '?</h3><p class="mut" style="margin-bottom:14px">This removes the kundli and its saved events from this phone.</p><div class="grid2"><button class="btn sec" data-act="close">Cancel</button><button class="btn" style="background:var(--bad)" data-act="delYes">Delete</button></div></div>');
 };
 ACT.delYes = function () { var id = EDIT.id; DB.people = DB.people.filter(function (p) { return p.id !== id; }); if (DB.settings.meId === id) DB.settings.meId = DB.people[0] ? DB.people[0].id : null; delete DB.chats[id]; save(); EDIT = null; closeSheet(true); go('people'); };
+
+CHG.efSpouse = function (el) { EDIT.spouse = el.value; };
