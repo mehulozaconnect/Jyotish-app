@@ -46,19 +46,36 @@ function NotebookScreen() {
     var list = L.filter(function (x) { return (tab !== 'star' || x.star) && (hit(x.q) || hit(x.a)); }).slice().reverse();
     h += list.length ? list.map(function (x) {
       var open = U.nbOpen === x.id;
-      return '<div class="card nbnote' + (open ? ' open' : '') + '" id="nb_' + x.id + '"><div class="nbtop" data-act="nbOpen" data-id="' + x.id + '"><span class="nbsrc ' + x.src + '">' + (x.src === 'health' ? '🩺 Health' : x.src === 'letter' ? '📖 Letter' : '✦ Chat') + '</span><small>' + N.dmy(new Date(x.t)) + ' ' + N.hm(new Date(x.t)) + '</small><button class="nbstar" data-act="nbStar" data-id="' + x.id + '">' + (x.star ? '⭐' : '☆') + '</button></div><b class="nbq">' + esc(x.q.split('\n')[0].slice(0, 160)) + '</b>' +
+      return '<div class="card nbnote' + (open ? ' open' : '') + '" id="nb_' + x.id + '"><div class="nbtop" data-act="nbOpen" data-id="' + x.id + '"><span class="nbsrc ' + x.src + '">' + (x.src === 'health' ? '🩺 Health' : x.src === 'letter' ? '📖 Letter' : '✦ Chat') + '</span><small>' + N.dmy(new Date(x.t)) + ' ' + N.hm(new Date(x.t)) + '</small><button class="nbstar" data-act="nbStar" data-id="' + x.id + '">' + (x.star ? '⭐' : '☆') + '</button><button class="nbdel" data-act="nbDel" data-id="' + x.id + '" aria-label="Delete">🗑</button></div><b class="nbq">' + esc(x.q.split('\n')[0].slice(0, 160)) + '</b>' +
         (open ? '<div class="nbans">' + (typeof aiBubbles === 'function' && x.src === 'chat' ? aiBubbles(x.a) : mdToHtml(x.a)) + '</div><div class="nbact"><button class="btn sec sm" data-act="nbShare" data-id="' + x.id + '">Share</button><button class="btn sec sm" data-act="nbAsk" data-id="' + x.id + '">Ask a follow-up</button><button class="btn sec sm" style="color:var(--bad)" data-act="nbDel" data-id="' + x.id + '">Delete</button></div>' : '<p class="nbprev">' + esc(x.a.replace(/[*#_>`]/g, '').replace(/\s+/g, ' ').slice(0, 170)) + '…</p>') + '</div>';
     }).join('') : '<div class="card"><p class="mut">' + (tab === 'star' ? 'Tap ☆ on a reading to keep it here.' : 'Nothing saved yet.') + '</p></div>';
   }
   if (L.length) h += '<button class="btn sec wide" data-act="nbExport">Share the whole notebook</button>';
+  if (L.length || I.length) h += '<button class="btn sec wide" style="color:var(--bad);margin-top:8px" data-act="nbClearAll">Clear this notebook</button>';
   return h + '</div>';
 }
 INP.nbQ = function (el) { U.nbQ = el.value; var pos = el.selectionStart; rerender(true); var n = $('#nbSearch'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { } } };
 ACT.nbTab = function (el) { U.nbTab = el.dataset.v; rerender(); };
 ACT.nbOpen = function (el) { var id = el.dataset.id; if (U.nbTab === 'points' || !U.nbTab) U.nbTab = 'all'; U.nbOpen = U.nbOpen === id ? null : id; rerender(true); setTimeout(function () { var n = document.getElementById('nb_' + id); if (n && U.nbOpen) n.scrollIntoView({ block: 'start' }); }, 30); };
 ACT.nbStar = function (el) { var x = nbNotes(curP().id).filter(function (n) { return n.id === el.dataset.id; })[0]; if (x) { x.star = !x.star; save(); rerender(true); } };
-ACT.nbDel = function (el) { var p = curP(), L = nbNotes(p.id), i = L.map(function (n) { return n.id; }).indexOf(el.dataset.id); if (i >= 0) { L.splice(i, 1); DB.insights[p.id] = nbIns(p.id).filter(function (x) { return x.note !== el.dataset.id; }); save(); toast('Deleted'); rerender(true); } };
-ACT.nbDelPt = function (el) { var p = curP(); DB.insights[p.id] = nbIns(p.id).filter(function (x) { return x.id !== el.dataset.id; }); save(); rerender(true); };
+ACT.nbDel = function (el) {
+  var p = curP(), id = el.dataset.id, x = nbNotes(p.id).filter(function (n) { return n.id === id; })[0]; if (!x) return;
+  sheet('<div class="pad"><h3 style="font:600 18px var(--sans);margin:4px 0 6px">Delete this reading?</h3><p class="sm" style="margin-bottom:6px">' + esc(x.q.split('\n')[0].slice(0, 120)) + '</p><p class="sm mut" style="margin-bottom:14px">Its key points are removed too.</p><button class="btn wide" style="background:var(--bad);color:#fff;margin-bottom:8px" data-act="nbDelYes" data-id="' + id + '">Delete</button><button class="btn sec wide" data-act="closeSheetBtn">Cancel</button></div>');
+};
+ACT.nbDelYes = function (el) {
+  var p = curP(), id = el.dataset.id;
+  DB.notes = DB.notes || {}; DB.insights = DB.insights || {};
+  DB.notes[p.id] = nbNotes(p.id).filter(function (n) { return n.id !== id; });
+  DB.insights[p.id] = nbIns(p.id).filter(function (x) { return x.note !== id; });
+  if (U.nbOpen === id) U.nbOpen = null;
+  save(); closeSheet(); setTimeout(function () { rerender(true); toast('Reading deleted'); }, 30);
+};
+ACT.nbClearAll = function () {
+  var p = curP();
+  sheet('<div class="pad"><h3 style="font:600 18px var(--sans);margin:4px 0 6px">Clear ' + esc(p.name.split(' ')[0]) + '\'s notebook?</h3><p class="sm" style="margin-bottom:14px">Deletes all ' + nbNotes(p.id).length + ' readings and ' + nbIns(p.id).length + ' key points for this person. This cannot be undone.</p><button class="btn wide" style="background:var(--bad);color:#fff;margin-bottom:8px" data-act="nbClearYes">Clear notebook</button><button class="btn sec wide" data-act="closeSheetBtn">Cancel</button></div>');
+};
+ACT.nbClearYes = function () { var p = curP(); DB.notes = DB.notes || {}; DB.insights = DB.insights || {}; DB.notes[p.id] = []; DB.insights[p.id] = []; U.nbOpen = null; save(); closeSheet(); setTimeout(function () { rerender(true); toast('Notebook cleared'); }, 30); };
+ACT.nbDelPt = function (el) { var p = curP(), id = el.dataset.id; DB.insights = DB.insights || {}; DB.insights[p.id] = nbIns(p.id).filter(function (x) { return x.id !== id; }); save(); rerender(true); toast('Key point removed'); };
 ACT.nbShare = function (el) { var p = curP(), x = nbNotes(p.id).filter(function (n) { return n.id === el.dataset.id; })[0]; if (x) shareText('Trikaal · ' + p.name, x.q + '\n\n' + x.a.replace(/\*\*/g, '*')); };
 ACT.nbAsk = function (el) { var p = curP(), x = nbNotes(p.id).filter(function (n) { return n.id === el.dataset.id; })[0]; if (!x) return; go('ai'); setTimeout(function () { var t = $('#askIn'); if (t) { t.value = 'Follow-up on "' + x.q.split('\n')[0].slice(0, 80) + '": '; t.focus(); } }, 150); };
 ACT.nbExport = function () { var p = curP(), I = nbIns(p.id); shareText('Trikaal notebook · ' + p.name, 'Key points for ' + p.name + '\n' + Object.keys(NB_TOPIC).map(function (k) { var g = I.filter(function (x) { return x.topic === k; }); return g.length ? '\n' + NB_TOPIC[k][1] + ':\n' + g.map(function (x) { return '• ' + x.text + ' (' + N.dmy(new Date(x.t)) + ')'; }).join('\n') : ''; }).join('') + '\n\nCalculated with Trikaal.'); };

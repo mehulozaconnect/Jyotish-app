@@ -445,3 +445,4 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .abk{display:flex;gap:10px;align-items:center;margin:12px 0 8px;padding:10px;border-radius:12px;background:#F6F2EA}.abk div{flex:1}.abk b{font:600 14px var(--sans)}.abk small{display:block;font:12px/1.4 var(--sans);color:var(--mut)}
 .aistat{margin:12px 0 6px;padding:10px 12px;border-radius:12px;background:#EEF7F1}.aistat.bad{background:#FBF0EE}.aistat b{font:700 14px var(--sans);color:#2f6b47}.aistat.bad b{color:#8a3a2c}.aistat small{display:block;font:12px/1.4 var(--sans);color:#5b5662;margin-top:2px}
 .ailogd summary{font:600 13px var(--sans);color:var(--mut);cursor:pointer;padding:4px 0}
+.nbdel{font-size:17px;margin-left:2px;opacity:.75}
