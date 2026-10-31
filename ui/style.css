@@ -363,3 +363,13 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .aibrief{background:linear-gradient(135deg,#F4F0FC,#FBF8F2);box-shadow:0 0 0 1px #E1D8F3}.aibrief h3{color:#4a3590}
 .abl{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:6px 0;border-top:1px solid #ECE5F7;font:13.5px/1.4 var(--sans)}.abl:first-of-type{border-top:0}.abl b{font:600 12.5px var(--sans);color:#5a3fa0}
 .ailog{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line);font:12.5px/1.35 var(--sans)}.ailog b{width:16px}.ailog.ok b{color:var(--good)}.ailog.bad b{color:var(--bad)}.ailog small{display:block;color:var(--mut)}
+/* medical astrology */
+.mchips{padding:0 16px 8px}
+.masafe{margin:14px 2px 6px;padding:10px 12px;border-radius:12px;background:#FFF4F1;box-shadow:0 0 0 1px #F2CFC6;font:12.5px/1.45 var(--sans);color:#6b2f25}
+.matest{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line);font:14px/1.35 var(--sans)}.matest:first-of-type{border-top:0}.matest b{width:18px;flex:none}.matest.ok b{color:var(--good)}.matest.no b{color:var(--bad)}.matest small{display:block;color:var(--mut);font-size:12.5px}
+.madosha{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 10px}.madosha div{position:relative;height:96px;border-radius:12px;background:#F4EFE6;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:8px}.madosha i{position:absolute;left:0;right:0;bottom:0;opacity:.35}.madosha b,.madosha span{position:relative;z-index:1}.madosha b{font:700 20px var(--serif)}.madosha span{font:600 12px var(--sans)}
+.madosha .vata i{background:#6C8CC7}.madosha .pitta i{background:#D9763A}.madosha .kapha i{background:#4FA37A}
+.malayers{display:flex;align-items:center;gap:5px;margin:2px 0 8px}.malayers i{width:22px;height:6px;border-radius:3px;background:#E6DFD2}.malayers i.on{background:var(--bad)}.maarea.m .malayers i.on{background:#C9A24A}.malayers span{font:12px var(--sans);color:var(--mut);margin-left:4px}
+.mawhy{margin:4px 0 8px 18px;font:13.5px/1.45 var(--sans)}.mawhy li{margin:3px 0}
+.maprot{font:13px var(--sans);color:var(--good);margin:4px 0}.maalert{font:13px/1.45 var(--sans);color:#8a3a2c}
+.macal{display:grid;grid-template-columns:1fr 1fr;gap:8px}.macal div{padding:8px 10px;border-radius:10px;background:#F6F2EA;font:12.5px/1.35 var(--sans)}.macal div.g{background:#EAF5EE}.macal div.b{background:#FBEDEA}.macal b{font:700 13px var(--sans);margin-right:6px}.macal small{color:var(--mut)}.macal span{display:block;margin-top:2px}
