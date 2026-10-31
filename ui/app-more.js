@@ -11,12 +11,12 @@ function MoreScreen() {
   h += '<div class="card"><h3>Location for Today</h3><div class="row"><div><b>' + esc(s.loc.name) + '</b><div class="mut" style="font-size:12px">' + (+s.loc.lat).toFixed(4) + ', ' + (+s.loc.lon).toFixed(4) + ' · ' + esc(s.loc.tz) + ' · ' + fmtOff(locOff()) + '</div></div><button class="btn sec sm" data-act="pickLoc">Change</button></div></div>';
   h += '<div class="card"><h3>Reminders</h3><button class="btn sec wide" data-go="reminders">Reminders and alerts</button></div>';
   h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
-  h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div></div>';
+  h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div>' + (typeof autoBackupLine === 'function' ? autoBackupLine() : '') + '</div>';
   h += '<div class="card"><h3>Accuracy</h3><p style="font-size:12.8px">Planet and lagna positions are checked against Swiss Ephemeris (the engine used by Jagannatha Hora and most professional software): planets within a few arc-seconds, lagna within arc-seconds for a correct birth time. Panchang ends, dashas and transits come from the same engine. Readings and remedies follow classical rules and show their logic; like any astrology, they are interpretations, not certainties.</p></div>';
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '3.8.0';
+var APP_VERSION = '3.9.0';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
@@ -79,6 +79,7 @@ ACT.restore = function () {
       d.people.forEach(function (p) { var i = ids.indexOf(p.id); if (i >= 0) DB.people[i] = p; else { DB.people.push(p); added++; } });
       (d.remedies || []).forEach(function (r) { DB.remedies = DB.remedies || []; if (!DB.remedies.some(function (x) { return x.id === r.id; })) DB.remedies.push(r); });
       Object.keys(d.chats || {}).forEach(function (k) { if (!DB.chats[k]) DB.chats[k] = d.chats[k]; });
+      ['notes', 'insights', 'mtrack', 'mcDeep', 'mcAI'].forEach(function (key) { if (!d[key]) return; DB[key] = DB[key] || {}; Object.keys(d[key]).forEach(function (k) { if (Array.isArray(d[key][k]) && Array.isArray(DB[key][k])) { var have = DB[key][k].map(function (x) { return x.id; }); d[key][k].forEach(function (x) { if (have.indexOf(x.id) < 0) DB[key][k].push(x); }); } else if (DB[key][k] === undefined) DB[key][k] = d[key][k]; }); });
       if (!DB.settings.meId && d.settings && d.settings.meId) DB.settings.meId = d.settings.meId;
       save(); resetCache(); toast('Restored ' + d.people.length + ' kundlis (' + added + ' new)'); rerender();
     } catch (e) { toast('Could not restore: ' + e.message, 3500); }

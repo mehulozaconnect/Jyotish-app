@@ -246,7 +246,7 @@ function mcGen(p, id) {
   var body = JSON.stringify({ system_instruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
   gGenerate(body).then(function (d) {
     var t = gText(d).trim(); DB.mcAI = DB.mcAI || {}; var ks = Object.keys(DB.mcAI); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function (k) { delete DB.mcAI[k]; });
-    DB.mcAI[key] = t; save(); U.mcBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
+    DB.mcAI[key] = t; save(); try { nbAdd(p, 'letter', a.pr.n + ' — health letter', t); } catch (e) { } U.mcBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
   }).catch(function (e) { U.mcBusy = null; U.mcErr = { k: key, e: e.message }; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true); });
 }
 ACT.mcRe = function (el) { var p = curP(), key = mcKey(p, el.dataset.id); if (DB.mcAI) delete DB.mcAI[key]; U.mcErr = null; U.mcBusy = null; rerender(true); };

@@ -204,6 +204,38 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** Writes (or overwrites) Download/Trikaal/<name>; survives app uninstall. Returns "ok:<where>" or "err:<msg>". */
+        @JavascriptInterface
+        public String saveToDownloads(String name, String text) {
+            try {
+                byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentResolver cr = getContentResolver();
+                    Uri coll = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                    String rel = android.os.Environment.DIRECTORY_DOWNLOADS + "/Trikaal/";
+                    Uri found = null;
+                    try (android.database.Cursor cu = cr.query(coll, new String[] { android.provider.MediaStore.MediaColumns._ID },
+                            android.provider.MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + android.provider.MediaStore.MediaColumns.RELATIVE_PATH + "=?", new String[] { name, rel }, null)) {
+                        if (cu != null && cu.moveToFirst()) found = android.content.ContentUris.withAppendedId(coll, cu.getLong(0));
+                    } catch (Exception e) { }
+                    if (found == null) {
+                        android.content.ContentValues v = new android.content.ContentValues();
+                        v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                        v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/json");
+                        v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, rel);
+                        found = cr.insert(coll, v);
+                    }
+                    if (found == null) return "err:could not create file";
+                    try (OutputStream o = cr.openOutputStream(found, "wt")) { o.write(bytes); }
+                    return "ok:Download/Trikaal/" + name;
+                } else {
+                    File dir = new File(getExternalFilesDir(null), "backup"); dir.mkdirs();
+                    try (FileOutputStream o = new FileOutputStream(new File(dir, name))) { o.write(bytes); }
+                    return "ok:app storage (Android/data/com.mehul.trikaal/files/backup)";
+                }
+            } catch (Exception e) { return "err:" + e.getMessage(); }
+        }
+
         @JavascriptInterface
         public void saveFile(String name, String mime, String text) {
             ui.post(() -> {

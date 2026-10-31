@@ -150,7 +150,7 @@ function mdGen(p, id) {
   gGenerate(body).then(function (d) {
     var t = gText(d).trim().replace(/^```(json)?/, '').replace(/```$/, '').trim(), i = t.indexOf('{'), j = t.lastIndexOf('}'), obj = JSON.parse(t.slice(i, j + 1));
     DB.mcDeep = DB.mcDeep || {}; var ks = Object.keys(DB.mcDeep); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function (k) { delete DB.mcDeep[k]; });
-    DB.mcDeep[key] = obj; save(); U.mdBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
+    DB.mcDeep[key] = obj; save(); try { nbAdd(p, 'health', a.pr.n + ' — detailed analysis', '**' + (obj.headline || '') + '**\n\n' + (obj.summary || '') + '\n\n' + (obj.sub_issues || []).map(function (x) { return '- **' + x.name + '** (' + x.risk + '): ' + (x.why || '') + ' Prevent: ' + (x.prevent || []).join('; ') + '.'; }).join('\n') + '\n\n**When to be careful**\n' + (obj.timeline || []).map(function (x) { return '- ' + x.when + ': ' + x.what + (x.do ? ' — ' + x.do : ''); }).join('\n') + '\n\n**Remedies**\n' + (obj.remedies || []).map(function (x) { return '- ' + x.planet + ' (' + x.mode + '): ' + x.what + ' — ' + (x.when || ''); }).join('\n')); } catch (e) { } U.mdBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
   }).catch(function (e) { U.mdBusy = null; U.mdErr = { k: key, e: e.message }; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true); });
 }
 ACT.mdRe = function (el) { var p = curP(), key = mdKey(p, el.dataset.id); if (DB.mcDeep) delete DB.mcDeep[key]; U.mdErr = null; U.mdBusy = null; rerender(true); };

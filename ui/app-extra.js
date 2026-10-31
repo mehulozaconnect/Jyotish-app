@@ -357,7 +357,7 @@ var gGen0 = gGenerate;
 function aiOrder() { return DB.settings.ckey ? ['claude'] : []; }
 gGenerate = function (body, depth) {
   if (arguments.length > 1) return gGen0(body, depth);
-  var bg = !G_ON && /You (translate|rewrite) the text|DAILY BRIEF/.test(body), order = aiOrder();
+  var bg = !G_ON && /You (translate|rewrite) the text|DAILY BRIEF|NOTEBOOK EXTRACT/.test(body), order = aiOrder();
   if (!order.length) return Promise.reject(new Error('Add your Claude key in Settings › AI engine'));
   if (!bg) AIQ.fg++;
   function done(x) { if (!bg) AIQ.fg = Math.max(0, AIQ.fg - 1); return x; }
