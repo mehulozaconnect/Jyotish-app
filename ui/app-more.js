@@ -75,7 +75,7 @@ ACT.testKey = function () {
 };
 ACT.backup = function () {
   var d = new Date(), name = 'trikaal-backup-' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '.json';
-  var data = JSON.parse(JSON.stringify(DB)); data.settings.key = ''; data.settings.gkey = ''; data.exported = d.toISOString();
+  var data = JSON.parse(JSON.stringify(DB)); data.settings.key = ''; data.settings.gkey = ''; data.settings.ckey = ''; delete data.ailog; data.exported = d.toISOString();
   saveFile(name, 'application/json', JSON.stringify(data, null, 1));
 };
 ACT.restore = function () {
