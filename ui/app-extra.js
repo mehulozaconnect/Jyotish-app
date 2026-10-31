@@ -291,6 +291,7 @@ function withContext(p, q) {
     var q2 = qq + (biz ? '\n\nAPP SCORING FOR BUSINESS VS JOB: ' + (function () { var b = bizJob(p, c, new Date()); return b.quick + ' ' + b.paras.join(' ') + ' ' + b.short; })() : '');
     return ag(p, c, q2, onLive).catch(function (e) {
       if (/limit reached|API key|PERMISSION|invalid/i.test(e.message)) throw e;
+      if (aiOrder().length > 1) throw e; /* the other provider was already tried */
       /* second try: non-streaming, light reasoning, same model */
       if (onLive) onLive('thought', 'Retrying with a quicker answer…');
       var keep = DB.settings.gfast; DB.settings.gfast = true;
@@ -308,4 +309,162 @@ function withContext(p, q) {
       });
     });
   };
+})();
+
+/* ================= AI: two providers, failover, rate limits, health log ================= */
+var CMODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recommended)'], ['claude-opus-5-5', 'Claude Opus 5.5 (best, costlier)'], ['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 (fastest, cheapest)']];
+function hasAI() { return !!(DB.settings.gkey || DB.settings.ckey); }
+function aiLog(x) { x.t = Date.now(); DB.ailog = (DB.ailog || []).concat([x]).slice(-30); try { save(); } catch (e) { } }
+function claudeBody(body) {
+  var b = JSON.parse(body), sys = b.system_instruction ? b.system_instruction.parts.map(function (p) { return p.text; }).join('\n') : '', msgs = [];
+  (b.contents || []).forEach(function (c) { var role = c.role === 'model' ? 'assistant' : 'user', t = c.parts.map(function (p) { return p.text || ''; }).join('\n'); if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\n\n' + t; else msgs.push({ role: role, content: t }); });
+  if (msgs.length && msgs[0].role !== 'user') msgs.unshift({ role: 'user', content: '(conversation start)' });
+  var gc = b.generationConfig || {}, json = gc.responseMimeType === 'application/json';
+  return { model: DB.settings.cmodel || CMODELS[0][0], max_tokens: json ? 8000 : 6000, temperature: gc.temperature != null ? Math.min(1, gc.temperature) : 0.3, system: sys + (json ? '\nReturn ONLY valid JSON, no other text.' : ''), messages: msgs };
+}
+function claudeCall(body) {
+  var cb = claudeBody(body), on = G_ON, H = { 'content-type': 'application/json', 'x-api-key': DB.settings.ckey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+  function shape(txt, stop) { return { candidates: [{ content: { parts: [{ text: txt }] }, finishReason: stop || 'STOP' }] }; }
+  function err(st, t) { var d; try { d = JSON.parse(t); } catch (e) { d = {}; } var m = (d.error && d.error.message) || ('HTTP ' + st); var e = new Error(st === 401 ? 'Claude key is not valid' : /credit balance/i.test(m) ? 'Claude account has no credit left. Add credit at console.anthropic.com' : st === 429 ? 'Claude rate limit reached, try again in a minute' : st === 529 || st === 503 ? 'Claude is busy right now' : 'Claude: ' + m.slice(0, 160)); e.status = st; return e; }
+  if (!on) return http('POST', 'https://api.anthropic.com/v1/messages', H, JSON.stringify(cb)).then(function (r) {
+    if (r.status !== 200) throw err(r.status, r.text);
+    var d = JSON.parse(r.text); return shape((d.content || []).filter(function (x) { return x.type === 'text'; }).map(function (x) { return x.text; }).join(''), d.stop_reason);
+  });
+  cb.stream = true; var acc = '', stop = '', last = Date.now(), dead = false, wd;
+  var slow = new Promise(function (res, rej) { wd = setInterval(function () { if (Date.now() - last > 90000) { dead = true; clearInterval(wd); var e = new Error('Claude is taking too long'); e.slow = true; rej(e); } }, 1000); });
+  var main = httpStream('https://api.anthropic.com/v1/messages', H, JSON.stringify(cb), function (data) {
+    if (dead) return; var j; try { j = JSON.parse(data); } catch (e) { return; } last = Date.now();
+    if (j.type === 'content_block_delta' && j.delta && j.delta.type === 'text_delta') { acc += j.delta.text; on('text', acc); }
+    else if (j.type === 'message_delta' && j.delta) stop = j.delta.stop_reason || stop;
+    else if (j.type === 'error') stop = 'error: ' + (j.error && j.error.message);
+  }).then(function (r) { clearInterval(wd); if (r.status !== 200) throw err(r.status, r.text); if (!acc) throw new Error(/^error/.test(stop) ? 'Claude ' + stop : 'Claude sent an empty answer'); return shape(acc, stop); }, function (e) { clearInterval(wd); throw e; });
+  return Promise.race([main, slow]);
+}
+/* limiter: questions first; background jobs (translations, briefs) never crowd out a question */
+var AIQ = { fg: 0, cool: 0, lastG: 0 };
+function aiWaitTurn(bg) {
+  return new Promise(function (res, rej) {
+    var t0 = Date.now();
+    (function tick() {
+      if (bg && Date.now() < AIQ.cool) return rej(new Error('AI is cooling down after a rate limit; using saved text for now'));
+      if (bg && AIQ.fg > 0) { if (Date.now() - t0 > 120000) return rej(new Error('busy')); return setTimeout(tick, 1500); }
+      var gap = Date.now() - AIQ.lastG; if (gap < (bg ? 4000 : 1200)) return setTimeout(tick, (bg ? 4000 : 1200) - gap);
+      AIQ.lastG = Date.now(); res();
+    })();
+  });
+}
+var gGen0 = gGenerate;
+function aiOrder() { var pr = DB.settings.aiProv || (DB.settings.gkey ? 'gemini' : 'claude'), o = [pr, pr === 'gemini' ? 'claude' : 'gemini']; return o.filter(function (x) { return x === 'gemini' ? DB.settings.gkey : DB.settings.ckey; }); }
+gGenerate = function (body, depth) {
+  if (arguments.length > 1) return gGen0(body, depth);
+  var bg = !G_ON && /You (translate|rewrite) the text|DAILY BRIEF/.test(body), order = aiOrder();
+  if (!order.length) return Promise.reject(new Error('Add a Gemini or Claude key in Settings'));
+  if (!bg) AIQ.fg++;
+  function done(x) { if (!bg) AIQ.fg = Math.max(0, AIQ.fg - 1); return x; }
+  function tryP(i, firstErr) {
+    if (i >= order.length) return Promise.reject(firstErr);
+    var pv = order[i], t0 = Date.now(), model = pv === 'gemini' ? (DB.settings.gmodel || GDEFAULT) : (DB.settings.cmodel || CMODELS[0][0]);
+    if (i > 0 && G_ON) G_ON('thought', (order[0] === 'gemini' ? 'Gemini' : 'Claude') + ' failed, asking ' + (pv === 'gemini' ? 'Gemini' : 'Claude') + '…');
+    return aiWaitTurn(bg).then(function () { return pv === 'gemini' ? gGen0(body) : claudeCall(body); }).then(function (d) {
+      aiLog({ p: pv, m: pv === 'gemini' ? (DB.settings.gmodel || GDEFAULT) : model, ok: 1, ms: Date.now() - t0, k: bg ? 'bg' : 'ask', n: body.length });
+      if (pv === 'gemini') DB.gfail = 0;
+      if (i > 0 && !bg) toast('Answered by ' + (pv === 'gemini' ? 'Gemini' : 'Claude'), 2500);
+      return d;
+    }, function (e) {
+      aiLog({ p: pv, m: model, ok: 0, ms: Date.now() - t0, k: bg ? 'bg' : 'ask', n: body.length, e: String(e.message).slice(0, 160) });
+      if (/rate limit|limit reached|429|quota/i.test(e.message)) AIQ.cool = Date.now() + 60000;
+      if (pv === 'gemini' && !bg) gReliable(model, e);
+      if (bg && /cooling down|busy/.test(e.message)) throw e;
+      return tryP(i + 1, firstErr || e);
+    });
+  }
+  return tryP(0).then(done, function (e) { done(); throw e; });
+};
+/* a Gemini model that keeps failing (slow, busy, empty) is swapped for the best stable Flash */
+function gReliable(model, e) {
+  if (/key|PERMISSION|invalid/i.test(e.message)) return;
+  DB.gfail = (DB.gfail || 0) + 1; if (DB.gfail < 2) return;
+  var listP = DB.settings.gmodels && DB.settings.gmodels.length ? Promise.resolve(DB.settings.gmodels) : gListModels();
+  listP.then(function (list) {
+    var ok = list.filter(function (m) { return /flash/.test(m) && !/lite|image|tts|live|audio/.test(m) && (DB.settings.gbad || []).indexOf(m) < 0 && gRank(m, 'flash') >= 0; });
+    var stable = ok.filter(function (m) { return !/preview|exp/.test(m); }), pick = (stable.length ? stable : ok).sort(function (a, b) { return gRank(b, 'flash') - gRank(a, 'flash'); })[0];
+    if (pick && pick !== model) { DB.settings.gmodel = pick; DB.settings.gfast = true; DB.gfail = 0; save(); toast(model + ' kept failing. Switched to ' + pick + ' for reliable answers.', 4000); }
+  }).catch(function () { });
+}
+/* the 3-step Gemini retry is not needed when Claude is the backup */
+
+/* ---------- Settings: AI card ---------- */
+function aiCard() {
+  var s = DB.settings, log = (DB.ailog || []).slice(-8).reverse(), pr = s.aiProv || (s.gkey ? 'gemini' : 'claude');
+  var h = '<div class="card"><h3>AI engine</h3><div class="field"><span>ANSWER WITH</span><div class="seg">' + [['gemini', 'Gemini (free)'], ['claude', 'Claude (paid)']].map(function (x) { return '<button class="' + (pr === x[0] ? 'on' : '') + '" data-act="setProv" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>';
+  h += '<label class="field"><span>CLAUDE API KEY (console.anthropic.com)</span><input class="inp mono" type="password" data-in="setCkey" value="' + esc(s.ckey || '') + '" placeholder="sk-ant-..." autocomplete="off"></label>';
+  h += '<div class="field"><span>CLAUDE MODEL</span>' + sel('setCmodel', CMODELS, s.cmodel || CMODELS[0][0]) + '</div>';
+  h += '<p class="note">' + (s.gkey && s.ckey ? 'Both keys are set: if one fails, the other answers automatically.' : 'Add both keys for automatic backup: when one fails or is busy, the other answers.') + ' Claude is paid: Anthropic bills each question to your account (Haiku is cheapest, Opus costliest).</p>';
+  h += '<button class="btn sec wide" data-act="aiTest">Test AI now</button>';
+  if (log.length) h += '<div class="lbl" style="margin:12px 0 4px">Last AI calls</div>' + log.map(function (x) { var d = new Date(x.t); return '<div class="ailog ' + (x.ok ? 'ok' : 'bad') + '"><b>' + (x.ok ? '✓' : '✗') + '</b><span>' + (x.p === 'gemini' ? 'Gemini' : 'Claude') + ' · ' + esc(x.m) + ' · ' + (x.k === 'bg' ? 'background' : 'question') + ' · ' + (x.ms / 1000).toFixed(1) + 's<small>' + N.dmy(d) + ' ' + N.hm(d) + (x.e ? ' · ' + esc(x.e) : '') + '</small></span></div>'; }).join('');
+  return h + '</div>';
+}
+INP.setCkey = function (el) { DB.settings.ckey = el.value.trim(); save(); };
+CHG.setCmodel = function (el) { DB.settings.cmodel = el.value; save(); };
+ACT.setProv = function (el) { DB.settings.aiProv = el.dataset.v; save(); rerender(true); };
+ACT.aiTest = function () {
+  var order = aiOrder(); if (!order.length) return toast('Add a key first');
+  toast('Testing…', 1500);
+  var body = JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }], generationConfig: { temperature: 0 } });
+  var res = [];
+  order.reduce(function (pr, pv) { return pr.then(function () { var t0 = Date.now(); return (pv === 'gemini' ? gGen0(body) : claudeCall(body)).then(function () { res.push((pv === 'gemini' ? 'Gemini' : 'Claude') + ' OK ' + ((Date.now() - t0) / 1000).toFixed(1) + 's'); aiLog({ p: pv, m: pv === 'gemini' ? (DB.settings.gmodel || GDEFAULT) : (DB.settings.cmodel || CMODELS[0][0]), ok: 1, ms: Date.now() - t0, k: 'test', n: 0 }); }, function (e) { res.push((pv === 'gemini' ? 'Gemini' : 'Claude') + ' failed: ' + e.message); aiLog({ p: pv, m: pv === 'gemini' ? (DB.settings.gmodel || GDEFAULT) : (DB.settings.cmodel || CMODELS[0][0]), ok: 0, ms: Date.now() - t0, k: 'test', n: 0, e: String(e.message).slice(0, 160) }); }); }); }, Promise.resolve())
+    .then(function () { toast(res.join(' · '), 6000); if (parts()[0] === 'more') rerender(true); });
+};
+
+/* ================= AI across the app ================= */
+/* 1. "Ask AI" on every reading card */
+var AI_ROUTES = /^(report|analysis|milan|p|panchang|dasha|remedies|today)$/;
+function addAiButtons() {
+  if (!hasAI() || !AI_ROUTES.test(parts()[0] || 'astro')) return;
+  var cards = document.querySelectorAll('#app .card, #app .ocard');
+  Array.prototype.forEach.call(cards, function (cd) {
+    if (cd.querySelector('.aiask') || cd.closest('.chat') || cd.querySelector('input,select,textarea') || (cd.innerText || '').length < 80) return;
+    var b = document.createElement('button'); b.className = 'aiask'; b.setAttribute('data-act', 'aiCardAsk'); b.setAttribute('data-notr', ''); b.textContent = '✦ Ask AI about this'; cd.appendChild(b);
+  });
+}
+ACT.aiCardAsk = function (el) {
+  var cd = el.closest('.card, .ocard'), t = (cd.innerText || '').replace('✦ Ask AI about this', '').replace(/\n{2,}/g, '\n').trim().slice(0, 1800), p = curP(), scr = (($('.top .ttl') || $('.v2top h1') || {}).innerText || '').trim();
+  var q = 'Explain this part of the app' + (scr ? ' (' + scr + ')' : '') + ' for ' + (p ? p.name.split(' ')[0] : 'me') + ' in simple words: what it means in real life, what will happen, what to be careful about, and what to do.\n---\n' + t;
+  go('ai'); setTimeout(function () { var x = $('#askIn'); if (x) { x.value = q; ACT.askSend(); } }, 150);
+};
+/* 2. AI daily brief on the Astrology home (one call per person per day, cached) */
+function briefKey(p) { var d = new Date(); return p.id + '|' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '|' + (DB.settings.lang || 'en'); }
+function briefPrompt(p, c) {
+  var now = new Date(), L = { lat: +p.lat, lon: +p.lon }, loc = DB.settings.loc || L, d0 = todayStart(0), pc = J.panchang(d0, loc.lat, loc.lon), off = locOff(), wd = new Date(pc.rise.getTime() + off * 3600e3).getUTCDay(), parts2 = J.dayParts(pc.rise, pc.set, wd), cg = J.choghadiya(pc.rise, pc.set, pc.nextRise, wd);
+  var T = J.kundli(now, +p.lat, +p.lon), tr = T.planets.map(function (x) { return PN[x.code] + ' in ' + J.SIGNS[x.sign] + ' (house ' + J.houseFrom(c.k.ascSign, x.sign) + ' from lagna, ' + J.houseFrom(c.k.P.Mo.sign, x.sign) + ' from Moon)'; }).join('; ');
+  var good = cg.day.filter(function (x) { return x.q === 'good'; }).map(function (x) { return x.name + ' ' + N.hm(x.start) + '–' + N.hm(x.end); }).join(', ');
+  return 'DAILY BRIEF for ' + N.dmy(now) + '\n' + fixedFacts(p, c) + 'TODAY: ' + J.VARAS[wd] + ', tithi ' + pc.tithi.paksha + ' ' + pc.tithi.name + ', nakshatra ' + pc.nak.name + ', Moon in ' + J.SIGNS[pc.moonSign] + '. Rahu Kaal ' + N.hm(parts2.rahu.start) + '–' + N.hm(parts2.rahu.end) + '. Good choghadiya: ' + good + '.\nTRANSITS NOW: ' + tr + '\n\nWrite today\'s brief for ' + p.name.split(' ')[0] + ' (age ' + age(p, now) + '). Exactly these 5 lines, each starting with the label, each one short sentence, plain words, no jargon:\nMood: …\nWork: …\nMoney & family: …\nBe careful: …\nBest time & upay: … (one good time window today and one simple remedy for today)';
+}
+function briefCard(p) {
+  var B = DB.aiBrief || {}, key = briefKey(p), txt = B[key];
+  var h = '<div class="card aibrief"><div class="kgh"><h3>✦ Today for ' + esc(p.name.split(' ')[0]) + '</h3><span class="sm">AI</span></div>';
+  if (txt) h += txt.split('\n').filter(function (l) { return l.trim(); }).slice(0, 6).map(function (l) { var m = l.match(/^\**\s*([^:*]{2,24})\**\s*:\s*(.*)$/); return m ? '<div class="abl"><b>' + esc(m[1]) + '</b><span>' + esc(m[2].replace(/\*\*/g, '')) + '</span></div>' : '<p>' + esc(l.replace(/\*\*/g, '')) + '</p>'; }).join('');
+  else h += '<p class="mut" style="font-size:13px" id="briefWait">' + (U.briefErr ? esc(U.briefErr) + ' <button class="btn sec sm" data-act="briefGo">Try again</button>' : 'Writing today\'s brief…') + '</p>';
+  return h + '</div>';
+}
+ACT.briefGo = function () { U.briefErr = null; U.briefBusy = null; rerender(true); };
+function briefLoad(p) {
+  var key = briefKey(p); if ((DB.aiBrief || {})[key] || U.briefBusy === key || U.briefErr) return; U.briefBusy = key;
+  var c = calcP(p), body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(p.name.split(' ')[0], 'predict', relOf(p), 'the astrologer').split('\n').filter(function (l) { return /LANGUAGE/.test(l); }).join('\n') + '\nYou are a Vedic astrologer (Parashari, Lahiri). Use only the facts given.' }] }, contents: [{ role: 'user', parts: [{ text: briefPrompt(p, c) }] }], generationConfig: { temperature: 0.4, thinkingConfig: { thinkingBudget: 512 } } });
+  gGenerate(body).then(function (d) {
+    var t = gText(d).trim(); DB.aiBrief = DB.aiBrief || {}; var ks = Object.keys(DB.aiBrief); if (ks.length > 20) ks.slice(0, ks.length - 20).forEach(function (k) { delete DB.aiBrief[k]; });
+    DB.aiBrief[key] = t; save(); U.briefBusy = null; if ((parts()[0] || 'astro') === 'astro') rerender(true);
+  }).catch(function (e) {
+    var b = JSON.parse(body); delete b.generationConfig.thinkingConfig;
+    return gGenerate(JSON.stringify(b)).then(function (d) { DB.aiBrief = DB.aiBrief || {}; DB.aiBrief[key] = gText(d).trim(); save(); U.briefBusy = null; if ((parts()[0] || 'astro') === 'astro') rerender(true); });
+  }).catch(function (e) { U.briefBusy = null; U.briefErr = 'Could not write the brief: ' + e.message; if ((parts()[0] || 'astro') === 'astro') rerender(true); });
+}
+(function () {
+  var a1 = AstroV2; AstroV2 = function (id) {
+    var h = a1(id), p = curP(); if (!p || !hasAI() || id === 'ALL') return h;
+    var i = h.indexOf('<div class="kpair">'); if (i < 0) return h;
+    U.after = (U.after || []).concat([function () { briefLoad(p); }]);
+    return h.slice(0, i) + briefCard(p) + h.slice(i);
+  };
+  var r1 = render; render = function () { r1(); try { addAiButtons(); } catch (e) { } };
 })();

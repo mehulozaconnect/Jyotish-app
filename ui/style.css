@@ -359,3 +359,7 @@ pre.evs{white-space:pre-wrap;font:500 10.5px/1.5 var(--mono);color:#3E3B45;max-h
 .kentry.k5{background:linear-gradient(135deg,#E8F1EA,#D5E8DA);box-shadow:0 0 0 1px #B9D8C1}.kentry.k5 .kei{background:var(--good)}.kentry.k5 small{color:#2f5a3c}
 .kentry.k6{background:linear-gradient(135deg,#EAEAF6,#DADBF0);box-shadow:0 0 0 1px #C3C5E6}.kentry.k6 .kei{background:var(--indigo,#2B2A5E)}.kentry.k6 small{color:#3a3a6a}
 .seg4 button{font-size:12.5px;padding-left:4px;padding-right:4px}
+.aiask{display:inline-flex;align-items:center;gap:4px;margin-top:10px;padding:6px 11px;border-radius:20px;font:600 12.5px var(--sans);color:#5a3fa0;background:#F1ECFB;box-shadow:0 0 0 1px #DDD2F4}
+.aibrief{background:linear-gradient(135deg,#F4F0FC,#FBF8F2);box-shadow:0 0 0 1px #E1D8F3}.aibrief h3{color:#4a3590}
+.abl{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:6px 0;border-top:1px solid #ECE5F7;font:13.5px/1.4 var(--sans)}.abl:first-of-type{border-top:0}.abl b{font:600 12.5px var(--sans);color:#5a3fa0}
+.ailog{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line);font:12.5px/1.35 var(--sans)}.ailog b{width:16px}.ailog.ok b{color:var(--good)}.ailog.bad b{color:var(--bad)}.ailog small{display:block;color:var(--mut)}

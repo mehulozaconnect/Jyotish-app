@@ -2,6 +2,7 @@
 function MoreScreen() {
   var s = DB.settings, h = '<div class="top">' + LOGO + '<span class="ttl">More</span></div><div class="pad">';
   if (typeof langCard === 'function') h += langCard();
+  if (typeof aiCard === 'function') h += aiCard();
   h += '<div class="card"><h3>Calculation</h3>' +
     '<div class="field"><span>AYANAMSA</span>' + sel('setAyan', Object.keys(C.AYAN_INFO).map(function (k) { return [k, C.AYAN_INFO[k].name]; }), s.ayan) + '</div>' +
     '<div class="grid2"><div class="field"><span>RAHU / KETU</span>' + sel('setNode', [['mean', 'Mean node'], ['true', 'True node']], s.node) + '</div><div class="field"><span>DASHA YEAR</span>' + sel('setDyear', [[365.25, '365.25 days'], [365.2422, '365.2422 (tropical)'], [360, '360 days (savana)']], s.dyear) + '</div></div>' +
@@ -22,7 +23,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '3.0.4';
+var APP_VERSION = '3.1.0';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
