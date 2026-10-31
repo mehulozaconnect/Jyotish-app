@@ -78,7 +78,8 @@ MedCaseScreen = function (id) {
   var c = calcP(p), R = maOf(p), a = (mcAll(p)[id]) || MC.analyze(c, R, id, new Date()); if (!a) { go('medical'); return ''; }
   var pr = a.pr, n1 = p.name.split(' ')[0], now = new Date(), dm = function (d) { return N.dmy(d); };
   var h = '<div class="top"><button class="ib" data-go="medical">' + icon('back') + '</button><span class="ttl">' + esc(pr.n) + '</span><span class="sp"></span><button class="ib" data-act="shareTab">' + icon('share') + '</button></div><div class="pad">';
-  h += '<div class="card chero"><div class="chi">' + (MC_ICON[pr.id] || '•') + '</div><div class="gauges">' + gauge(MC_TV[a.tend], a.tend.replace(' tendency', ''), 'chart tendency') + gauge(MC_NV[a.nowWord], a.nowWord.replace(' now', ''), 'right now') + ring(a.recovery.score, 5, 'recovery') + '</div><p class="mhsum">' + esc((a.nL >= 2 ? n1 + '\'s chart points here from ' + a.nL + ' of 3 sides. ' : a.nL === 1 ? 'Only a mild pointer in the chart. ' : 'The chart does not point here. ') + (a.nowWord === 'Active now' ? 'The current period stirs it: act now.' : a.nowWord === 'Watch now' ? 'Keep routine and tests on time.' : 'Quiet for now.')) + '</p></div>';
+  h += '<div class="card chero"><div class="chi">' + (MC_ICON[pr.id] || '•') + '</div><div class="gauges">' + gauge(MC_TV[a.tend], a.tend.replace(' tendency', ''), 'how likely for you') + gauge(MC_NV[a.nowWord], a.nowWord.replace(' now', ''), 'this period') + ring(a.recovery.score, 5, 'bounce-back') + '</div><p class="mhsum">' + esc((a.nL >= 2 ? n1 + '\'s chart points here from ' + a.nL + ' of 3 sides. ' : a.nL === 1 ? 'Only a mild pointer in the chart. ' : 'The chart does not point here. ') + (a.nowWord === 'Active now' ? 'The current period stirs it: act now.' : a.nowWord === 'Watch now' ? 'Keep routine and tests on time.' : 'Quiet for now.')) + '</p></div>';
+  h += mcDeep(p, c, R, a);
   /* timeline */
   h += '<div class="card"><h3>When it is more sensitive</h3>' + bandTimeline(a.per, now, 10) + (a.sens.length ? '<div class="kdates">' + a.sens.slice(0, 3).map(function (s) { return '<div class="b"><b>' + (s.now ? 'Now → ' + dm(s.end) : dm(s.start)) + '</b><small>' + MA.PN[s.md] + '–' + MA.PN[s.ad] + (s.now ? ' running' : '') + ' · tests before it starts</small></div>'; }).join('') + (a.easy[0] ? '<div class="g"><b>' + dm(a.easy[0].start) + '</b><small>best time to start treatment</small></div>' : '') + '</div>' : '') + '</div>';
   /* actions */
@@ -92,8 +93,9 @@ MedCaseScreen = function (id) {
     rem0 ? ['📿', MA.PN[rem0.code] + ' remedy · ' + rem0.mode, (rem0.mode === 'pacify' ? 'Daan on ' + d0.day + 's: ' + d0.daan.split(',').slice(0, 2).join(',') + '. ' : '') + 'Mantra 108× ' + (rem0.mode === 'pacify' ? 'on ' + d0.day + 's' : 'daily') + ', 40 days', 'purple'] : null
   ]) + '</div>';
   if (a.rem.length > 1) h += '<div class="card"><h3>All remedies</h3>' + a.rem.map(function (r) { return '<details class="remd"><summary><span class="tag ' + (r.mode === 'strengthen' ? 'g' : r.mode === 'pacify' ? 'b' : 'tn') + '">' + r.mode + '</span> ' + MA.PN[r.code] + ' <small class="mut">' + esc(r.why) + '</small></summary><ul class="mawhy">' + r.acts.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '<li>' + esc('Gemstone: ' + r.gem) + '</li></ul></details>'; }).join('') + '</div>';
+  if ((DB.mcDeep || {})[mdKey(p, id)]) { var di = h.indexOf('<div class="card"><h3>Do this</h3>'); if (di > 0) h = h.slice(0, di) + '<details class="card rdet"><summary>📋 Quick plan from the app\'s rules</summary>' + h.slice(di).replace(/<div class="card">/g, '<div class="inr">') + '</details>'; }
   /* reading */
-  h += '<details class="card rdet"' + (U.mcOpen === id ? ' open' : '') + '><summary>📖 Read the full explanation</summary>' + mcReading(p, c, R, a).replace(/^<div class="card mcread">/, '<div class="mcread in">') + '</details>';
+  h += '<details class="card rdet"' + (U.mcOpen === id ? ' open' : '') + '><summary>📖 Read it as a letter</summary>' + mcReading(p, c, R, a).replace(/^<div class="card mcread">/, '<div class="mcread in">') + '</details>';
   /* tracker + alert + tech (reuse old page sections) */
   var old = mcCase0(id), ti = old.indexOf('<div class="card"><div class="kgh"><h3>90-day routine'), te = old.indexOf('<div class="card maalertc">');
   if (ti > 0 && te > ti) h += old.slice(ti, te);
@@ -104,3 +106,51 @@ MedCaseScreen = function (id) {
 };
 /* the old Health risks report now opens the visual section */
 (function () { var r0 = render; render = function () { var pr = parts(); if (pr[0] === 'report' && pr[1] === 'disease') { location.replace('#/medical'); return; } r0(); }; })();
+
+/* ---------- detailed AI analysis (structured, rendered as visuals) ---------- */
+function mdKey(p, id) { var d = new Date(); return 'deep|' + p.id + '|' + p.time + '|' + id + '|' + d.getFullYear() + '-' + d.getMonth() + '|' + (DB.settings.lang || 'en'); }
+function mdLvl(x) { x = String(x || '').toLowerCase(); return /high|strong/.test(x) ? 'b' : /med|moderate/.test(x) ? 'm' : 'g'; }
+function mdLvlW(x) { return { b: 'Higher', m: 'Medium', g: 'Lower' }[mdLvl(x)]; }
+function mcDeep(p, c, R, a) {
+  var key = mdKey(p, a.pr.id), J2 = (DB.mcDeep || {})[key], n1 = p.name.split(' ')[0];
+  if (!J2) {
+    if (!hasAI()) return '<div class="card mdwait"><b>Want a detailed, personal analysis?</b><p>Add a Gemini (free) or Claude key in Settings › AI engine. The AI then studies ' + esc(n1) + '\'s chart for this problem and breaks it down sub-problem by sub-problem with a plan.</p><button class="btn sec sm" data-go="more">Open Settings</button></div>';
+    var err = U.mdErr && U.mdErr.k === key ? U.mdErr.e : '';
+    if (!err && U.mdBusy !== key) U.after = (U.after || []).concat([function () { mdGen(p, a.pr.id); }]);
+    return '<div class="card mdwait">' + (err ? '<b>Detailed analysis could not be written</b><p>' + esc(err) + '</p><button class="btn sec sm" data-act="mdRe" data-id="' + a.pr.id + '">Try again</button>' : '<span class="typing"><i></i><i></i><i></i></span><b>Doing a detailed analysis of ' + esc(n1) + '\'s ' + esc(a.pr.n.toLowerCase()) + '</b><p>Reading the chart, the current period and the sky, and turning it into a simple plan. About 30–60 seconds.</p>') + '</div>';
+  }
+  var h = '<div class="card mdhero"><div class="olbl">In simple words</div><h3>' + esc(J2.headline || '') + '</h3><p>' + esc(J2.summary || '') + '</p>' + (J2.body_type ? '<p class="mdbt">🌿 ' + esc(J2.body_type) + '</p>' : '') + '</div>';
+  if (J2.sub_issues && J2.sub_issues.length) h += '<div class="card"><h3>What could happen, one by one</h3>' + J2.sub_issues.map(function (s) {
+    var q = mdLvl(s.risk); return '<details class="mdsub ' + q + '"><summary><div><b>' + esc(s.name) + '</b><span class="mdbar"><i class="' + q + '"></i></span></div><em class="' + q + '">' + mdLvlW(s.risk) + '</em></summary>' +
+      (s.why ? '<p><b>Why in ' + esc(n1) + '\'s chart:</b> ' + esc(s.why) + '</p>' : '') + (s.signs ? '<p><b>Early signs to notice:</b> ' + esc(s.signs) + '</p>' : '') + (s.prevent && s.prevent.length ? '<p><b>Prevent it:</b></p><ul>' + s.prevent.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + (s.doctor ? '<p><b>Doctor:</b> ' + esc(s.doctor) + '</p>' : '') + '</details>';
+  }).join('') + '<p class="note">Tap each to open. "Higher" means the chart points there more; it is not a diagnosis.</p></div>';
+  if (J2.timeline && J2.timeline.length) h += '<div class="card"><h3>When to be extra careful</h3><div class="mdtl">' + J2.timeline.map(function (t) { var q = mdLvl(t.level); return '<div class="' + q + '"><b>' + esc(t.when) + '</b><p>' + esc(t.what) + '</p>' + (t.do ? '<small>👉 ' + esc(t.do) + '</small>' : '') + '</div>'; }).join('') + '</div></div>';
+  if (J2.daily) { var D = J2.daily, rows = [['🌅', 'Morning', D.morning], ['🍽️', 'Meals', D.meals], ['🌆', 'Evening', D.evening], ['🌙', 'Night', D.night], ['📆', 'Every week', D.weekly]]; h += '<div class="card"><h3>Your daily care</h3><div class="day">' + rows.filter(function (r) { return r[2] && r[2].length; }).map(function (r) { return '<div><span>' + r[0] + '</span><div><b>' + r[1] + '</b><ul>' + r[2].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>'; }).join('') + '</div></div>'; }
+  if (J2.food) h += '<div class="card"><h3>Food</h3><div class="twocol"><div class="g"><b>✓ Eat more</b><ul>' + (J2.food.eat || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div><div class="b"><b>✕ Cut down</b><ul>' + (J2.food.avoid || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div></div>';
+  if (J2.tests && J2.tests.length) h += '<div class="card"><h3>🩺 Check-ups</h3>' + J2.tests.map(function (t) { return '<div class="mdtest"><b>' + esc(t.test) + '</b><span>' + esc(t.how_often || '') + '</span></div>'; }).join('') + '</div>';
+  if (J2.remedies && J2.remedies.length) h += '<div class="card"><h3>📿 Remedies and why</h3>' + J2.remedies.map(function (r) { return '<div class="mdrem"><div class="kgh"><b>' + esc(r.planet) + '</b>' + (r.mode ? '<span class="tag ' + (/pacif|calm/i.test(r.mode) ? 'b' : /streng/i.test(r.mode) ? 'g' : 'tn') + '">' + esc(r.mode) + '</span>' : '') + '</div><p>' + esc(r.what) + '</p><small>' + esc((r.when ? '📅 ' + r.when + '. ' : '') + (r.why ? 'Why: ' + r.why : '')) + '</small></div>'; }).join('') + '</div>';
+  if (J2.red_flags && J2.red_flags.length) h += '<div class="card maalertc"><b>🚨 See a doctor quickly if:</b><ul>' + J2.red_flags.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+  h += '<div class="mdfoot"><button class="btn sec sm" data-act="mdRe" data-id="' + a.pr.id + '">↻ Redo the analysis</button></div>';
+  return h;
+}
+function mdGen(p, id) {
+  var key = mdKey(p, id); if (U.mdBusy === key) return; U.mdBusy = key; U.mdErr = null;
+  var c = calcP(p), R = maOf(p), a = MC.analyze(c, R, id, new Date()), n1 = p.name.split(' ')[0], rel = relOf(p), ag = age(p, new Date());
+  var lang = (geminiFormat('', '', '', '').split('\n').filter(function (l) { return /^LANGUAGE/.test(l); })[0] || '');
+  var sys = 'You are a senior Vedic medical astrologer (Parashari, Lahiri) and you explain to people who know NOTHING about astrology. ' + MA.RULES + lang +
+    '\nGo deep on THIS problem only (' + a.pr.n + '). Break it into its real sub-problems (for teeth and gums for example: cavities and enamel, gum bleeding and swelling, sensitivity, mouth ulcers and bad breath, jaw and alignment, wisdom teeth) and judge each one from this chart: which planet or house drives it and in which direction (too much heat, dryness, weakness, infection). ' +
+    'Write for ' + (rel === 'me' ? n1 + ' as "you"' : 'the astrologer to tell ' + n1 + ' (age ' + ag + ')') + '. Every sentence must be plain everyday language, specific to this chart, no jargon (if a planet is named, say what it stands for in brackets). Fit advice to age ' + ag + ' and body type ' + R.dosha.type + '. Use exact dates from the data.\n' +
+    'Return ONLY JSON with this shape: {"headline":"one plain sentence verdict","summary":"3-4 plain sentences: what is going on and why, and what to focus on now","body_type":"one sentence linking the body type to this problem",' +
+    '"sub_issues":[{"name":"","risk":"high|medium|low","why":"plain reason from this chart","signs":"early signs to notice","prevent":["3-4 specific actions"],"doctor":"which doctor and when"}],' +
+    '"timeline":[{"when":"e.g. Now – Apr 2029","level":"high|medium|low","what":"plain meaning","do":"one action"}],' +
+    '"daily":{"morning":[],"meals":[],"evening":[],"night":[],"weekly":[]},"food":{"eat":[],"avoid":[]},"tests":[{"test":"","how_often":""}],' +
+    '"remedies":[{"planet":"Name (what it stands for)","mode":"strengthen|maintain|calm down","what":"exact mantra/daan/food with quantity","when":"day and duration","why":"plain reason"}],"red_flags":[""]}. 4-6 sub_issues, 3-5 timeline items.';
+  var user = fixedFacts(p, c) + '\n' + MA.text(R, p.name) + '\n\n' + MC.text(a, p.name);
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 8192, responseMimeType: 'application/json' } });
+  gGenerate(body).then(function (d) {
+    var t = gText(d).trim().replace(/^```(json)?/, '').replace(/```$/, '').trim(), i = t.indexOf('{'), j = t.lastIndexOf('}'), obj = JSON.parse(t.slice(i, j + 1));
+    DB.mcDeep = DB.mcDeep || {}; var ks = Object.keys(DB.mcDeep); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function (k) { delete DB.mcDeep[k]; });
+    DB.mcDeep[key] = obj; save(); U.mdBusy = null; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true);
+  }).catch(function (e) { U.mdBusy = null; U.mdErr = { k: key, e: e.message }; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true); });
+}
+ACT.mdRe = function (el) { var p = curP(), key = mdKey(p, el.dataset.id); if (DB.mcDeep) delete DB.mcDeep[key]; U.mdErr = null; U.mdBusy = null; rerender(true); };

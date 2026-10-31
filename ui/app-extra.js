@@ -420,7 +420,7 @@ ACT.aiTest = function () {
 /* 1. "Ask AI" on every reading card */
 var AI_ROUTES = /^(report|analysis|milan|p|panchang|dasha|remedies|today)$/;
 function addAiButtons() {
-  if (!hasAI() || !AI_ROUTES.test(parts()[0] || 'astro')) return;
+  if (!hasAI() || !AI_ROUTES.test(parts()[0] || 'astro') || (parts()[0] === 'medical' && (parts()[1] === 'case' || parts()[1] === 'story'))) return;
   var cards = document.querySelectorAll('#app .card, #app .ocard');
   Array.prototype.forEach.call(cards, function (cd) {
     if (cd.classList.contains('mcread') || cd.classList.contains('ocard') && location.hash.indexOf('medical/case') >= 0 || cd.querySelector('.aiask') || cd.closest('.chat') || cd.querySelector('input,select,textarea') || (cd.innerText || '').length < 80) return;
