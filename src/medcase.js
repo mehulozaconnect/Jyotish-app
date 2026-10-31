@@ -204,7 +204,8 @@ function makeMedCase(J, C, MA) {
         per.push({ md: m.lord, ad: a.lord, start: a.start < now ? now : a.start, end: a.end, s: s, why: uniq(lm.why.concat(la.why)).slice(0, 3), good: good, now: a.start <= now && a.end >= now });
       });
     });
-    var sens = per.filter(function (x) { return x.s >= 2.6; }).sort(function (a, b) { return a.start - b.start; }).slice(0, 5);
+    var ss = per.map(function (x) { return x.s; }).sort(function (a, b) { return a - b; }), q75 = ss.length ? ss[Math.floor(ss.length * 0.75)] : 9, q50 = ss.length ? ss[Math.floor(ss.length * 0.5)] : 9, thr = Math.max(2.2, q75); if (thr <= q50) thr = q50 + 0.01; per.forEach(function (x) { x.lvl = x.s >= thr ? 2 : x.s >= Math.max(1.4, q50) && x.s > ss[0] ? 1 : 0; });
+    var sens = per.filter(function (x) { return x.lvl === 2; }).sort(function (a, b) { return a.start - b.start; }).slice(0, 5);
     var easy = per.filter(function (x) { return x.good; }).sort(function (a, b) { return a.start - b.start; }).slice(0, 3);
     /* plan: remedies for karakas and running dasha lords, by mode */
     var karOrder = Object.keys(pr.k).sort(function (a, b) { return pr.k[b] - pr.k[a]; });
@@ -220,7 +221,7 @@ function makeMedCase(J, C, MA) {
     });
     var dosha = pr.d ? (R.dosha.main === pr.d ? 'Your ' + R.dosha.type + ' body type leans the same way as this problem (' + pr.d + '), so lifestyle matters a lot: ' + MA.DOSHA[pr.d].care + '.' : 'Your body type is ' + R.dosha.type + '; this problem is ' + pr.d + '-type, so treat it without over-correcting your base: ' + MA.DOSHA[pr.d].care + '.') : '';
     var bestMonths = R.calendar.filter(function (m) { return [3, 6, 11].indexOf(m.hm) >= 0; }).map(function (m) { return my(m.from); }).slice(0, 3);
-    return { story: story, pr: pr, tend: tend, tq: tq, layers: layers, nL: nL, prot: uniq(prot), score: Math.round(norm2 * 10) / 10, dosha: dosha, recovery: R.lagna,
+    return { per: per, story: story, pr: pr, tend: tend, tq: tq, layers: layers, nL: nL, prot: uniq(prot), score: Math.round(norm2 * 10) / 10, dosha: dosha, recovery: R.lagna,
       nowWord: nowWord, nowQ: nowWord === 'Active now' ? 'b' : nowWord === 'Watch now' ? 'm' : 'g', runL: runL, trNow: trNow, agree: agree, ahead: ahead.slice(0, 4), sens: sens, easy: easy, rem: rem, bestMonths: bestMonths };
   }
   function rank(c, R, opt) {
