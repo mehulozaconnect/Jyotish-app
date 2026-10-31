@@ -286,8 +286,8 @@ function withContext(p, q) {
   };
   var ag = askGemini;
   askGemini = function (p, c, q, onLive) {
-    var qq = withContext(p, q);
-    var biz = /\bbusiness|own (work|venture|firm|company|setup)|start ?up|self.?employ|vyapar|dhandha|naukri|job or|or job/i.test(qq);
+    var q0 = String(q).split('\n\n')[0], tail = String(q).slice(q0.length), qq = withContext(p, q0) + tail;
+    var biz = /\bbusiness|own (work|venture|firm|company|setup)|start ?up|self.?employ|vyapar|dhandha|naukri|job or|or job/i.test(qq.slice(0, qq.length - tail.length));
     var q2 = qq + (biz ? '\n\nAPP SCORING FOR BUSINESS VS JOB: ' + (function () { var b = bizJob(p, c, new Date()); return b.quick + ' ' + b.paras.join(' ') + ' ' + b.short; })() : '');
     return ag(p, c, q2, onLive).catch(function (e) {
       if (/limit reached|API key|PERMISSION|invalid/i.test(e.message)) throw e;

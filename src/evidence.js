@@ -7,7 +7,7 @@ function makeEvidence(A, C, J, KB, N) {
     ['health', /\bhealth|\bbody\b|disease|\bill\b|illness|sick|surgery|hospital|tabiyat|sehat|accident|injur|\bpain|fatigue|tired|stress|\bsleep/, [1, 6, 8, 12], 30, 'D30 (Trimshamsha: illness)', ['Su', 'Sa', 'Mo']],
     ['career', /career|job|work|promot|business|profession|office|boss|salary hike|appraisal/, [10, 6, 2, 11], 10, 'D10 (Dashamsha: career)', ['Su', 'Sa', 'Me']],
     ['money', /money|wealth|financ|income|\bdhan|paisa|salary|invest|profit|\bloan|\bdebt|\bgains?\b|savings/, [2, 11, 5, 9, 12], 2, 'D2 (Hora: wealth)', ['Ju', 'Ve']],
-    ['marriage', /marr|spouse|\bwife|husband|relationship|partner|\blove\b|divorce|wedding/, [7, 2, 11, 8], 9, 'D9 (Navamsha: spouse)', ['Ve', 'Ju']],
+    ['marriage', /marr|spouse|\bwife|husband|relationship|partner|\blove\b|divorce|wedding|\bfight|quarrel|argument|understanding|compatib|in-?laws?/, [7, 2, 11, 8], 9, 'D9 (Navamsha: spouse)', ['Ve', 'Ju']],
     ['children', /child|\bkids?\b|\bsons?\b|daughter|pregnan|baby/, [5, 2, 11, 9], 7, 'D7 (Saptamsha: children)', ['Ju']],
     ['education', /study|education|exam|college|degree|learning|school/, [4, 5, 9], 24, 'D24 (Chaturvimshamsha: learning)', ['Me', 'Ju']],
     ['property', /property|\bhouse\b|\bflat\b|\bland\b|\bhome\b|vehicle|\bcar\b/, [4, 11, 12], 4, 'D4 (Chaturthamsha: property)', ['Ma', 'Ve']],

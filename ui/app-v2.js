@@ -431,31 +431,32 @@ function kaText(p) {
   return L.join('\n');
 }
 function askGemini(p, c, q, onLive) {
-  var now = new Date(), ev = E.build(p, c, q, now), name = p.name.split(' ')[0];
+  var Q0 = String(q).split('\n\n')[0];
+  var now = new Date(), ev = E.build(p, c, Q0, now), name = p.name.split(' ')[0];
   /* earlier conversation: only completed question–answer pairs (an unanswered question is dropped, so it can never be answered in place of the new one) */
   var all = (DB.chats[p.id] || []).slice(0, -1), pairs = [];
   for (var i = 0; i < all.length - 1; i++) if (all[i].role === 'me' && all[i + 1].role === 'bot' && all[i + 1].text) { pairs.push([all[i].text, all[i + 1].text]); i++; }
   var hist = []; pairs.slice(-3).forEach(function (x) { hist.push({ role: 'user', parts: [{ text: '(Earlier question, already answered) ' + x[0].slice(0, 600) }] }, { role: 'model', parts: [{ text: x[1].slice(0, 2500) }] }); });
-  var whole = isWholeChart(q) || qIntent(q) === 'consult', extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
-  if (ev.topic === 'health' || /\b(bp|blood pressure|diabet|sugar|thyroid|heart|cholesterol|kidney|disease|illness|asthma|arthritis|joint|acidity|anxiety|depression|liver)\b/i.test(q)) {
+  var whole = isWholeChart(Q0) || qIntent(Q0) === 'consult', extra = whole ? '\n\nKUNDLI ANALYSIS (computed by the app for the whole chart)\n' + kaText(p) : '';
+  if (ev.topic === 'health' || /\b(bp|blood pressure|diabet|sugar|thyroid|heart|cholesterol|kidney|disease|illness|asthma|arthritis|joint|acidity|anxiety|depression|liver)\b/i.test(Q0)) {
     try { extra += '\n\nHEALTH TENDENCIES (scored by the app from the chart; strongest first): ' + MED.analyze(c, new Date()).map(function (x) { return x.name + ' ' + x.level + ' (score ' + x.score + '; ' + x.why.join('; ') + '; extra care in ' + (x.when.map(function (w) { return w.t + ' ' + N.dmy(w.s) + '–' + N.dmy(w.e); }).join(', ') || 'no specific period') + '; avoid: ' + x.avoid.join(', ') + '; tests: ' + x.tests + ')'; }).join(' | ') + '\nGive health tendencies as astrology only, never as a diagnosis, and always advise the tests and a doctor.'; } catch (e) { }
   }
-  if (/varsh|solar return|year chart|annual chart|varshaphal|varshphal/i.test(q)) {
+  if (/varsh|solar return|year chart|annual chart|varshaphal|varshphal/i.test(Q0)) {
     try {
       var ag = (q.match(/age (\d{1,2})/i) || [])[1], yr = (q.match(/year (\d{1,2}) of life/i) || [])[1], aa = ag != null ? +ag : yr != null ? +yr - 1 : age(p, new Date()), vo = varshOutcome(p, c, new Date(), aa), V = vo.vp.chart;
       extra += '\n\nVARSHPHAL (Tajik annual chart) for age ' + aa + ', ' + N.dmy(vo.vp.at) + ' to ' + N.dmy(vo.vp.end) + ': Varsha lagna ' + J.SIGNS[V.ascSign] + '; Muntha ' + J.SIGNS[vo.vp.muntha] + ' in year house ' + vo.vp.munthaHouse + ' (' + MUNTHA_H[vo.vp.munthaHouse][1] + '); year lord ' + PN[vo.vp.yearLord] + '. Year planets: ' + V.planets.map(function (x) { return PN[x.code] + ' ' + J.SIGNS[x.sign] + ' h' + x.house + ' ' + x.dignity.toLowerCase(); }).join('; ') + '. App verdict: ' + vo.verdict[0] + '. Areas: ' + vo.areas.map(function (x) { return x.t + ' ' + x.w[0] + ' (' + x.why + ')'; }).join('; ') + '. Mudda dasha: ' + vo.months.map(function (m) { return PN[m.d.lord] + ' ' + N.dmy(m.d.start) + '–' + N.dmy(m.d.end) + ' ' + m.w[0]; }).join('; ') + '.';
     } catch (e) { }
   }
-  var rb = ''; try { var lo = answerAny(p, c, q); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
-  if (rb && !E.isKP(q)) rb = rb.split(/(?<=[.!?])\s+/).filter(function (x) { return !/\bKP\b|sub ?lord|significator|cusp/i.test(x); }).join(' ');
+  var rb = ''; try { var lo = answerAny(p, c, Q0); rb = (lo.text || htmlText(lo.html) || '').replace(/\s+/g, ' ').slice(0, 1500); } catch (e) { }
+  if (rb && !E.isKP(Q0)) rb = rb.split(/(?<=[.!?])\s+/).filter(function (x) { return !/\bKP\b|sub ?lord|significator|cusp/i.test(x); }).join(' ');
   if (rb) extra += '\n\nRULE-BASED VERDICT FROM THE APP (cross-check; if you disagree, say why)\n' + rb;
-  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c, E.isKP(q)) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
+  var contents = hist.concat([{ role: 'user', parts: [{ text: 'EVIDENCE SHEET (computed now for this question)\n' + ev.text + extra + '\n\nFULL CHART SUMMARY\n' + dossier(p, c, E.isKP(Q0)) + '\n\n==== CURRENT QUESTION (answer ONLY this) ====\n' + q } ] }]);
   var gc = { temperature: 0.35, maxOutputTokens: 32768, thinkingConfig: { includeThoughts: true } };
   if (DB.settings.gfast) { if (gVer(DB.settings.gmodel || GDEFAULT) >= 3) gc.thinkingConfig.thinkingLevel = 'low'; else gc.thinkingConfig.thinkingBudget = 1024; }
-  var intent = qIntent(q); gc.temperature = 0.2;
+  var intent = qIntent(Q0); gc.temperature = 0.2;
   contents[contents.length - 1].parts[0].text = fixedFacts(p, c) + '\n' + contents[contents.length - 1].parts[0].text;
   var rel = relOf(p), meP = me(), meName = meP && meP.id !== p.id ? meP.name.split(' ')[0] : 'the astrologer';
-  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) + (E.isKP(q) ? '\n' + E.RULES_KP : '\nThis is a Parashari reading with the N.C. Lahiri ayanamsa and whole-sign houses. Do NOT use or mention KP, sub lords, cusps, cuspal sub lords or significators.') }] }, contents: contents, generationConfig: gc });
+  var body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(name, intent, rel, meName) + (E.isKP(Q0) ? '\n' + E.RULES_KP : '\nThis is a Parashari reading with the N.C. Lahiri ayanamsa and whole-sign houses. Do NOT use or mention KP, sub lords, cusps, cuspal sub lords or significators.') }] }, contents: contents, generationConfig: gc });
   G_ON = onLive || null;
   return gGenerate(body).catch(function (e) {
     /* deep answer too slow or cut off before any text: try once more with light reasoning */

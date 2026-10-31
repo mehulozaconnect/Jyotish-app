@@ -21,7 +21,8 @@ function jointText(p, o, q) {
   var ag = askGemini;
   askGemini = function (p, c, q, onLive) {
     var js = jointPeople(p, q); if (!js.length) return ag(p, c, q, onLive);
-    return ag(p, c, q + '\n\n' + js.map(function (o) { return jointText(p, o, q); }).join('\n') + '\nYou HAVE the chart(s) above: use BOTH charts. For a relationship question judge each person: 7th house and its lord, Venus (and Jupiter for the wife\'s chart), the Moon (emotional nature and how each reacts), Mercury (how each communicates), and both running dashas with dates; use the Kundli Milan weak points to explain where friction comes from. Then give practical steps for each person separately and joint remedies. Never say you do not have the other chart.', onLive);
+    var q0 = String(q).split('\n\n')[0], relq = js.some(function (o) { return o.id === p.spouse; }) && JOINT_RE.test(q0) && !/relationship|marri|spouse|wife|husband/i.test(q0);
+    return ag(p, c, (relq ? q0 + ' (relationship question)' + String(q).slice(q0.length) : q) + '\n\n' + js.map(function (o) { return jointText(p, o, q); }).join('\n') + '\nYou HAVE the chart(s) above: use BOTH charts. For a relationship question judge each person: 7th house and its lord, Venus (and Jupiter for the wife\'s chart), the Moon (emotional nature and how each reacts), Mercury (how each communicates), and both running dashas with dates; use the Kundli Milan weak points to explain where friction comes from. Then give practical steps for each person separately and joint remedies. Never say you do not have the other chart.', onLive);
   };
   var a0 = AiV2;
   AiV2 = function () {

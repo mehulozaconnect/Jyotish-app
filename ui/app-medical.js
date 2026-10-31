@@ -111,9 +111,9 @@ var MED_RE = /\b(health|disease|ill|illness|sick|bp|blood pressure|diabet\w*|sug
 (function () {
   var ag = askGemini;
   askGemini = function (p, c, q, onLive) {
-    if (!MED_RE.test(q)) return ag(p, c, q, onLive);
-    var R; try { R = maOf(p); } catch (e) { return ag(p, c, q, onLive); }
-    return ag(p, c, q + '\n\n' + MA.RULES + '\n' + MA.text(R, p.name) + '\nUse the MEDICAL ASTROLOGY READING above as the primary source for this answer: name the body area and its layers, say what the running dasha and current transits mean for it with dates, give the matching care steps and doctor-alert signs, and the remedy plan by mode (what, how much, which day, how long).', onLive);
+    var q0 = String(q).split('\n\n')[0]; if (!MED_RE.test(q0)) return ag(p, c, q, onLive);
+    var tp = maTarget(p, q0), R; try { R = maOf(tp); } catch (e) { return ag(p, c, q, onLive); }
+    return ag(p, c, q + '\n\n' + MA.RULES + '\n' + MA.text(R, tp.name) + (tp.id !== p.id ? '\n(This health reading is for ' + tp.name + ', the person the question is about.)' : '') + '\nUse the MEDICAL ASTROLOGY READING above as the primary source for this answer: name the body area and its layers, say what the running dasha and current transits mean for it with dates, give the matching care steps and doctor-alert signs, and the remedy plan by mode (what, how much, which day, how long).', onLive);
   };
   var aa = answerAny;
   answerAny = function (p, c, q) {
@@ -200,13 +200,13 @@ ACT.mcTick = function (el) { var p = curP(), tk = DB.mtrack[p.id + '|' + el.data
 (function () {
   var ag = askGemini;
   askGemini = function (p, c, q, onLive) {
-    var hits = MC.find(q).slice(0, 2); if (!hits.length) return ag(p, c, q, onLive);
-    var R = maOf(p), extra = hits.map(function (x) { return MC.text(MC.analyze(c, R, x.id, new Date()), p.name); }).join('\n\n');
+    var q0 = String(q).split('\n\n')[0], tp = maTarget(p, q0), hits = MC.find(q0).filter(function (x) { return !(x.fem && tp.gender !== 'F'); }).slice(0, 2); if (!hits.length) return ag(p, c, q, onLive);
+    var R = maOf(tp), c2 = calcP(tp), extra = hits.map(function (x) { return MC.text(MC.analyze(c2, R, x.id, new Date()), tp.name); }).join('\n\n');
     return ag(p, c, q + '\n\n' + extra + '\nAnswer from this CASE FILE: what the chart shows, whether it is active now and when it is more or less active (exact dates), and the plan (doctor and tests, avoid, do, food, yoga, remedies by mode, doctor alert).', onLive);
   };
   var aa = answerAny;
   answerAny = function (p, c, q) {
-    var qq = typeof withContext === 'function' ? withContext(p, q) : q, hits = MC.find(qq); if (!hits.length) return aa(p, c, q);
+    var qq = typeof withContext === 'function' ? withContext(p, q) : q, hits = MC.find(String(qq).split('\n\n')[0]); if (!hits.length) return aa(p, c, q);
     var a = MC.analyze(c, maOf(p), hits[0].id, new Date()), pr = a.pr;
     return storyRes({ quick: pr.n + ': ' + a.tend.toLowerCase() + ', ' + a.nowWord.toLowerCase() + '.' + (a.sens[0] ? (a.sens[0].now ? ' Sensitive period running till ' + N.dmy(a.sens[0].end) + '.' : ' Next sensitive period from ' + N.dmy(a.sens[0].start) + '.') : ''),
       paras: [['sign', 'house', 'karaka'].map(function (x) { return a.layers[x].join('; '); }).filter(Boolean).join(' | ') || 'No strong indicator for this problem.', 'Now: ' + a.runL.slice(0, 2).map(function (r) { return MA.PN[r.lord] + (r.why.length ? ' (' + r.why[0] + ')' : ' (not linked)'); }).join(', ') + '. ' + a.trNow.map(function (t) { return t.t; }).join(' '), 'Tests: ' + pr.tests.join('; ') + '. Avoid: ' + pr.avoid.join('; ') + '.'],
@@ -250,3 +250,5 @@ function mcGen(p, id) {
   }).catch(function (e) { U.mcBusy = null; U.mcErr = { k: key, e: e.message }; if (location.hash.indexOf('medical/case/' + id) >= 0) rerender(true); });
 }
 ACT.mcRe = function (el) { var p = curP(), key = mcKey(p, el.dataset.id); if (DB.mcAI) delete DB.mcAI[key]; U.mcErr = null; U.mcBusy = null; rerender(true); };
+
+function maTarget(p, q0) { var hit = DB.people.filter(function (x) { if (x.id === p.id) return false; var fn = x.name.split(' ')[0].replace(/[^A-Za-z]/g, ''); return fn.length > 2 && new RegExp('\\b' + fn + '\\b', 'i').test(q0); })[0]; if (!hit && p.spouse && /\b(wife|husband|spouse|partner|patni|pati|biwi)\b/i.test(q0)) hit = person(p.spouse); return hit || p; }
