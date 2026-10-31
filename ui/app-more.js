@@ -9,13 +9,6 @@ function MoreScreen() {
     '<div class="field" style="margin-bottom:0"><span>CHART STYLE</span>' + sel('setStyle', [['north', 'North Indian'], ['south', 'South Indian']], s.style) + '</div>' +
     '<div class="note">KP screens always use the KP (Krishnamurti) ayanamsa. Houses: whole sign for Parashari, Placidus for KP and Chalit.</div></div>';
   h += '<div class="card"><h3>Location for Today</h3><div class="row"><div><b>' + esc(s.loc.name) + '</b><div class="mut" style="font-size:12px">' + (+s.loc.lat).toFixed(4) + ', ' + (+s.loc.lon).toFixed(4) + ' · ' + esc(s.loc.tz) + ' · ' + fmtOff(locOff()) + '</div></div><button class="btn sec sm" data-act="pickLoc">Change</button></div></div>';
-  h += '<div class="card"><h3>AI: Gemini</h3><p style="font-size:12.8px;margin-bottom:10px">Answers in the AI tab use your Gemini key with a full evidence sheet from the chart (D1, divisional chart, D9, all 5 dasha levels, aspects, transits, Ashtakavarga). The key stays on this phone.</p>' +
-    '<label class="field"><span>GEMINI API KEY</span><input class="inp mono" type="password" data-in="setGkey" value="' + esc(s.gkey || '') + '" placeholder="AIza..." autocomplete="off"></label>' +
-    '<div class="field"><span>MODEL</span>' + sel('setGmodel', gModelOpts(), s.gmodel || GDEFAULT) + '</div>' +
-    '<label class="field"><span>OR TYPE A MODEL NAME</span><input class="inp mono" data-in="setGmodelTxt" value="' + esc(s.gmodel || '') + '" placeholder="' + GDEFAULT + '"></label>' +
-    '<div class="field"><span>ANSWER STYLE</span>' + sel('setGfast', [['0', 'Deep: most careful reasoning (slower)'], ['1', 'Fast: quicker answers, lighter reasoning']], s.gfast ? '1' : '0') + '</div>' +
-    '<button class="btn sec wide" data-act="testGkey">Test the key and find the best model</button>' +
-    '<div class="note">The test checks which Gemini models your key can use and picks the newest Pro model. On a free key Google gives no Pro quota, so the app uses the newest Flash model instead. If Google retires a model, the app switches by itself.</div></div>';
   h += '<div class="card"><h3>Reminders</h3><button class="btn sec wide" data-go="reminders">Reminders and alerts</button></div>';
   h += '<div class="card"><h3>People</h3><button class="btn sec wide" data-go="people">Manage people and kundlis</button></div>';
   h += '<div class="card"><h3>Your data</h3><p style="font-size:12.8px;margin-bottom:10px">' + DB.people.length + ' kundlis are stored only on this phone. Make a backup file before changing phones.</p><div class="grid2"><button class="btn" data-act="backup">Backup</button><button class="btn sec" data-act="restore">Restore</button></div></div>';
@@ -23,7 +16,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '3.7.0';
+var APP_VERSION = '3.8.0';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };

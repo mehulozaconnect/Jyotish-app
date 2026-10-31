@@ -134,7 +134,7 @@ function hiApply(fetch) {
     if (done[t]) return; var v = (isHi() ? HI[t] : null) || cache[t]; if (v) { n.nodeValue = lead + v + tail; return; }
     if (t.length <= 600) want.push(t);
   }); });
-  if (fetch && want.length && DB.settings.gkey) { want.forEach(function (t) { HI_PEND[t] = 1; }); hiFetch(); }
+  if (fetch && want.length && DB.settings.ckey) { want.forEach(function (t) { HI_PEND[t] = 1; }); hiFetch(); }
 }
 function hiFetch() {
   if (HI_BUSY) return; var keys = Object.keys(HI_PEND), batch = [], len = 0;
@@ -158,7 +158,7 @@ function hiFetch() {
 })();
 function langCard() {
   var m = DB.settings.lang || 'en';
-  return '<div class="card"><h3>Language</h3><div class="seg seg4">' + [['en', 'English'], ['easy', 'Easy English'], ['hing', 'Hinglish'], ['hi', 'हिंदी']].map(function (l) { return '<button data-notr class="' + (m === l[0] ? 'on' : '') + '" data-act="setLang" data-v="' + l[0] + '">' + l[1] + '</button>'; }).join('') + '</div><p class="note">' + ({ en: 'Normal app English. AI answers use simple everyday English.', easy: 'Every reading is rewritten in short, easy sentences.', hing: 'Every reading is rewritten in Hinglish, e.g. "Is mahine career mein growth hogi, lekin jaldi decisions mat lena."', hi: 'Menus switch to Hindi at once; readings are translated into Hindi.' }[m]) + (m !== 'en' ? (DB.settings.gkey ? ' Gemini rewrites each screen the first time you open it; after that it works offline. AI answers come in the same language.' : ' Add your Gemini key below to rewrite the readings; until then only the AI style changes.') : '') + '</p></div>';
+  return '<div class="card"><h3>Language</h3><div class="seg seg4">' + [['en', 'English'], ['easy', 'Easy English'], ['hing', 'Hinglish'], ['hi', 'हिंदी']].map(function (l) { return '<button data-notr class="' + (m === l[0] ? 'on' : '') + '" data-act="setLang" data-v="' + l[0] + '">' + l[1] + '</button>'; }).join('') + '</div><p class="note">' + ({ en: 'Normal app English. AI answers use simple everyday English.', easy: 'Every reading is rewritten in short, easy sentences.', hing: 'Every reading is rewritten in Hinglish, e.g. "Is mahine career mein growth hogi, lekin jaldi decisions mat lena."', hi: 'Menus switch to Hindi at once; readings are translated into Hindi.' }[m]) + (m !== 'en' ? (DB.settings.ckey ? ' Claude rewrites each screen the first time you open it; after that it works offline. AI answers come in the same language.' : ' Add your Claude key in AI engine below to rewrite the readings; until then only the AI style changes.') : '') + '</p></div>';
 }
 ACT.setLang = function (el) { DB.settings.lang = el.dataset.v; save(); rerender(true); };
 
@@ -281,7 +281,7 @@ function withContext(p, q) {
     else res = aa(p, c, qq);
     var l = DB.chats[p.id] || [], prevBot = l.filter(function (m) { return m.role === 'bot'; }).slice(-1)[0];
     if (res && res.story && res.story.question && prevBot) res = storyRes(Object.assign({}, res.story, { question: null }));
-    if (res && prevBot && prevBot.text && res.text && prevBot.text.indexOf(res.text.slice(0, 120)) >= 0) res.html = '<div class="msg bot"><p class="mut" style="font-size:12.5px">The offline engine has nothing new for this follow-up. Ask Gemini again for a specific answer, or ask in a fuller sentence.</p></div>';
+    if (res && prevBot && prevBot.text && res.text && prevBot.text.indexOf(res.text.slice(0, 120)) >= 0) res.html = '<div class="msg bot"><p class="mut" style="font-size:12.5px">The offline engine has nothing new for this follow-up. Ask again for a specific answer, or ask in a fuller sentence.</p></div>';
     return res;
   };
   var ag = askGemini;
@@ -291,7 +291,7 @@ function withContext(p, q) {
     var q2 = qq + (biz ? '\n\nAPP SCORING FOR BUSINESS VS JOB: ' + (function () { var b = bizJob(p, c, new Date()); return b.quick + ' ' + b.paras.join(' ') + ' ' + b.short; })() : '');
     return ag(p, c, q2, onLive).catch(function (e) {
       if (/limit reached|API key|PERMISSION|invalid/i.test(e.message)) throw e;
-      if (aiOrder().length > 1) throw e; /* the other provider was already tried */
+      if (DB.settings.aiProv !== 'gemini') { if (onLive) onLive('thought', 'Retrying…'); return ag(p, c, q2, null); }
       /* second try: non-streaming, light reasoning, same model */
       if (onLive) onLive('thought', 'Retrying with a quicker answer…');
       var keep = DB.settings.gfast; DB.settings.gfast = true;
@@ -313,7 +313,7 @@ function withContext(p, q) {
 
 /* ================= AI: two providers, failover, rate limits, health log ================= */
 var CMODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recommended)'], ['claude-opus-5-5', 'Claude Opus 5.5 (best, costlier)'], ['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 (fastest, cheapest)']];
-function hasAI() { return !!(DB.settings.gkey || DB.settings.ckey); }
+function hasAI() { return !!DB.settings.ckey; }
 function aiLog(x) { x.t = Date.now(); DB.ailog = (DB.ailog || []).concat([x]).slice(-30); try { save(); } catch (e) { } }
 function claudeBody(body) {
   var b = JSON.parse(body), sys = b.system_instruction ? b.system_instruction.parts.map(function (p) { return p.text; }).join('\n') : '', msgs = [];
@@ -354,11 +354,11 @@ function aiWaitTurn(bg) {
   });
 }
 var gGen0 = gGenerate;
-function aiOrder() { var pr = DB.settings.aiProv || (DB.settings.gkey ? 'gemini' : 'claude'), o = [pr, pr === 'gemini' ? 'claude' : 'gemini']; return o.filter(function (x) { return x === 'gemini' ? DB.settings.gkey : DB.settings.ckey; }); }
+function aiOrder() { return DB.settings.ckey ? ['claude'] : []; }
 gGenerate = function (body, depth) {
   if (arguments.length > 1) return gGen0(body, depth);
   var bg = !G_ON && /You (translate|rewrite) the text|DAILY BRIEF/.test(body), order = aiOrder();
-  if (!order.length) return Promise.reject(new Error('Add a Gemini or Claude key in Settings'));
+  if (!order.length) return Promise.reject(new Error('Add your Claude key in Settings › AI engine'));
   if (!bg) AIQ.fg++;
   function done(x) { if (!bg) AIQ.fg = Math.max(0, AIQ.fg - 1); return x; }
   function tryP(i, firstErr) {
@@ -396,10 +396,10 @@ function gReliable(model, e) {
 /* ---------- Settings: AI card ---------- */
 function aiCard() {
   var s = DB.settings, log = (DB.ailog || []).slice(-8).reverse(), pr = s.aiProv || (s.gkey ? 'gemini' : 'claude');
-  var h = '<div class="card"><h3>AI engine</h3><div class="field"><span>ANSWER WITH</span><div class="seg">' + [['gemini', 'Gemini (free)'], ['claude', 'Claude (paid)']].map(function (x) { return '<button class="' + (pr === x[0] ? 'on' : '') + '" data-act="setProv" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>';
+  var h = '<div class="card"><h3>AI engine: Claude</h3>';
   h += '<label class="field"><span>CLAUDE API KEY (console.anthropic.com)</span><input class="inp mono" type="password" data-in="setCkey" value="' + esc(s.ckey || '') + '" placeholder="sk-ant-..." autocomplete="off"></label>';
   h += '<div class="field"><span>CLAUDE MODEL</span>' + sel('setCmodel', CMODELS, s.cmodel || CMODELS[0][0]) + '</div>';
-  h += '<p class="note">' + (s.gkey && s.ckey ? 'Both keys are set: if one fails, the other answers automatically.' : 'Add both keys for automatic backup: when one fails or is busy, the other answers.') + ' Claude is paid: Anthropic bills each question to your account (Haiku is cheapest, Opus costliest).</p>';
+  h += '<p class="note">All AI in Trikaal (answers, health analysis, daily brief, translations) uses Claude. Anthropic bills each call to your account: Sonnet is the best balance, Haiku is cheapest, Opus is the most thorough and costliest.</p>';
   h += '<button class="btn sec wide" data-act="aiTest">Test AI now</button>';
   if (log.length) h += '<div class="lbl" style="margin:12px 0 4px">Last AI calls</div>' + log.map(function (x) { var d = new Date(x.t); return '<div class="ailog ' + (x.ok ? 'ok' : 'bad') + '"><b>' + (x.ok ? '✓' : '✗') + '</b><span>' + (x.p === 'gemini' ? 'Gemini' : 'Claude') + ' · ' + esc(x.m) + ' · ' + (x.k === 'bg' ? 'background' : 'question') + ' · ' + (x.ms / 1000).toFixed(1) + 's<small>' + N.dmy(d) + ' ' + N.hm(d) + (x.e ? ' · ' + esc(x.e) : '') + '</small></span></div>'; }).join('');
   return h + '</div>';
@@ -468,3 +468,6 @@ function briefLoad(p) {
   };
   var r1 = render; render = function () { r1(); try { addAiButtons(); } catch (e) { } };
 })();
+
+/* Claude is the only AI engine */
+if (DB.settings.gkey) { delete DB.settings.gkey; DB.settings.aiProv = 'claude'; try { save(); } catch (e) { } }

@@ -114,7 +114,7 @@ function mdLvlW(x) { return { b: 'Higher', m: 'Medium', g: 'Lower' }[mdLvl(x)]; 
 function mcDeep(p, c, R, a) {
   var key = mdKey(p, a.pr.id), J2 = (DB.mcDeep || {})[key], n1 = p.name.split(' ')[0];
   if (!J2) {
-    if (!hasAI()) return '<div class="card mdwait"><b>Want a detailed, personal analysis?</b><p>Add a Gemini (free) or Claude key in Settings › AI engine. The AI then studies ' + esc(n1) + '\'s chart for this problem and breaks it down sub-problem by sub-problem with a plan.</p><button class="btn sec sm" data-go="more">Open Settings</button></div>';
+    if (!hasAI()) return '<div class="card mdwait"><b>Want a detailed, personal analysis?</b><p>Add your Claude key in Settings › AI engine. The AI then studies ' + esc(n1) + '\'s chart for this problem and breaks it down sub-problem by sub-problem with a plan.</p><button class="btn sec sm" data-go="more">Open Settings</button></div>';
     var err = U.mdErr && U.mdErr.k === key ? U.mdErr.e : '';
     if (!err && U.mdBusy !== key) U.after = (U.after || []).concat([function () { mdGen(p, a.pr.id); }]);
     return '<div class="card mdwait">' + (err ? '<b>Detailed analysis could not be written</b><p>' + esc(err) + '</p><button class="btn sec sm" data-act="mdRe" data-id="' + a.pr.id + '">Try again</button>' : '<span class="typing"><i></i><i></i><i></i></span><b>Doing a detailed analysis of ' + esc(n1) + '\'s ' + esc(a.pr.n.toLowerCase()) + '</b><p>Reading the chart, the current period and the sky, and turning it into a simple plan. About 30–60 seconds.</p>') + '</div>';

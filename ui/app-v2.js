@@ -488,10 +488,10 @@ function liveHtml(L) {
 }
 function AiV2() {
   var p = curP(); if (!p) return topBar('Ask AI', { noPerson: true }) + noPerson();
-  var msgs = DB.chats[p.id] || [], hasKey = !!DB.settings.gkey;
-  var h = topBar('Ask AI', { right: '<span class="gem">' + (hasKey ? '✦ Gemini' : 'Offline') + '</span>' + (msgs.length ? '<button class="v2ib" data-act="clearAsk" aria-label="Clear conversation" style="color:var(--bad)">' + icon('trash', 18) + '</button>' : '') }) + '<div class="pad">';
+  var msgs = DB.chats[p.id] || [], hasKey = !!DB.settings.ckey;
+  var h = topBar('Ask AI', { right: '<span class="gem">' + (hasKey ? '✦ Claude' : 'Offline') + '</span>' + (msgs.length ? '<button class="v2ib" data-act="clearAsk" aria-label="Clear conversation" style="color:var(--bad)">' + icon('trash', 18) + '</button>' : '') }) + '<div class="pad">';
   if (relOf(p) !== 'me') h += '<div class="cline">Consulting for <b>' + esc(p.name) + '</b> · ' + (relOf(p) === 'client' ? 'client' : 'family / friend') + ' · answers are written for you to explain to them</div>';
-  if (!hasKey) h += '<div class="card"><b style="font:600 15px var(--sans)">Connect Gemini for full answers</b><p class="sm" style="margin:6px 0 10px">Paste your Gemini API key (from aistudio.google.com). Every answer will then use your D1, divisional chart, all 5 dasha levels, aspects, transits and Ashtakavarga. Without a key you get the shorter offline answers.</p><input class="inp mono" id="gkeyIn" placeholder="AIza..." autocomplete="off"><button class="btn acc wide" style="margin-top:8px" data-act="saveGkey">Save key</button></div>';
+  if (!hasKey) h += '<div class="card"><b style="font:600 15px var(--sans)">Connect Claude for full answers</b><p class="sm" style="margin:6px 0 10px">Paste your Claude API key (from console.anthropic.com). Every answer will then use your full chart, dashas, transits and the medical astrology section. Without a key you get the shorter offline answers.</p><input class="inp mono" id="gkeyIn" placeholder="sk-ant-..." autocomplete="off"><button class="btn acc wide" style="margin-top:8px" data-act="saveGkey">Save key</button></div>';
   h += '</div>';
   var Q0 = ['How will my health be in the next 3 months?', 'Will I get a promotion this year?', 'Explain my Ashtakavarga', 'What does my current dasha mean?', 'How is my D9 for marriage?', 'Best time to invest in the next 6 months?'];
   var fn = p.name.split(' ')[0], Q = relOf(p) === 'me' ? Q0 : ['Key points to tell ' + fn, 'What should I tell ' + fn + ' about career and money?', fn + '\'s golden periods and cautions', 'Which raj yogas does ' + fn + ' have?', 'Remedies I should suggest to ' + fn, 'Explain ' + fn + '\'s current dasha'];
@@ -500,7 +500,7 @@ function AiV2() {
   U.after = (U.after || []).concat([function () { window.scrollTo(0, document.body.scrollHeight); }]);
   return h;
 }
-ACT.saveGkey = function () { var v = ($('#gkeyIn').value || '').trim(); if (!v) return toast('Paste the key first'); DB.settings.gkey = v; save(); toast('Gemini connected'); rerender(); };
+ACT.saveGkey = function () { var v = ($('#gkeyIn').value || '').trim(); if (!v) return toast('Paste the key first'); DB.settings.ckey = v; save(); toast('Gemini connected'); rerender(); };
 ACT.clearAsk = function () {
   var p = curP(), n = (DB.chats[p.id] || []).filter(function (m) { return m.role === 'me'; }).length;
   var others = Object.keys(DB.chats).filter(function (k) { return k !== p.id && (DB.chats[k] || []).length; }).length;
@@ -521,7 +521,7 @@ ACT.askSend = function () {
   t.value = ''; t.style.height = '';
   var c = calcP(p), list = DB.chats[p.id] = DB.chats[p.id] || [];
   list.push({ role: 'me', text: q });
-  if (!DB.settings.gkey) {
+  if (!DB.settings.ckey) {
     var res = null; try { res = answerAny(p, c, q); } catch (e) { res = { html: '<p>Could not work that out: ' + esc(e.message) + '</p>' }; }
     list.push(res && res.story ? { role: 'bot', multi: true, ask: !!res.story.question, html: res.html, text: res.text } : { role: 'bot', html: res ? res.html : HELP, text: res ? (res.text || htmlText(res.html)).slice(0, 3000) : '' });
     trimChat(list); save(); rerender(); return;
@@ -543,7 +543,7 @@ ACT.askSend = function () {
     clearInterval(tick); delete U.live[p.id];
     delete U.pending[p.id];
     var res = null; try { res = answerAny(p, c, q); } catch (x) { }
-    list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px">Gemini could not answer: ' + esc(e.message.replace(/\.$/, '')) + '. ' + (res ? 'Offline answer below.' : '') + '</p><button class="btn sec sm" style="margin-top:8px" data-act="retryAsk" data-q="' + esc(q) + '">↻ Ask Gemini again</button></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });
+    list.push({ role: 'bot', multi: !!(res && res.story), html: '<div class="msg bot"><p class="mut" style="font-size:12.5px"AI could not answer: ' + esc(e.message.replace(/\.$/, '')) + '. ' + (res ? 'Offline answer below.' : '') + '</p><button class="btn sec sm" style="margin-top:8px" data-act="retryAsk" data-q="' + esc(q) + '">↻ Ask again</button></div>' + (res ? (res.story ? res.html : '<div class="msg bot">' + res.html + '</div>') : ''), text: '' });
     list[list.length - 1].multi = true; trimChat(list); save(); if (location.hash.indexOf('ai') >= 0) rerender();
   });
 };
