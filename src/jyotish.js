@@ -448,8 +448,14 @@ function makeJyotish(A, C) {
     var l11 = lord(11); if (P[l11].house === 11 || P[l11].house === 2) add('Dhana yoga', 'dhana', '11th lord ' + PNAME[l11] + ' in the ' + P[l11].house + (P[l11].house === 11 ? 'th' : 'nd') + ': steady gains.');
     /* Panch Mahapurusha */
     [['Ma', 'Ruchaka'], ['Me', 'Bhadra'], ['Ju', 'Hamsa'], ['Ve', 'Malavya'], ['Sa', 'Sasa']].forEach(function (x) { var p = P[x[0]]; if ([1, 4, 7, 10].indexOf(p.house) >= 0 && (p.dignity === 'Exalted' || p.dignity === 'Own sign' || p.dignity === 'Moolatrikona')) add(x[1] + ' yoga', 'mahapurusha', PNAME[x[0]] + ' ' + p.dignity.toLowerCase() + ' in the ' + p.house + ' (a kendra).'); });
-    var jm = houseFrom(P.Mo.sign, P.Ju.sign); if ([1, 4, 7, 10].indexOf(jm) >= 0) add('Gajakesari yoga', 'good', 'Jupiter in the ' + jm + ' from the Moon.');
-    if (P.Su.sign === P.Me.sign) add('Budhaditya yoga', 'good', 'Sun and Mercury together in ' + SIGNS[P.Su.sign] + (P.Me.combust ? ' (Mercury combust, so milder)' : '') + '.');
+    var mElong = norm(P.Mo.lon - P.Su.lon), moonDark = mElong < 72 || mElong > 288, weakD = ['Debilitated', 'Enemy sign'];
+    var jm = houseFrom(P.Mo.sign, P.Ju.sign); if ([1, 4, 7, 10].indexOf(jm) >= 0) {
+      var gw = []; if (weakD.indexOf(P.Ju.dignity) >= 0 || P.Ju.combust) gw.push('Jupiter is ' + (P.Ju.combust ? 'combust' : P.Ju.dignity.toLowerCase()));
+      if (P.Mo.dignity === 'Debilitated') gw.push('the Moon is debilitated'); else if (moonDark) gw.push('the Moon is dark (close to Amavasya)');
+      if ([P.Ra.sign, P.Ke.sign].indexOf(P.Mo.sign) >= 0 || [P.Ra.sign, P.Ke.sign].indexOf(P.Ju.sign) >= 0) gw.push('Rahu or Ketu sits with the Moon or Jupiter');
+      if (gw.length) add('Gajakesari yoga (weak)', 'mild', 'Jupiter is in the ' + jm + ' from the Moon, but ' + gw.join(' and ') + ', so the yoga gives only part of its result.');
+      else add('Gajakesari yoga', 'good', 'Jupiter in the ' + jm + ' from the Moon, and both are in good condition.'); }
+    if (P.Su.sign === P.Me.sign) { if (P.Me.combust) add('Budhaditya yoga (weak)', 'mild', 'Sun and Mercury together in ' + SIGNS[P.Su.sign] + ', but Mercury is combust (too close to the Sun), so the yoga is mild.'); else add('Budhaditya yoga', 'good', 'Sun and Mercury together in ' + SIGNS[P.Su.sign] + ' with Mercury not combust.'); }
     if (P.Mo.sign === P.Ma.sign) add('Chandra-Mangal yoga', 'dhana', 'Moon and Mars together: earning drive.');
     /* exchanges */
     P7.forEach(function (a) { P7.forEach(function (b) { if (a < b && RULER[P[a].sign] === b && RULER[P[b].sign] === a) {
@@ -466,12 +472,28 @@ function makeJyotish(A, C) {
     var adhi = ['Ju', 'Ve', 'Me'].filter(function (c) { return [6, 7, 8].indexOf(houseFrom(P.Mo.sign, P[c].sign)) >= 0; }); if (adhi.length >= 2) add('Adhi yoga', 'good', adhi.map(function (c) { return PNAME[c]; }).join(', ') + ' in 6/7/8 from the Moon.');
     /* Doshas */
     var s2 = (P.Mo.sign + 1) % 12, s12 = (P.Mo.sign + 11) % 12, around = k.planets.filter(function (p) { return ['Su', 'Ra', 'Ke', 'Mo'].indexOf(p.code) < 0 && (p.sign === s2 || p.sign === s12 || p.sign === P.Mo.sign); });
-    if (!around.length) add('Kemadruma yoga', 'dosha', 'No planet in the 2nd, 12th or with the Moon (Sun and nodes excluded).');
+    if (!around.length) { var kc = []; if ([1, 4, 7, 10].indexOf(P.Mo.house) >= 0) kc.push('the Moon sits in a kendra'); var kk = k.planets.filter(function (p) { return ['Su', 'Mo', 'Ra', 'Ke'].indexOf(p.code) < 0 && [1, 4, 7, 10].indexOf(houseFrom(P.Mo.sign, p.sign)) > 0; }); if (kk.length) kc.push(kk.map(function (p) { return p.name; }).join(', ') + ' in a kendra from the Moon');
+      if (aspectedHouses('Ju', P.Ju.house).indexOf(P.Mo.house) >= 0) kc.push('Jupiter aspects the Moon'); if (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(P.Mo.dignity) >= 0) kc.push('the Moon is strong');
+      if (kc.length) add('Kemadruma yoga (cancelled)', 'mild', 'No planet next to the Moon, but it is cancelled because ' + kc.join(', ') + '.'); else add('Kemadruma yoga', 'dosha', 'No planet in the 2nd, 12th or with the Moon (Sun and nodes excluded).'); }
     var shk = houseFrom(P.Ju.sign, P.Mo.sign); if ([6, 8, 12].indexOf(shk) >= 0) add('Shakata yoga', 'dosha', 'Moon in the ' + shk + ' from Jupiter: ups and downs in fortune.');
     var ra = P.Ra.lon, inArc = function (x) { return norm(x - ra) < 180; }, sides = P7.map(function (c) { return inArc(P[c].lon); });
-    if (sides.every(function (x) { return x; }) || sides.every(function (x) { return !x; })) add('Kaal Sarp dosha', 'dosha', 'All seven planets lie on one side of the Rahu–Ketu axis.');
+    var inA = sides.filter(function (x) { return x; }).length, outs = P7.filter(function (c, i) { return sides[i] !== (inA >= 4); });
+    if (inA === 7 || inA === 0) { var ksr = []; if ([3, 6, 11].indexOf(P.Ra.house) >= 0) ksr.push('Rahu is in a growth house (' + P.Ra.house + ')'); if (aspectedHouses('Ju', P.Ju.house).indexOf(P.Ra.house) >= 0 || aspectedHouses('Ju', P.Ju.house).indexOf(P.Ke.house) >= 0 || P.Ju.sign === P.Ra.sign || P.Ju.sign === P.Ke.sign) ksr.push('Jupiter touches the Rahu–Ketu axis');
+      var ll = lordOfHouse(L, 1); if (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(P[ll].dignity) >= 0 || [1, 4, 7, 10, 5, 9].indexOf(P[ll].house) >= 0 && weakD.indexOf(P[ll].dignity) < 0) ksr.push('the lagna lord is strong');
+      if (ksr.length) add('Kaal Sarp yoga (reduced)', 'mild', 'All seven planets lie on one side of the Rahu–Ketu axis, but ' + ksr.join(' and ') + ': expect effort and late success, not blockage.');
+      else add('Kaal Sarp dosha', 'dosha', 'All seven planets lie on one side of the Rahu–Ketu axis: success comes after struggle; it builds a fighter.'); }
+    else if (outs.length === 1) add('Kaal Sarp (cancelled)', 'mild', 'Six planets sit on one side of the Rahu–Ketu axis, but ' + PNAME[outs[0]] + ' is outside it, so the dosha does not form.');
     var md = [1, 2, 4, 7, 8, 12], mHouses = [['lagna', P.Ma.house], ['Moon', houseFrom(P.Mo.sign, P.Ma.sign)], ['Venus', houseFrom(P.Ve.sign, P.Ma.sign)]].filter(function (x) { return md.indexOf(x[1]) >= 0; });
-    if (mHouses.length) add('Mangal dosha', mHouses[0][0] === 'lagna' || mHouses[0][0] === 'Moon' ? 'dosha' : 'mild', 'Mars in the ' + mHouses.map(function (x) { return x[1] + ' from ' + x[0]; }).join(', ') + '.' + (P.Ma.dignity === 'Own sign' || P.Ma.dignity === 'Exalted' ? ' Reduced: Mars is strong in its sign.' : ''));
+    if (mHouses.length) { var mc = [];
+      if (['Own sign', 'Exalted', 'Moolatrikona'].indexOf(P.Ma.dignity) >= 0) mc.push('Mars is strong in its own or exalted sign');
+      if (P.Ju.sign === P.Ma.sign || aspectedHouses('Ju', P.Ju.house).indexOf(P.Ma.house) >= 0) mc.push('Jupiter joins or aspects Mars');
+      if (P.Ma.house === 2 && (P.Ma.sign === 2 || P.Ma.sign === 5)) mc.push('Mars in the 2nd in Gemini or Virgo gives no dosha');
+      var l7 = lordOfHouse(L, 7); if (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(P[l7].dignity) >= 0 && [6, 8, 12].indexOf(P[l7].house) < 0) mc.push('the 7th lord ' + PNAME[l7] + ' is strong');
+      if (k.date) { var ag = (Date.now() - k.date.getTime()) / (365.25 * DAY); if (ag >= 28) mc.push('past age 28, when it traditionally eases'); }
+      var main = mHouses[0][0] === 'lagna' || mHouses[0][0] === 'Moon';
+      add(mc.length ? 'Mangal dosha (reduced)' : 'Mangal dosha', mc.length || !main ? 'mild' : 'dosha', 'Mars in the ' + mHouses.map(function (x) { return x[1] + ' from ' + x[0]; }).join(', ') + '.' + (mc.length ? ' Reduced because ' + mc.join('; ') + '. If both partners have it, it cancels out.' : ' Match both charts fully; if both partners have it, it cancels out.')); }
+    if (P.Ma.sign === P.Ra.sign) add('Angarak yoga', 'dosha', 'Mars with Rahu in ' + SIGNS[P.Ma.sign] + ': quick anger and hasty moves; channel the energy into sport or hard work, and practise pausing before reacting.');
+    if (P.Sa.sign === P.Mo.sign) add('Vish yoga', 'mild', 'Saturn with the Moon in ' + SIGNS[P.Mo.sign] + ': a tendency to worry and heavy moods, but also depth, patience and a research mind. A steady routine and meditation help.');
     return out;
   }
 

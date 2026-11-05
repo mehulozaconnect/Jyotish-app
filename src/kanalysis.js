@@ -74,7 +74,8 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     function conj(a, b) { return P[a].sign === P[b].sign; }
     if (conj('Ju', 'Ra')) add('Guru Chandal yoga', 'dosha', 'Jupiter with Rahu in ' + SG[P.Ju.sign] + ': judgment and guidance can be clouded; respect teachers.');
     if (conj('Su', 'Ra') || conj('Su', 'Ke') || conj('Mo', 'Ra') || conj('Mo', 'Ke')) add('Grahan yoga', 'dosha', ['Su', 'Mo'].filter(function (x) { return conj(x, 'Ra') || conj(x, 'Ke'); }).map(function (x) { return PN[x] + ' with ' + (conj(x, 'Ra') ? 'Rahu' : 'Ketu'); }).join(', ') + ': eclipsed light, inner restlessness.');
-    if (conj('Su', 'Sa') || conj('Su', 'Ra')) add('Pitru dosha (indication)', 'dosha', 'Sun with ' + (conj('Su', 'Sa') ? 'Saturn' : 'Rahu') + ': ancestral karma; Shraddha and service to elders help.');
+    var l9p = J.lordOfHouse(c.k.ascSign, 9), n9 = k.planets.filter(function (p) { return p.house === 9 && ['Sa', 'Ra', 'Ke'].indexOf(p.code) >= 0; }), w9 = DUS.indexOf(P[l9p].house) >= 0 || P[l9p].dignity === 'Debilitated';
+    if (conj('Su', 'Ra') || (n9.length && w9)) add('Pitru dosha (indication)', 'mild', (conj('Su', 'Ra') ? 'Sun with Rahu' : list(n9.map(function (p) { return PN[p.code]; })) + ' in the 9th with a weak 9th lord') + ': a reminder of duty to elders and ancestors, not a curse. Tarpan in Pitru Paksha, food daan on Amavasya and serving parents settle it.');
     if (conj('Sa', 'Ra')) add('Shrapit yoga', 'dosha', 'Saturn with Rahu: delays that clear through patience and service.');
     var s2 = (P.Mo.sign + 1) % 12, s12 = (P.Mo.sign + 11) % 12, ok = ['Ma', 'Me', 'Ju', 'Ve', 'Sa'];
     var a2 = ok.filter(function (x) { return P[x].sign === s2; }), a12 = ok.filter(function (x) { return P[x].sign === s12; });
@@ -98,6 +99,13 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
 
   /* ---------- outcome text for each item: what it means in life, and when it shows ---------- */
   var YOGA_MEAN = [
+    [/\(cancelled\)/, 'the condition does not fully form in your chart, so there is nothing to worry about here'],
+    [/Gajakesari yoga \(weak\)/, 'some respect and wisdom, but the full benefit comes only when Jupiter and the Moon get support (their dashas, good transits, Moon remedies)'],
+    [/Budhaditya yoga \(weak\)/, 'a good mind, but recognition needs extra effort because Mercury is too close to the Sun'],
+    [/Kaal Sarp yoga \(reduced\)/, 'effort and some late results, but no real blockage; it builds persistence'],
+    [/Mangal dosha \(reduced\)/, 'a little extra heat in marriage, mostly cancelled by your chart; match charts calmly, no fear needed'],
+    [/Angarak/, 'quick anger and hasty decisions; channel the energy into exercise or hard work and pause before reacting'],
+    [/Vish yoga/, 'worry and heavy moods at times, but also depth and patience; routine, meditation and Shiva worship help'],
     [/Yogakaraka/, 'the planet that rules both a kendra and a trikona: its periods bring status, property and good fortune together'],
     [/Dharma-Karmadhipati/, 'luck and career join hands: work brings recognition and the right opportunities come at the right time'],
     [/Raja yoga/, 'a Raja yoga lifts status, authority and recognition; you rise above your starting point'],
@@ -211,7 +219,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     (s11 > s12 ? pros : cons).push({ t: s11 > s12 ? 'Income tends to run ahead of expenses' : 'Expenses tend to keep pace with income', why: ['11th house ' + s11 + ' vs 12th house ' + s12 + ' points.'] });
     allYogas.filter(function (y) { return /raja|mahapurusha|dhana/.test(y.kind) && !/^Yogakaraka/.test(y.name); }).slice(0, 4).forEach(function (y) { pros.push({ t: y.name, why: [y.why] }); });
     allYogas.filter(function (y) { return y.kind === 'dosha' || y.kind === 'weak'; }).forEach(function (y) { cons.push({ t: y.name, why: [y.why] }); });
-    allYogas.filter(function (y) { return y.kind === 'mild'; }).forEach(function (y) { cons.push({ t: y.name + ' (mild)', why: [y.why] }); });
+    allYogas.filter(function (y) { return y.kind === 'mild' && !/cancelled/.test(y.name); }).forEach(function (y) { cons.push({ t: y.name + (/\(/.test(y.name) ? '' : ' (mild)'), why: [y.why] }); });
     /* weakest planets: their areas need support */
     J.P7.slice().sort(function (a, b) { return sc[a].s - sc[b].s; }).slice(0, 2).forEach(function (x) {
       if (sc[x].s >= 1.5) return;

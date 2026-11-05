@@ -25,6 +25,8 @@ var MIL = (function () {
     if (['Own sign', 'Exalted', 'Moolatrikona'].indexOf(P.Ma.dignity) >= 0) red.push('Mars is strong in its own or exalted sign');
     if ([0, 7, 9].indexOf(P.Ma.sign) >= 0 && red.length === 0) red.push('Mars in Aries, Scorpio or Capricorn');
     if (P.Ju.sign === P.Ma.sign || J.aspectedHouses('Ju', P.Ju.house).indexOf(P.Ma.house) >= 0) red.push('Jupiter sees or joins Mars');
+    if (P.Ma.house === 2 && (P.Ma.sign === 2 || P.Ma.sign === 5)) red.push('Mars in the 2nd in Gemini or Virgo is a classical exception');
+    var l7m = J.lordOfHouse(c.k.ascSign, 7); if (['Exalted', 'Own sign', 'Moolatrikona'].indexOf(P[l7m].dignity) >= 0 && [6, 8, 12].indexOf(P[l7m].house) < 0) red.push('the 7th lord is strong');
     var a = age(c.p, new Date()); if (a >= 28) red.push('person is past 28, when the dosha is traditionally weaker');
     var lvl = red.length ? 1 : hit.length === 2 ? 3 : 2;
     return { lvl: lvl, t: lvl === 1 ? 'Mild Mangal dosha (reduced)' : lvl === 3 ? 'Strong Mangal dosha' : 'Mangal dosha', why: 'Mars in the ' + hit.join(' and ') + '.' + (red.length ? ' Reduced because ' + red.join('; ') + '.' : '') };

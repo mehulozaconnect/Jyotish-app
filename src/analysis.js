@@ -125,7 +125,9 @@ function makeAnalysis(A, C, J, KB) {
     var map = { 12: ['Sade Sati: rising phase', 'bad'], 1: ['Sade Sati: peak phase', 'bad'], 2: ['Sade Sati: setting phase', 'bad'], 4: ['Kantaka Shani (Dhaiya)', 'bad'], 8: ['Ashtama Shani (Dhaiya)', 'bad'] };
     var r = map[m] || ['No Sade Sati or Dhaiya', 'good'];
     var end = J.nextIngress('Sa', date, 1200);
-    return { label: r[0], q: r[1], house: m, until: r[1] === 'bad' ? end : null };
+    var out = { label: r[0], q: r[1], house: m, until: r[1] === 'bad' ? end : null };
+    if (typeof BOOK_SS === 'function') try { BOOK_SS(c, date, out); } catch (e) { }
+    return out;
   }
   function transitMonth(c, y, mo, now) {
     var start = new Date(Date.UTC(y, mo, 1) - fmtTZ * 3600e3), end = new Date(Date.UTC(y, mo + 1, 1) - fmtTZ * 3600e3);

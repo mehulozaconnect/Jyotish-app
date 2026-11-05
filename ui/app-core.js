@@ -17,7 +17,7 @@ function load() {
   try { if (AND && AND.loadState) t = AND.loadState(); } catch (e) { }
   try { if (!t) t = localStorage.getItem('trikaal'); } catch (e) { }
   if (!t) return;
-  try { var d = JSON.parse(t); DB.people = d.people || []; DB.chats = d.chats || {}; DB.remedies = d.remedies || []; Object.keys(d.settings || {}).forEach(function (k) { DB.settings[k] = d.settings[k]; }); } catch (e) { }
+  try { var d = JSON.parse(t); DB.people = d.people || []; DB.chats = d.chats || {}; DB.remedies = d.remedies || []; Object.keys(d.settings || {}).forEach(function (k) { DB.settings[k] = d.settings[k]; }); Object.keys(d).forEach(function (k) { if (['people', 'chats', 'remedies', 'settings', 'v'].indexOf(k) < 0) DB[k] = d[k]; }); } catch (e) { }
 }
 function save() {
   var t = JSON.stringify(DB);

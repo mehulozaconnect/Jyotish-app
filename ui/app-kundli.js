@@ -375,7 +375,7 @@ TABF.yogas = function (p, c) {
   var y = c.yogas, good = y.filter(function (x) { return ['raja', 'dhana', 'mahapurusha', 'good'].indexOf(x.kind) >= 0; }), bad = y.filter(function (x) { return x.kind === 'dosha' || x.kind === 'weak'; }), mild = y.filter(function (x) { return x.kind === 'mild'; });
   var h = '<div class="pad">';
   h += '<div class="card"><h3>Yogas that help <span class="vc g">' + good.length + '</span></h3>' + (good.map(function (x) { return '<div class="pc-row">' + itemIcon('pro') + '<span><b>' + esc(x.name) + '</b></span></div>' + whyBox([x.why]); }).join('') || '<p class="mut">None of the listed classical yogas.</p>') + '</div>';
-  h += '<div class="card"><h3>Doshas and weak points <span class="vc b">' + (bad.length + mild.length) + '</span></h3>' + (bad.concat(mild).map(function (x) { return '<div class="pc-row">' + itemIcon(x.kind === 'mild' ? 'info' : 'con') + '<span><b>' + esc(x.name) + (x.kind === 'mild' ? ' (mild)' : '') + '</b></span></div>' + whyBox([x.why]); }).join('') || '<p class="mut">No major dosha found.</p>') + '</div>';
+  h += '<div class="card"><h3>Doshas and weak points <span class="vc b">' + (bad.length + mild.length) + '</span></h3>' + (bad.concat(mild).map(function (x) { return '<div class="pc-row">' + itemIcon(x.kind === 'mild' ? 'info' : 'con') + '<span><b>' + esc(x.name) + (x.kind === 'mild' && !/\(/.test(x.name) ? ' (mild)' : '') + '</b></span></div>' + whyBox([x.why]); }).join('') || '<p class="mut">No major dosha found.</p>') + '</div>';
   return h + '<div class="note" style="margin:0 18px 14px">A yoga gives results mainly in the dashas of the planets that form it.</div></div>';
 };
 
