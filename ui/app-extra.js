@@ -168,13 +168,13 @@ function waCard(title, name, head, pts) {
   function wrap(t, font, maxW) { x.font = font; var words = String(t).split(' '), lines = [], cur = ''; words.forEach(function (w) { var tt = cur ? cur + ' ' + w : w; if (x.measureText(tt).width > maxW && cur) { lines.push(cur); cur = w; } else cur = tt; }); if (cur) lines.push(cur); return lines; }
   var hl = wrap(head, '600 54px ' + F, W - 140), pl = pts.slice(0, 6).map(function (p) { return wrap(p, '400 36px ' + F, W - 190).slice(0, 4); });
   var H = 330 + hl.length * 68 + pl.reduce(function (a, l) { return a + l.length * 50 + 26; }, 0) + 130; cv.width = W; cv.height = H; x = cv.getContext('2d');
-  x.fillStyle = '#FBF7EF'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#F6F6FA'; x.fillRect(0, 0, W, H);
   var g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#2B2A5E'); g.addColorStop(1, '#4A3B7A'); x.fillStyle = g; x.fillRect(0, 0, W, 210);
   x.fillStyle = '#F2C46D'; x.font = '700 30px ' + F; x.fillText('TRIKAAL · ' + String(title).toUpperCase().slice(0, 40), 70, 82);
   x.fillStyle = '#fff'; x.font = '600 56px ' + F; x.fillText(String(name).slice(0, 30), 70, 160);
   var y = 300; x.fillStyle = '#1F1B2D'; hl.forEach(function (l) { x.font = '600 54px ' + F; x.fillText(l, 70, y); y += 68; }); y += 20;
   pl.forEach(function (ls) { x.fillStyle = '#C46A1C'; x.beginPath(); x.arc(86, y - 12, 9, 0, 7); x.fill(); x.fillStyle = '#3A3546'; ls.forEach(function (l) { x.font = '400 36px ' + F; x.fillText(l, 116, y); y += 50; }); y += 26; });
-  x.fillStyle = '#E8DFCF'; x.fillRect(70, H - 100, W - 140, 2); x.fillStyle = '#8A8295'; x.font = '400 28px ' + F; x.fillText('Parashari · N.C. Lahiri · ' + N.dmy(new Date()), 70, H - 50);
+  x.fillStyle = '#D6D4EA'; x.fillRect(70, H - 100, W - 140, 2); x.fillStyle = '#8A8295'; x.font = '400 28px ' + F; x.fillText('Parashari · N.C. Lahiri · ' + N.dmy(new Date()), 70, H - 50);
   return cv.toDataURL('image/png').split(',')[1];
 }
 function screenDigest() {
@@ -455,11 +455,11 @@ function briefLoad(p) {
   var c = calcP(p), body = JSON.stringify({ system_instruction: { parts: [{ text: geminiFormat(p.name.split(' ')[0], 'predict', relOf(p), 'the astrologer').split('\n').filter(function (l) { return /LANGUAGE/.test(l); }).join('\n') + '\nYou are a Vedic astrologer (Parashari, Lahiri). Use only the facts given.' }] }, contents: [{ role: 'user', parts: [{ text: briefPrompt(p, c) }] }], generationConfig: { temperature: 0.4, thinkingConfig: { thinkingBudget: 512 } } });
   gGenerate(body).then(function (d) {
     var t = gText(d).trim(); DB.aiBrief = DB.aiBrief || {}; var ks = Object.keys(DB.aiBrief); if (ks.length > 20) ks.slice(0, ks.length - 20).forEach(function (k) { delete DB.aiBrief[k]; });
-    DB.aiBrief[key] = t; save(); U.briefBusy = null; if ((parts()[0] || 'astro') === 'astro') rerender(true);
+    DB.aiBrief[key] = t; save(); U.briefBusy = null; if (/^(astro|today)$/.test(parts()[0] || 'today')) rerender(true);
   }).catch(function (e) {
     var b = JSON.parse(body); delete b.generationConfig.thinkingConfig;
-    return gGenerate(JSON.stringify(b)).then(function (d) { DB.aiBrief = DB.aiBrief || {}; DB.aiBrief[key] = gText(d).trim(); save(); U.briefBusy = null; if ((parts()[0] || 'astro') === 'astro') rerender(true); });
-  }).catch(function (e) { U.briefBusy = null; U.briefErr = 'Could not write the brief: ' + e.message; if ((parts()[0] || 'astro') === 'astro') rerender(true); });
+    return gGenerate(JSON.stringify(b)).then(function (d) { DB.aiBrief = DB.aiBrief || {}; DB.aiBrief[key] = gText(d).trim(); save(); U.briefBusy = null; if (/^(astro|today)$/.test(parts()[0] || 'today')) rerender(true); });
+  }).catch(function (e) { U.briefBusy = null; U.briefErr = 'Could not write the brief: ' + e.message; if (/^(astro|today)$/.test(parts()[0] || 'today')) rerender(true); });
 }
 (function () {
   var a1 = AstroV2; AstroV2 = function (id) {

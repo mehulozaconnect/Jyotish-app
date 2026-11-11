@@ -8,7 +8,9 @@ function makeBook(J, KB, C) {
   function hf(a, b) { return J.houseFrom(a, b); }
 
   /* ---------- planet strength in one word ---------- */
+  var EXT = {};
   function strength(c, code, sbFn) {
+    if (EXT.strength) return EXT.strength(c, code);
     var P = c.k.P, p = P[code], why = [], s;
     if (code === 'Ra' || code === 'Ke') { var dl = J.RULER[p.sign]; s = (DSC[P[dl].dignity] == null ? 2 : DSC[P[dl].dignity]) * 0.8; why.push('its sign lord ' + PN[dl] + ' is ' + P[dl].dignity.toLowerCase()); if (p.sign === J.EXALT[code]) { s += 1; why.push('in its exaltation sign'); } }
     else { s = DSC[p.dignity] == null ? 2 : DSC[p.dignity]; why.push(p.dignity.toLowerCase() + ' in ' + J.SIGNS[p.sign]); }
@@ -66,6 +68,7 @@ function makeBook(J, KB, C) {
   /* ---------- dasha: antardasha against the mahadasha lord ---------- */
   function rel(a, b) { return J.FRIEND[a].indexOf(b) >= 0 ? 1 : J.ENEMY[a].indexOf(b) >= 0 ? -1 : 0; }
   function adRead(c, md, ad, sbFn) {
+    if (EXT.adRead) return EXT.adRead(c, md, ad);
     var P = c.k.P;
     if (md === ad) { var s0 = strength(c, md, sbFn); return { v: s0.k, word: s0.k === 'g' ? 'Very good' : s0.k === 'b' ? 'Careful' : 'Mixed', why: PN[md] + '\'s own sub-period: its results come in pure form, and ' + PN[md] + ' is ' + s0.word.toLowerCase() + ' in your chart.' }; }
     var f = rel(md, ad) + rel(ad, md), pos = hf(P[md].sign, P[ad].sign), good = [1, 4, 5, 7, 9, 10].indexOf(pos) >= 0, bad = DUS.indexOf(pos) >= 0;
@@ -151,6 +154,6 @@ function makeBook(J, KB, C) {
     'Every answer gives: the promise (what is likely), the timing (when), and the action (what to do). Remedies in this order: conduct and habits first, then daan and seva, then a short mantra; at most 1 or 2 remedies, kept for 40 days. Gemstones only as a last option and only after a full chart check by an expert; never sell fear or costly pujas.\n';
 
   return { strength: strength, SIGNS_OF: SIGNS_OF, house: house, HNAME: HNAME, KARAKAS: KARAKAS, adRead: adRead, sandhi: sandhi, saturn: saturn, nakNature: nakNature, NATURE_USE: NATURE_USE, dishashool: dishashool, GANDA: GANDA, LETTERS: LETTERS,
-    remedyPlan: remedyPlan, CONDUCT: CONDUCT, HABITS: HABITS, SHORT_MANTRA: SHORT_MANTRA, RULES: RULES };
+    ext: EXT, remedyPlan: remedyPlan, CONDUCT: CONDUCT, HABITS: HABITS, SHORT_MANTRA: SHORT_MANTRA, RULES: RULES };
 }
 if (typeof module !== 'undefined') module.exports = makeBook;

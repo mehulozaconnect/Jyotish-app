@@ -64,7 +64,8 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     return { s: s, why: why };
   }
   function hwAt(c, h, d) { var ag = age(c, d); return typeof NARR !== 'undefined' ? NARR.areaWord(h, ag, HOUSE_WORD[h]) : HOUSE_WORD[h]; }
-  function rateWord(s) { return s >= 3 ? 'Golden' : s >= 1.5 ? 'Good' : s >= 0 ? 'Mixed' : 'Testing'; }
+  function JH() { return typeof JUDGE_HOOK !== 'undefined' && JUDGE_HOOK ? JUDGE_HOOK : null; }
+  function rateWord(s) { if (JH()) { var pc = 50 + s * 10; return pc >= 68 ? 'Golden' : pc >= 57 ? 'Good' : pc >= 44 ? 'Mixed' : 'Testing'; } return s >= 3 ? 'Golden' : s >= 1.5 ? 'Good' : s >= 0 ? 'Mixed' : 'Testing'; }
   function linkHouses(c, code) { var k = c.k; return uniq(J.lordsOf(k.ascSign, code).concat([k.P[code].house])); }
 
   /* ---------- extra yogas (on top of the engine list) ---------- */
@@ -186,7 +187,7 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
   function analyze(c, now) {
     var k = c.k, P = k.P, L = k.ascSign, ll = J.lordOfHouse(L, 1), out = {};
     var allYogas = c.yogas.concat(moreYogas(c));
-    var sc = {}; ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].forEach(function (x) { sc[x] = natalScore(c, x); });
+    var sc = {}; ['Su', 'Mo', 'Ma', 'Me', 'Ju', 'Ve', 'Sa', 'Ra', 'Ke'].forEach(function (x) { sc[x] = natalScore(c, x); if (JH()) { var jo = JH().period(c, x); sc[x] = { s: (jo.pct - 50) / 10, why: jo.factors.map(function (f) { return f.t.charAt(0).toLowerCase() + f.t.slice(1); }) }; } });
     var savH = []; for (var h = 1; h <= 12; h++) savH.push({ h: h, v: N.savOf(c, h) });
 
     /* snapshot */
@@ -197,6 +198,8 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     var grade = total >= 12 ? ['Very strong chart', 'A well-supported chart: many planets work for you.'] : total >= 6 ? ['Strong chart', 'Good support overall, with a few areas that need effort.'] : total >= 1 ? ['Balanced chart', 'Mixed support: results come through steady effort and good timing.'] : ['Challenging chart', 'Results come later and through persistence; remedies and timing matter more.'];
     out.snapshot = { lagna: SG[L], lagnaLord: PN[ll], moon: SG[P.Mo.sign], nak: P.Mo.nak.name + ' pada ' + P.Mo.nak.pada, sun: SG[P.Su.sign], ak: PN[ak], grade: grade, score: Math.round(total * 10) / 10,
       dasha: chain.map(function (x) { return PN[x.lord]; }).join(' / '), best: strongest.slice(0, 3).map(function (x) { return PN[x]; }), weak: strongest.slice(-2).reverse().map(function (x) { return PN[x]; }) };
+    if (JH()) { var jps = J.P7.map(function (x) { return JH().planet(c, x); }).sort(function (a, b) { return b.pct - a.pct; }), jb = jps.filter(function (x) { return x.word === 'Strong'; }).slice(0, 3), jw = jps.filter(function (x) { return x.word === 'Weak'; }).reverse().slice(0, 3);
+      out.snapshot.best = jb.length ? jb.map(function (x) { return PN[x.code]; }) : ['none stands out']; out.snapshot.weak = jw.length ? jw.map(function (x) { return PN[x.code]; }) : ['none']; }
 
     /* pros and cons */
     var pros = [], cons = [];
@@ -206,9 +209,11 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     if (lp.dignity === 'Debilitated') cons.push({ t: 'Lagna lord ' + PN[ll] + ' is debilitated', why: ['Self-confidence and stamina can dip; strengthen ' + PN[ll] + ' with its mantra and routine.'] });
     J.P7.forEach(function (x) {
       var p = P[x], fx = c.func[x];
-      if (GOODD.indexOf(p.dignity) >= 0) pros.push({ t: PN[x] + ' is ' + p.dignity.toLowerCase() + ' in ' + SG[p.sign], why: [PN[x] + ' gives full results for ' + list(linkHouses(c, x).map(function (h) { return HOUSE_WORD[h]; })) + '.'] });
-      if (p.dignity === 'Debilitated' && !allYogas.some(function (y) { return /Neecha Bhanga/.test(y.name) && y.why.indexOf(PN[x]) === 0; })) cons.push({ t: PN[x] + ' is debilitated in ' + SG[p.sign], why: ['Weak results for ' + list(linkHouses(c, x).map(function (h) { return HOUSE_WORD[h]; })) + ' until strengthened.'] });
-      if (p.combust && x !== 'Su') cons.push({ t: PN[x] + ' is combust (too close to the Sun)', why: [PN[x] + "'s significations (" + KB.PLANET[x].karaka.split(',').slice(0, 2).join(',') + ') lose some strength.'] });
+      var jw0 = JH() ? JH().planet(c, x) : null;
+      if (jw0 && jw0.word === 'Weak' && GOODD.indexOf(p.dignity) >= 0) cons.push({ t: PN[x] + ' is ' + p.dignity.toLowerCase() + ' but weakened overall', why: [jw0.factors.filter(function (f) { return f.v < -0.15; }).map(function (f) { return f.t; }).join('; ') + '. It gives only part of its promise.'] });
+      else if (GOODD.indexOf(p.dignity) >= 0) pros.push({ t: PN[x] + ' is ' + p.dignity.toLowerCase() + ' in ' + SG[p.sign], why: [PN[x] + ' gives full results for ' + list(linkHouses(c, x).map(function (h) { return HOUSE_WORD[h]; })) + '.'] });
+      if (jw0 && jw0.word === 'Strong') { } else if (p.dignity === 'Debilitated' && !allYogas.some(function (y) { return /Neecha Bhanga/.test(y.name) && y.why.indexOf(PN[x]) === 0; })) cons.push({ t: PN[x] + ' is debilitated in ' + SG[p.sign], why: ['Weak results for ' + list(linkHouses(c, x).map(function (h) { return HOUSE_WORD[h]; })) + ' until strengthened.'] });
+      if (p.combust && x !== 'Su' && !(jw0 && jw0.word === 'Strong')) cons.push({ t: PN[x] + ' is combust (too close to the Sun)', why: [PN[x] + "'s significations (" + KB.PLANET[x].karaka.split(',').slice(0, 2).join(',') + ') lose some strength.'] });
       if (fx.kind === 'yogakaraka') pros.push({ t: PN[x] + ' is your yogakaraka', why: ['It rules both a kendra and a trikona (' + fx.houses.map(nth).join(' & ') + '): its periods lift status and fortune.'] });
     });
     if (KENDRA.indexOf(P.Ju.house) >= 0 || J.aspectedHouses('Ju', P.Ju.house).indexOf(1) >= 0) pros.push({ t: 'Jupiter protects the chart', why: ['Jupiter in the ' + nth(P.Ju.house) + (J.aspectedHouses('Ju', P.Ju.house).indexOf(1) >= 0 ? ' aspects your lagna' : ' sits in a kendra') + ': grace and recovery in tough times.'] });
@@ -240,14 +245,14 @@ function makeKundliAnalysis(A, C, J, KB, N, S) {
     var lifeEnd = new Date(c.birth.getTime() + 90 * YEAR), mds = c.maha.filter(function (m) { return m.start < lifeEnd; });
     out.life = mds.map(function (m) { var s = sc[m.lord].s; return { lord: PN[m.lord], code: m.lord, start: m.start, end: m.end, from: Math.max(0, age(c, m.start)), to: age(c, m.end), rate: rateWord(s), s: s, now: m.start <= now && now < m.end, why: sc[m.lord].why }; });
     var ads = [];
-    mds.forEach(function (m) { J.subPeriods(m).forEach(function (a) { if (a.end < now) return; var s = sc[m.lord].s * 0.55 + sc[a.lord].s * 0.45; if (m.lord === a.lord) s -= 0.2; ads.push({ md: m.lord, ad: a.lord, start: a.start, end: a.end, s: s }); }); });
-    var perMd = {}, gold = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && a.md !== a.ad || a.start <= now && now < a.end; }).sort(function (a, b) { return b.s - a.s; })
+    mds.forEach(function (m) { J.subPeriods(m).forEach(function (a) { if (a.end < now) return; var s = sc[m.lord].s * 0.55 + sc[a.lord].s * 0.45; if (m.lord === a.lord) s -= 0.2; if (JH()) s = (JH().period(c, m.lord, a.lord).pct - 50) / 10; ads.push({ md: m.lord, ad: a.lord, start: a.start, end: a.end, s: s }); }); });
+    var perMd = {}, gold = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && a.md !== a.ad || (!JH() || a.s >= 0.7) && a.start <= now && now < a.end; }).sort(function (a, b) { return b.s - a.s; }).filter(function (a) { return !JH() || a.s >= 0.7; })
       .filter(function (a) { perMd[a.md] = (perMd[a.md] || 0) + 1; return perMd[a.md] <= 2 || (a.start <= now && now < a.end); }).slice(0, 6).sort(function (a, b) { return a.start - b.start; });
     out.golden = gold.map(function (g) { var hs = uniq(linkHouses(c, g.md).concat(linkHouses(c, g.ad))).filter(function (h) { return [1, 2, 4, 5, 7, 9, 10, 11].indexOf(h) >= 0; });
       return { label: PN[g.md] + ' – ' + PN[g.ad], start: g.start, end: g.end, ageFrom: age(c, g.start), now: g.start <= now && now < g.end, rate: rateWord(g.s), areas: hs.slice(0, 4).map(function (h) { return hwAt(c, h, g.start); }), why: [PN[g.md] + ': ' + sc[g.md].why.join(', ') + '.', PN[g.ad] + ': ' + sc[g.ad].why.join(', ') + '.'] }; });
 
     /* difficult periods: weakest Mahadasha-Antardasha combinations in the next 30 years */
-    var perMd2 = {}, tough = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && a.s < 1.6 && a.md !== a.ad; }).sort(function (a, b) { return a.s - b.s; })
+    var perMd2 = {}, tough = ads.filter(function (a) { return a.start < new Date(now.getTime() + 30 * YEAR) && (JH() ? a.s < -0.6 : a.s < 1.6) && a.md !== a.ad; }).sort(function (a, b) { return a.s - b.s; })
       .filter(function (a) { perMd2[a.md] = (perMd2[a.md] || 0) + 1; return perMd2[a.md] <= 2; }).slice(0, 5).sort(function (a, b) { return a.start - b.start; });
     out.tough = tough.map(function (g) {
       var ag2 = age(c, g.start), hs = uniq(linkHouses(c, g.ad).concat(linkHouses(c, g.md))), bad = hs.filter(function (h) { return DUS.indexOf(h) >= 0; }), pick2 = (bad.length ? bad : hs).slice(0, 2);

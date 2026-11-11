@@ -15,6 +15,7 @@ function makeSimple(A, C, J, KB, N, P) {
 
   /* ---------- strength ---------- */
   function strength(c, code) {
+    if (typeof JUDGE_HOOK !== 'undefined' && JUDGE_HOOK) { var jp = JUDGE_HOOK.planet(c, code); return { score: (jp.pct - 50) / 12, word: jp.word, why: jp.why.map(function (w) { return w.charAt(0).toLowerCase() + w.slice(1); }) }; }
     var p = c.k.P[code], s = 0, why = [];
     var dg = { 'Exalted': 2, 'Moolatrikona': 2, 'Own sign': 1.5, 'Friendly sign': 0.5, 'Neutral sign': 0, 'Enemy sign': -1, 'Debilitated': -2 }[p.dignity] || 0;
     s += dg; why.push(p.dignity === 'Exalted' ? 'at its highest strength (exalted)' : p.dignity === 'Debilitated' ? 'at its weakest (debilitated)' : p.dignity === 'Own sign' || p.dignity === 'Moolatrikona' ? 'in its own sign' : p.dignity === 'Enemy sign' ? 'in an unfriendly sign' : p.dignity === 'Friendly sign' ? 'in a friendly sign' : 'in a neutral sign');

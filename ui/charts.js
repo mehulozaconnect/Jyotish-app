@@ -52,7 +52,7 @@ var Charts = (function () {
       var list = items.filter(function (it) { return it.s === sg; }), n = list.length, fs = n > 5 ? 10 : n > 4 ? 11 : 12, lh = n > 5 ? 12 : n > 4 ? 13.5 : 15.5;
       list.forEach(function (it, i) { s += '<text class="t ' + (it.cls || '') + '" x="' + (x + 50) + '" y="' + (y + 32 + i * lh) + '" text-anchor="middle" style="font-size:' + fs + 'px">' + esc(it.code) + ' ' + esc(it.deg || '') + (it.mark || '') + (it.r ? '<tspan class="rr" style="fill:#AE3A2F;font-size:8px" dy="-4">R</tspan>' : '') + '</text>'; });
     }
-    s += '<text x="200" y="196" text-anchor="middle" style="font:500 21px Fraunces,Georgia,serif;fill:#1B1A22">' + esc(title || '') + '</text><text x="200" y="218" text-anchor="middle" style="font:500 11.5px Inter,sans-serif;fill:#8E8A96">' + esc(opts.subtitle || 'South Indian') + '</text>';
+    s += '<text x="200" y="196" text-anchor="middle" style="font:500 21px Fraunces,Georgia,serif;fill:#1B1A22">' + esc(title || '') + '</text><text x="200" y="218" text-anchor="middle" style="font:500 11.5px Mukta,sans-serif;fill:#8E8A96">' + esc(opts.subtitle || 'South Indian') + '</text>';
     return s + '</svg>';
   }
   return { north: north, south: south };

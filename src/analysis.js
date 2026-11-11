@@ -94,7 +94,9 @@ function makeAnalysis(A, C, J, KB) {
     if (pc.karana.name === 'Vishti') add('Bhadra (Vishti) karana', -1, 'Vishti karana at sunrise: avoid new starts while it lasts.');
     var v = total >= 2 ? 'push' : total >= 0 ? 'steady' : 'backend';
     if (cb === 8 || wd === g[2]) v = 'backend';
-    return { score: total, v: v, factors: f, tara: tara, taraN: taraN, cb: cb, hits: hits };
+    var out0 = { score: total, v: v, factors: f, tara: tara, taraN: taraN, cb: cb, hits: hits };
+    if (typeof JUDGE_HOOK !== 'undefined' && JUDGE_HOOK) { var jd = JUDGE_HOOK.day(c, pc, wd, out0); out0.j = jd; out0.v = jd.v; out0.pct = jd.pct; }
+    return out0;
   }
   var VWORD = { push: 'Strong day', steady: 'Steady day', backend: 'Go slow' };
   var VGUIDE = { push: 'Good for important meetings, closures, negotiations and new starts.', steady: 'Fine for follow-ups and routine work. Hold big commitments for a stronger day.', backend: 'Plan, prepare and follow up. Avoid signatures, big purchases and hard negotiations.' };
@@ -375,7 +377,7 @@ function makeAnalysis(A, C, J, KB) {
     var focus = []; var sk = ch[3] || ch[2];
     if (sk) focus.push('Dasha today: ' + ch.map(function (x) { return PN[x.lord]; }).join(' › ') + '. ' + PN[sk.lord] + ' (' + lordNote(c, sk.lord) + ') colours the day.');
     var mo = tr.filter(function (x) { return x.code === 'Mo'; })[0]; if (mo) focus.push('Moon in your ' + nth(mo.h) + ' (' + houseTopic(mo.h).split(',')[0] + '): ' + KB.GOCHAR.Mo[mo.m] + '.');
-    return { pc: pc, wd: wd, score: sc, word: VWORD[sc.v], guide: VGUIDE[sc.v], why: why, parts: parts, horas: hs, best: bestHoras(hs, parts), slow: slow, focus: focus, chain: ch, tr: tr, sade: sadeSati(c, pc.rise) };
+    return { pc: pc, wd: wd, score: sc, word: sc.j ? sc.j.word : VWORD[sc.v], guide: VGUIDE[sc.v], why: why, parts: parts, horas: hs, best: bestHoras(hs, parts), slow: slow, focus: focus, chain: ch, tr: tr, sade: sadeSati(c, pc.rise) };
   }
 
   /* ---------- birth-time tolerance ---------- */

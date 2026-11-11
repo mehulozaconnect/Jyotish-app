@@ -11,14 +11,14 @@ function mcAll(p) {
 function mcCol(v) { return v >= 0.8 ? '#C0453A' : v >= 0.55 ? '#D79A2B' : v >= 0.3 ? '#C9B65A' : '#3E9A6A'; }
 function gauge(v, label, sub) {
   var a = Math.PI * (1 - v), x = 60 + 46 * Math.cos(a), y = 58 - 46 * Math.sin(a), col = mcCol(v);
-  return '<div class="gauge"><svg viewBox="0 0 120 70"><path d="M14 58 A46 46 0 0 1 106 58" fill="none" stroke="#ECE5D8" stroke-width="11" stroke-linecap="round"/><path d="M14 58 A46 46 0 0 1 ' + x.toFixed(1) + ' ' + y.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="11" stroke-linecap="round"/><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="6" fill="#fff" stroke="' + col + '" stroke-width="3"/></svg><b style="color:' + col + '">' + esc(label) + '</b><small>' + esc(sub) + '</small></div>';
+  return '<div class="gauge"><svg viewBox="0 0 120 70"><path d="M14 58 A46 46 0 0 1 106 58" fill="none" stroke="#DEDCEE" stroke-width="11" stroke-linecap="round"/><path d="M14 58 A46 46 0 0 1 ' + x.toFixed(1) + ' ' + y.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="11" stroke-linecap="round"/><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="6" fill="#fff" stroke="' + col + '" stroke-width="3"/></svg><b style="color:' + col + '">' + esc(label) + '</b><small>' + esc(sub) + '</small></div>';
 }
 function ring(score, max, label) {
   var v = score / max, r = 26, L = 2 * Math.PI * r, col = v >= 0.75 ? '#3E9A6A' : v >= 0.4 ? '#D79A2B' : '#C0453A';
-  return '<div class="ring"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="#ECE5D8" stroke-width="7"/><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (L * v).toFixed(1) + ' ' + L.toFixed(1) + '" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" font-size="16" font-weight="700" fill="' + col + '">' + score + '/' + max + '</text></svg><small>' + esc(label) + '</small></div>';
+  return '<div class="ring"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="#DEDCEE" stroke-width="7"/><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (L * v).toFixed(1) + ' ' + L.toFixed(1) + '" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" font-size="16" font-weight="700" fill="' + col + '">' + score + '/' + max + '</text></svg><small>' + esc(label) + '</small></div>';
 }
 function bodyMap(p, all) {
-  var h = '<svg class="bodymap" viewBox="0 0 200 430"><g fill="#EFE7DA" stroke="#D6CAB6" stroke-width="2">' +
+  var h = '<svg class="bodymap" viewBox="0 0 200 430"><g fill="#E1E0F0" stroke="#BFBDCF" stroke-width="2">' +
     '<circle cx="100" cy="38" r="26"/><rect x="88" y="62" width="24" height="18" rx="6"/>' +
     '<path d="M58 84 Q100 72 142 84 L150 196 Q148 214 132 224 L68 224 Q52 214 50 196 Z"/>' +
     '<path d="M58 88 L34 150 L30 214 L44 216 L54 156 L70 112 Z"/><path d="M142 88 L166 150 L170 214 L156 216 L146 156 L130 112 Z"/>' +
@@ -33,7 +33,7 @@ function bodyMap(p, all) {
 }
 function bandTimeline(per, now, years) {
   var t0 = now.getTime(), t1 = t0 + years * 365.25 * 864e5, span = t1 - t0, segs = per.filter(function (x) { return x.end > now; });
-  var bar = segs.map(function (x) { var a = Math.max(x.start.getTime(), t0), b = Math.min(x.end.getTime(), t1); if (b <= a) return ''; var col = x.lvl === 2 ? '#C0453A' : x.lvl === 1 ? '#D79A2B' : x.good ? '#3E9A6A' : '#E3DCCD'; return '<i style="left:' + ((a - t0) / span * 100).toFixed(2) + '%;width:' + ((b - a) / span * 100).toFixed(2) + '%;background:' + col + '" title="' + esc(MA.PN[x.md] + '–' + MA.PN[x.ad]) + '"></i>'; }).join('');
+  var bar = segs.map(function (x) { var a = Math.max(x.start.getTime(), t0), b = Math.min(x.end.getTime(), t1); if (b <= a) return ''; var col = x.lvl === 2 ? '#C0453A' : x.lvl === 1 ? '#D79A2B' : x.good ? '#3E9A6A' : '#D1CFE7'; return '<i style="left:' + ((a - t0) / span * 100).toFixed(2) + '%;width:' + ((b - a) / span * 100).toFixed(2) + '%;background:' + col + '" title="' + esc(MA.PN[x.md] + '–' + MA.PN[x.ad]) + '"></i>'; }).join('');
   var ticks = ''; for (var y = new Date(now).getFullYear() + 1; ; y++) { var tt = new Date(y, 0, 1).getTime(); if (tt > t1) break; if ((y - new Date(now).getFullYear()) % 2 === 0 || years <= 5) ticks += '<span style="left:' + ((tt - t0) / span * 100).toFixed(2) + '%">' + y + '</span>'; }
   return '<div class="hband"><div class="hbar">' + bar + '<em></em></div><div class="hticks">' + ticks + '</div><div class="hleg"><span><i style="background:#C0453A"></i>sensitive</span><span><i style="background:#D79A2B"></i>watch</span><span><i style="background:#3E9A6A"></i>good for treatment</span><span>▼ today</span></div></div>';
 }
