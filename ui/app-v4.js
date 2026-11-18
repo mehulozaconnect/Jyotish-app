@@ -146,7 +146,7 @@ var MedHomeV3 = MedHome;
 MedHome = function () {
   var p = curP(); if (!p) return topBar('Health', { noPerson: true }) + noPerson();
   var R = maOf(p), all = mcAll(p), n1 = p.name.split(' ')[0], now = new Date(), male = p.gender === 'M';
-  var ranked = Object.keys(all).map(function (id) { return all[id]; }).filter(function (a) { return a.pr.id !== 'surgery'; }).sort(function (a, b) { return (MC_TV[b.tend] + MC_NV[b.nowWord] * 0.5) - (MC_TV[a.tend] + MC_NV[a.nowWord] * 0.5); }), top = ranked.slice(0, 3);
+  var ranked = Object.keys(all).map(function (id) { return all[id]; }).filter(function (a) { return a.pr.id !== 'surgery' && a.pr.id !== 'fertility'; }).sort(function (a, b) { return (MC_TV[b.tend] + MC_NV[b.nowWord] * 0.5) - (MC_TV[a.tend] + MC_NV[a.nowWord] * 0.5); }), top = ranked.slice(0, 3);
   var h = '<div class="v4plain"><div><h1 class="v4h1">Health</h1><p>' + esc(R.dosha.type) + ' body. Recovery power ' + R.lagna.score + ' of 5</p></div><div><button class="v4pill l" data-act="pickPerson">' + esc(n1) + ' ▾</button></div></div>';
   /* body with the top spots labelled */
   var used = {}, lab = '', calls = top.map(function (a) { var kx = Object.keys(MC_SPOT).filter(function (kk) { return MC_SPOT[kk][3].indexOf(a.pr.id) >= 0; })[0]; return kx && !used[kx] ? (used[kx] = 1, { a: a, s: MC_SPOT[kx] }) : null; }).filter(Boolean);

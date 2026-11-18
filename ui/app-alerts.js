@@ -5,14 +5,14 @@ function alertsOf(p, days) {
   var key = p.id + '|' + p.date + '|' + p.time + '|' + DB.settings.ayan + '|' + new Date().toDateString() + '|' + days;
   if (AL_CACHE[key]) return alCut(AL_CACHE[key], lim);
   var out = [];
-  try { var c = calcP(p), R = maOf(p), all = mcAll(p), from = todayStart(0), list = Object.keys(all).filter(function (id) { return /Strong|Moderate/.test(all[id].tend); }); if (list.length) out = ALERT.forPerson(c, R, list, from, days); } catch (e) { if (window.console) console.error(e); }
+  try { var c = calcP(p), R = maOf(p), all = mcAll(p), from = todayStart(0), list = Object.keys(all).filter(function (id) { return /Strong|Moderate/.test(all[id].tend) && ['fertility', 'surgery'].indexOf(id) < 0; }); if (list.length) out = ALERT.forPerson(c, R, list, from, days); } catch (e) { if (window.console) console.error(e); }
   AL_CACHE[key] = out; return alCut(out, lim);
 }
 function alAlert(t) { return String(t).replace(/:?\s*(or )?(go to )?(an )?emergency\.?\s*$/i, '').replace(/[\s.:,]+$/, '').replace(/\s+or$/, ''); }
 function alCut(ws, lim) { var t = todayStart(lim).getTime(); return ws.filter(function (w) { return w.start.getTime() <= t; }); }
 function alAlerts(w) { return N.uniq(w.probs.slice(0, 2).map(function (x) { var pr = MC.P.filter(function (q) { return q.id === x.id; })[0]; return pr && pr.alert ? alAlert(pr.alert) : ''; }).filter(Boolean)).join('; or ').replace(/^./, function (m) { return m; }); }
 function alShort(d) { var x = new Date(d.getTime() + locOff() * 3600e3); return x.getUTCDate() + ' ' + V4MON[x.getUTCMonth()].slice(0, 3); }
-function alRange(w) { return alShort(w.start) + ' to ' + alShort(w.end); }
+function alRange(w) { var a = alShort(w.start), b = alShort(w.end); return a === b ? a + ' (one day)' : a + ' to ' + b; }
 function alNow(w) { var t = todayStart(0).getTime() + 12 * 36e5; return w.start.getTime() <= t && t <= w.end.getTime() + 864e5; }
 function alProbs(w) { return w.probs.map(function (x) { return x.n.split(' / ')[0]; }).join(', '); }
 function alTips(w) {
@@ -24,7 +24,7 @@ function alCard(p, w, full) {
   var h = '<div class="v4card alc ' + (hi ? 'hi' : 'wa') + '"><div class="alh"><span class="ald"></span><div><b>' + (hi ? 'High-care window' : 'Watch window') + (now ? ', now' : '') + '</b><small>' + alRange(w) + (now ? '' : ', starts in ' + Math.max(1, Math.round((w.start - todayStart(0)) / 864e5)) + ' days') + '. Most sensitive around ' + alShort(w.at) + '.</small></div></div>' +
     '<p class="alp"><b>' + esc(alProbs(w)) + '</b></p>';
   if (full) {
-    h += '<div class="lbl">Why the chart flags these days</div><ul class="v4why">' + w.why.map(function (t) { var g = /^Jupiter protects/.test(t); return '<li class="' + (g ? 'p' : 'n') + '"><i>' + (g ? '+' : '−') + '</i><span>' + esc(cap1(t)) + '.</span></li>'; }).join('') + '</ul>' +
+    h += '<div class="lbl">Why the chart flags these days</div><ul class="v4why">' + w.why.map(function (t) { var g = /^Jupiter protects/.test(t); t = t.replace(/(\d{4})-(\d{2})-(\d{2})/g, function (m, y, mo, d) { return +d + ' ' + V4MON[+mo - 1].slice(0, 3); }); return '<li class="' + (g ? 'p' : 'n') + '"><i>' + (g ? '+' : '−') + '</i><span>' + esc(cap1(t)) + '.</span></li>'; }).join('') + '</ul>' +
       '<div class="lbl">What to do</div><ul class="v4why">' + alTips(w).map(function (t) { return '<li class="p"><i>+</i><span>' + esc(cap1(t)) + '.</span></li>'; }).join('') + '</ul>' +
       (alAlerts(w) ? '<p class="alx"><b>Go to a doctor at once if:</b> ' + esc(alAlerts(w)) + '.</p>' : '') +
       '<p class="v4note">A window means extra care in these days, not that illness will come. The chart cannot replace check-ups.</p>' +
