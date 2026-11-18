@@ -238,5 +238,5 @@ function makeMedCase(J, C, MA) {
     L.push('PLAN: doctor ' + a.pr.doc + '; tests: ' + a.pr.tests.join('; ') + '. Avoid: ' + a.pr.avoid.join('; ') + '. Do: ' + a.pr.dos.join('; ') + '. Food: ' + a.pr.food + '. Yoga: ' + a.pr.yoga + '. Remedies: ' + a.rem.map(function (r) { return PN[r.code] + ' (' + r.mode + ', ' + r.why + '): ' + r.acts.join(' ') + ' ' + r.gem; }).join(' || ') + ' Doctor alert: ' + a.pr.alert);
     return L.join('\n');
   }
-  return { P: P, analyze: analyze, rank: rank, find: find, text: text };
+  return { P: P, analyze: analyze, rank: rank, find: find, text: text, link: link };
 }

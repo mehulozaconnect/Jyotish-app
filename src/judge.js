@@ -140,7 +140,9 @@ function makeJudge(J, KB, N, BOOK) {
       add('slow', 0, 'Saturn and Jupiter in the background', sl.map(function (x) { return PN[x.code] + ' is ' + nth(x.m) + ' from your Moon (' + x.verdict + ')'; }).join('; ') + '. This is the slow backdrop for the whole season.', sv, 1); } catch (e) { }
     var hits = base && base.hits ? base.hits : [];
     if (hits.length) add('ghatak', 1, hits.join(', ') + ' for your Moon sign', 'Tradition marks this as a day to keep low-key for your rashi. Example: avoid travel starts and confrontations.', -Math.min(1, 0.6 * hits.length), 1.2);
-    var t = tally(fs), pct = Math.round(clamp(50 + (t.mean - 0.04) * 80, 6, 95)); if (cb === 8) pct = Math.min(pct, 40);
+    if (typeof JUDGE_EXTRA === 'function') try { (JUDGE_EXTRA(c, pc) || []).forEach(function (f) { fs.push(f); }); } catch (e) { }
+    var hx = fs.filter(function (f) { return f.id === 'health'; })[0];
+    var t = tally(fs), pct = Math.round(clamp(50 + (t.mean - 0.04) * 80, 6, 95)); if (hx && hx.v <= -1) pct = Math.min(pct, 52); if (cb === 8) pct = Math.min(pct, 40);
     var cf = confOf(t, pct - 50), mixed = pct >= 45 && pct <= 55 && t.pro >= 3.6 && t.con >= 3.6;
     var word = mixed ? 'Mixed signals' : pct >= 68 ? 'Strong day' : pct >= 56 ? 'Good day' : pct >= 45 ? 'Steady day' : pct >= 33 ? 'Careful day' : 'Go slow';
     return { raw: t.mean, wd: wd, pct: pct, word: word, v: pct >= 60 ? 'push' : pct >= 45 ? 'steady' : 'backend', k: pct >= 56 ? 'g' : pct >= 45 ? 'm' : 'b', factors: fs, conf: cf, mixed: mixed, taraN: taraN, tara: T, cb: cb, mh: mh, chain: ch, hits: hits };
@@ -166,6 +168,7 @@ function makeJudge(J, KB, N, BOOK) {
         if (ma && a[2].indexOf(ma.h) >= 0 && [1, 4, 7, 8, 12].indexOf(ma.h) >= 0 && a[0] !== 'money') { s -= 7; why.push('Mars is passing your ' + nth(ma.h) + ' house: heat and haste'); }
         if (ma && a[0] === 'work' && [3, 6, 10, 11].indexOf(ma.h) >= 0) { s += 5; why.push('Mars in your ' + nth(ma.h) + ' gives drive'); }
       }
+      if (a[0] === 'health') { var hf = D.factors.filter(function (f) { return f.id === 'health'; })[0]; if (hf) { s = Math.min(s, hf.v <= -1 ? 30 : 48); why.unshift(hf.title.toLowerCase()); } }
       s = Math.round(clamp(s, 5, 96)); var r = s >= 62 ? 0 : s >= 45 ? 1 : 2;
       return { id: a[0], t: a[1], pct: s, k: r === 0 ? 'g' : r === 1 ? 'm' : 'b', word: r === 0 ? 'Good' : r === 1 ? (a[0] === 'work' ? 'Routine' : 'Normal') : 'Careful', line: AREA_TXT[a[0]][r], why: why };
     });
