@@ -16,7 +16,7 @@ function MoreScreen() {
   h += '<div class="card"><h3>About</h3><p style="font-size:12.8px">Trikaal ' + APP_VERSION + '. Parashari, KP, Tajik and Muhurat in one place, offline. Built for Mehul.</p><div class="grid2" style="margin-top:10px"><button class="btn sec" data-act="printNow">' + icon('print', 16) + 'Print / PDF</button><button class="btn sec" data-act="sampleData">Add sample</button></div></div>';
   return h + '</div>';
 }
-var APP_VERSION = '4.1.1';
+var APP_VERSION = '4.2.0';
 INP.setGkey = function (el) { DB.settings.gkey = el.value.trim(); DB.settings.gnoPro = false; DB.settings.gbad = []; save(); };
 CHG.setGfast = function (el) { DB.settings.gfast = el.value === '1'; save(); toast(DB.settings.gfast ? 'Fast answers on' : 'Deep answers on'); };
 CHG.setGmodel = function (el) { DB.settings.gmodel = el.value; if (/-pro/.test(el.value)) DB.settings.gnoPro = false; save(); };
@@ -79,7 +79,7 @@ ACT.restore = function () {
       d.people.forEach(function (p) { var i = ids.indexOf(p.id); if (i >= 0) DB.people[i] = p; else { DB.people.push(p); added++; } });
       (d.remedies || []).forEach(function (r) { DB.remedies = DB.remedies || []; if (!DB.remedies.some(function (x) { return x.id === r.id; })) DB.remedies.push(r); });
       Object.keys(d.chats || {}).forEach(function (k) { if (!DB.chats[k]) DB.chats[k] = d.chats[k]; });
-      ['notes', 'insights', 'mtrack', 'mcDeep', 'mcAI'].forEach(function (key) { if (!d[key]) return; DB[key] = DB[key] || {}; Object.keys(d[key]).forEach(function (k) { if (Array.isArray(d[key][k]) && Array.isArray(DB[key][k])) { var have = DB[key][k].map(function (x) { return x.id; }); d[key][k].forEach(function (x) { if (have.indexOf(x.id) < 0) DB[key][k].push(x); }); } else if (DB[key][k] === undefined) DB[key][k] = d[key][k]; }); });
+      ['notes', 'insights', 'mtrack', 'mcDeep', 'mcAI', 'palm', 'face', 'switchw', 'track', 'habits'].forEach(function (key) { if (!d[key]) return; DB[key] = DB[key] || {}; Object.keys(d[key]).forEach(function (k) { if (Array.isArray(d[key][k]) && Array.isArray(DB[key][k])) { var have = DB[key][k].map(function (x) { return x.id; }); d[key][k].forEach(function (x) { if (have.indexOf(x.id) < 0) DB[key][k].push(x); }); } else if (DB[key][k] === undefined) DB[key][k] = d[key][k]; }); });
       if (!DB.settings.meId && d.settings && d.settings.meId) DB.settings.meId = d.settings.meId;
       save(); resetCache(); toast('Restored ' + d.people.length + ' kundlis (' + added + ' new)'); rerender();
     } catch (e) { toast('Could not restore: ' + e.message, 3500); }
