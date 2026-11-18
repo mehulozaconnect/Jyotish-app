@@ -27,7 +27,7 @@ REP.life = function (p, c, now) {
     sec.push({ h: x[1], badge: v, items: items });
     tell.push(x[1] + ': ' + v[0].toLowerCase() + (when && x[0] !== 'health' ? '; best from ' + mon(when.start) : '') + '.');
   });
-  return { v: vrd(a.snapshot.grade[0], /Challenging/.test(a.snapshot.grade[0]) ? 'b' : /Balanced/.test(a.snapshot.grade[0]) ? 'm' : 'g'), intro: a.snapshot.grade[1], sec: sec, tell: tell, ask: 'Give ' + nm(p) + '\'s life predictions for career, money, marriage, children and health with dates' };
+  return { v: vrd(a.snapshot.grade[0], /Challenging|Effort/.test(a.snapshot.grade[0]) ? 'b' : /Balanced/.test(a.snapshot.grade[0]) ? 'm' : 'g'), intro: a.snapshot.grade[1], sec: sec, tell: tell, ask: 'Give ' + nm(p) + '\'s life predictions for career, money, marriage, children and health with dates' };
 };
 REP.dashaphal = function (p, c, now) {
   var a = kaOf(p), k = c.k;

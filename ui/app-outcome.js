@@ -55,7 +55,7 @@ OUT.varsh = function (p, c, now) {
   if (a === age(p, now)) h += '<button class="btn acc wide" style="margin-top:10px" data-go="report/year">Read the full year prediction ›</button>';
   return { html: h, tell: o.tell, ask: 'Explain ' + nm(p) + '\'s Varshphal for year ' + (a + 1) + ' of life (age ' + a + ', ' + N.dmy(o.vp.at) + ' to ' + N.dmy(o.vp.end) + '): outcomes for career, money, health and relationships, and the good and difficult months' };
 };
-OUT.report = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + (/Challenging/.test(a.snapshot.grade[0]) ? 'b' : /Balanced/.test(a.snapshot.grade[0]) ? 'm' : 'g') + '">' + esc(a.snapshot.grade[0]) + '</div><p class="op">' + esc(a.snapshot.grade[1]) + '</p>', tell: a.pros.slice(0, 3).map(function (x) { return 'Strength: ' + x.t + '.'; }).concat(a.cons.slice(0, 2).map(function (x) { return 'Needs care: ' + x.t + '.'; })), ask: 'Key points to tell ' + nm(p) + ' from the full report' }; };
+OUT.report = function (p, c) { var a = kaOf(p); return { html: '<div class="ocard"><div class="olbl">Outcome</div><div class="overd ' + (/Challenging|Effort/.test(a.snapshot.grade[0]) ? 'b' : /Balanced/.test(a.snapshot.grade[0]) ? 'm' : 'g') + '">' + esc(a.snapshot.grade[0]) + '</div><p class="op">' + esc(a.snapshot.grade[1]) + '</p>', tell: a.pros.slice(0, 3).map(function (x) { return 'Strength: ' + x.t + '.'; }).concat(a.cons.slice(0, 2).map(function (x) { return 'Needs care: ' + x.t + '.'; })), ask: 'Key points to tell ' + nm(p) + ' from the full report' }; };
 OUT.charts = OUT.report;
 OUT.planets = function (p, c) {
   var s = J.P7.map(function (x) { return [x, rateIn(x, c.k, c)]; }).sort(function (a, b) { return b[1] - a[1]; });
