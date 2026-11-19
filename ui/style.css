@@ -621,3 +621,8 @@ details.v4meter,details.v4pl,details.v4det,details.v4det2{margin-top:0;border-ra
 .v5known b{display:block;margin-bottom:4px}.v5known p{margin:0;font-size:14px;color:var(--mut,#555)}
 .v5tools .v4tiles{margin:10px 0 12px}
 .v4tiles.v5t4{grid-template-columns:repeat(2,1fr)}
+/* 5.2 outcome log */
+.lgrow{padding:10px 0;border-bottom:1px solid #ECEAF4}.lgrow:last-of-type{border:0}.lgrow b{display:block;font-size:15px}.lgrow small{color:#6B6884;font-size:12.5px}
+.lgbar{position:relative;height:10px;border-radius:6px;background:#ECEAF4;margin:6px 0 4px}.lgbar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--acc)}.lgbar em{position:absolute;top:-4px;width:3px;height:18px;background:#1B1A33;border-radius:2px;margin-left:-1px}
+.lgev .lgh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.lgev small{display:block;color:#6B6884;font-size:13px;margin-top:2px}.lgev .v4why{margin:8px 0 2px}
+.lgform h3{font:600 18px var(--sans);margin:4px 0 10px}.lgform label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px}.lgform .v4areas{padding:0}.lgpick button.on{background:var(--acc);color:#fff;border-color:var(--acc)}.lgform .v4btn{margin-top:16px;width:100%}
