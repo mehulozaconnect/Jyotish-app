@@ -5,7 +5,7 @@ function alertsOf(p, days) {
   var key = p.id + '|' + p.date + '|' + p.time + '|' + condOf(p).join(',') + '|' + DB.settings.ayan + '|' + new Date().toDateString() + '|' + days;
   if (AL_CACHE[key]) return alCut(AL_CACHE[key], lim);
   var out = [];
-  try { var c = calcP(p), R = maOf(p), from = todayStart(0), known = condOf(p), list = known.concat(['general']); out = ALERT.forPerson(c, R, list, from, days, known); } catch (e) { if (window.console) console.error(e); }
+  try { var c = calcP(p), R = maOf(p), from = todayStart(0), known = condOf(p), list = known.concat(chartTop(p, 2).filter(function (t) { return /Strong/.test(t.r.tend); }).map(function (t) { return t.id; })).concat(['general']); out = ALERT.forPerson(c, R, list, from, days, known); } catch (e) { if (window.console) console.error(e); }
   AL_CACHE[key] = out; return alCut(out, lim);
 }
 function alAlert(t) { return String(t).replace(/:?\s*(or )?(go to )?(an )?emergency\.?\s*$/i, '').replace(/[\s.:,]+$/, '').replace(/\s+or$/, ''); }

@@ -1,11 +1,16 @@
 /* Trikaal 5.0: fewer, tested claims.
    Health no longer guesses which illness a person has. The user records what a doctor has confirmed (known conditions);
    the app times those and watches general health with dated alert windows. Palm, face and the 360° reading are removed. */
+var DISEASE = makeDisease(J);
 (function () {
   if (DB.palm) delete DB.palm; if (DB.face) delete DB.face;
   DB.cond = DB.cond || {};
 })();
 function condOf(p) { var o = mcOpt(p); return ((DB.cond || {})[p.id] || []).filter(function (id) { return MC.P.some(function (x) { return x.id === id && !x.hidden && !(x.fem && o.gender !== 'F'); }); }); }
+function chartTop(p, n) {
+  var c = calcP(p), r = DISEASE.analyze(c), ok = mcList(p).map(function (x) { return x.id; }), known = condOf(p);
+  return DISEASE.rank(r).filter(function (id) { return ok.indexOf(id) >= 0 && known.indexOf(id) < 0 && /Strong|Moderate/.test(r[id].tend); }).slice(0, n || 3).map(function (id) { return { id: id, r: r[id] }; });
+}
 function v5pname(id) { var pr = MC.P.filter(function (x) { return x.id === id; })[0]; return pr ? pr.n : id; }
 
 MedHome = function () {
@@ -18,7 +23,13 @@ MedHome = function () {
   h += first ? alCard(p, first, true) + (ws.length > 1 ? '<div class="v4card"><div class="lbl">Later</div>' + ws.slice(1, 4).map(function (w) { return '<div class="alline"><span class="ald ' + (w.level === 'high' ? 'hi' : 'wa') + '"></span><b>' + alRange(w) + '</b><span>' + esc(alProbs(w)) + '</span></div>'; }).join('') + '</div>' : '')
     : '<div class="v4card alc ok"><div class="alh"><span class="ald"></span><div><b>No health window in the next 45 days</b><small>Keep the routine and the yearly check-ups.</small></div></div></div>';
   h += '<button class="v4link alall" data-go="alerts">Health alerts for everyone in my list ›</button>';
-  /* 2. known conditions, timed */
+  /* 2. what the chart itself shows: the classical 6th/8th-house reading */
+  var top = chartTop(p, 3);
+  h += '<div class="v4sec"><h2>What the chart shows</h2></div><div class="v4card">' + (top.length ? top.map(function (t) {
+      return '<button class="v4row tap" data-go="medical/case/' + t.id + '"><div style="flex:1"><b>' + esc(v5pname(t.id)) + '</b><p>' + esc(t.r.why.slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join('. ')) + '.</p></div>' + v4chip(/Strong/.test(t.r.tend) ? 'b' : 'w', /Strong/.test(t.r.tend) ? 'Strong' : 'Moderate') + '</button>'; }).join('') +
+      '<p class="v4note" style="margin:8px 0 2px">Read from the 6th and 8th houses, their lords and malefic groupings, compared with 1,500 other charts. A tendency, not a diagnosis: confirm with a check-up.</p>'
+    : '<p class="v4note" style="margin:4px 0">No body area stands out in this chart compared with other charts.</p>') + '</div>';
+  /* 3. known conditions, timed */
   h += '<div class="v4sec"><h2>Known conditions</h2></div><div class="v4card">';
   if (known.length) {
     var all = mcAll(p);

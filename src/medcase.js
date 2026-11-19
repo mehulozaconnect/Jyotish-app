@@ -164,6 +164,9 @@ function makeMedCase(J, C, MA) {
     /* 5.0: each problem is judged against how the same score falls across 700 charts (median, top 25%, top 10%), so no problem is flagged for everyone */
     var q = QT[pr.id] || [1.6, 2.2, 2.7], sc1 = Math.round(norm2 * 10) / 10, pct = sc1 >= q[2] ? 90 : sc1 >= q[1] ? 75 : sc1 >= q[0] ? 50 : 0;
     var tend = pct >= 90 && nL >= 2 ? 'Strong tendency' : pct >= 75 && nL >= 2 ? 'Moderate tendency' : pct >= 50 && nL >= 1 ? 'Mild tendency' : 'Low tendency';
+    /* 5.1: the classical disease reading (6th and 8th houses, their lords, malefic clusters) decides the tendency when it covers this problem */
+    var dz = typeof DISEASE !== 'undefined' ? DISEASE.analyze(c)[pr.id] : null;
+    if (dz) { tend = dz.tend; nL = dz.dims; story = dz.why.slice(0, 5).map(function (t) { return t.charAt(0).toUpperCase() + t.slice(1) + '.'; }).concat(story); }
     var tq = /Strong/.test(tend) ? 'b' : /Moderate/.test(tend) ? 'm' : 'g';
     /* timing: running dasha */
     var ch = J.dashaChain(c.maha, now, 3), runL = ch.map(function (d, i) { var l = link(k, d.lord, pr); return { lvl: i, lord: d.lord, start: d.start, end: d.end, s: l.s, why: l.why }; });
