@@ -132,7 +132,7 @@ var MED_RE = /\b(health|disease|ill|illness|sick|bp|blood pressure|diabet\w*|sug
 
 /* ---------- problem-first home ---------- */
 function mcOpt(p) { return { gender: p.gender, age: age(p, new Date()), now: new Date() }; }
-function mcList(p) { var o = mcOpt(p); return MC.P.filter(function (x) { return !(x.fem && o.gender !== 'F') && !(x.adult && o.age < 16); }); }
+function mcList(p) { var o = mcOpt(p); return MC.P.filter(function (x) { return !x.hidden && !(x.fem && o.gender !== 'F') && !(x.adult && o.age < 16); }); }
 function MedHome() {
   var p = curP(); if (!p) return topBar('Medical astrology', { noPerson: true }) + noPerson();
   var c = calcP(p), R = maOf(p), n1 = p.name.split(' ')[0], key = 'rank|' + p.id + '|' + p.time + '|' + new Date().toDateString();

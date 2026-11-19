@@ -72,12 +72,13 @@ function makeAlerts(A, C, J, MC) {
   var HIGH = 4.4, WATCH = 2.8;
   /* windows: scan days, take the strongest problem each day, group risky days */
   var NOT_ILLNESS = ['fertility', 'surgery'];
-  function scan(c, R, pids, from, days) {
-    var ps = pids.filter(function (id) { return NOT_ILLNESS.indexOf(id) < 0; }).map(function (pid) { var pr = MC.P.filter(function (x) { return x.id === pid; })[0]; return pr ? { pr: pr, a: MC.analyze(c, R, pid, from), pts: points(c, pr) } : null; }).filter(Boolean);
+  function scan(c, R, pids, from, days, known) {
+    known = known || [];
+    var ps = pids.filter(function (id) { return NOT_ILLNESS.indexOf(id) < 0; }).map(function (pid) { var pr = MC.P.filter(function (x) { return x.id === pid; })[0]; if (!pr) return null; var a = MC.analyze(c, R, pid, from); return { pr: pr, a: a, pts: points(c, pr), tend: known.indexOf(pid) >= 0 ? 'Strong tendency' : pid === 'general' ? 'Moderate tendency' : a.tend }; }).filter(Boolean);
     var ecl = eclipses(from, new Date(from.getTime() + (days + 20) * DAY)), D = [];
     for (var i = -21; i <= days; i++) {
       var day = midday(new Date(from.getTime() + i * DAY)), best = null, per = [];
-      ps.forEach(function (x) { var r = dayScore(c, x.pr, x.pts, x.a.tend, day, ecl); r.x = x; per.push(r); if (!best || r.s > best.s) best = r; });
+      ps.forEach(function (x) { var r = dayScore(c, x.pr, x.pts, x.tend, day, ecl); r.x = x; per.push(r); if (!best || r.s > best.s) best = r; });
       /* a high-care day needs a fast trigger (Mars, the Sun, an eclipse); slow planets alone only make a watch day */
       var lv = !best ? 0 : best.s >= HIGH && best.fast > 0 ? 2 : best.s >= WATCH ? 1 : 0;
       D.push({ day: day, best: best, per: per, lv: lv });
@@ -112,11 +113,11 @@ function makeAlerts(A, C, J, MC) {
       if (w.wide) why.push('the pressure builds slowly from ' + w.wide.start.toISOString().slice(0, 10) + ' to ' + w.wide.end.toISOString().slice(0, 10) + ' (a slow or retrograde planet); these are the sharpest days inside it');
       if (top.prot) why.push('Jupiter protects part of it, so it may stay milder');
       var p0 = probs[0] || top.x.pr;
-      return { pid: p0.id, n: p0.n, tend: top.x.a.tend, probs: probs.map(function (x) { return { id: x.id, n: x.n }; }), start: w.start, end: w.end, at: w.at, level: w.high ? 'high' : 'watch', wide: w.wide || null, peak: Math.round(w.peak * 10) / 10, why: why, alert: p0.alert };
+      return { pid: p0.id, n: p0.n, tend: top.x.tend, probs: probs.map(function (x) { return { id: x.id, n: x.n }; }), start: w.start, end: w.end, at: w.at, level: w.high ? 'high' : 'watch', wide: w.wide || null, peak: Math.round(w.peak * 10) / 10, why: why, alert: p0.alert };
     });
   }
   function windows(c, R, pid, from, days) { return scan(c, R, [pid], from, days); }
-  function forPerson(c, R, list, from, days) { return scan(c, R, list, from, days); }
+  function forPerson(c, R, list, from, days, known) { return scan(c, R, list, from, days, known); }
   return { windows: windows, forPerson: forPerson, points: points, dayScore: dayScore, HIGH: HIGH, WATCH: WATCH, setLevels: function (h, w) { HIGH = h; WATCH = w; } };
 }
 if (typeof module !== 'undefined') module.exports = makeAlerts;

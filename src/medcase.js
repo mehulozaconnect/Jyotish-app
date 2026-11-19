@@ -11,19 +11,19 @@ function makeMedCase(J, C, MA) {
 
   /* k: karaka weights, h: houses, s: Kalapurusha signs (0 = Aries), d: dosha, ex: true when the problem is an "excess" type */
   var P = [
-    { id: 'bp', n: 'High blood pressure', alt: 'BP, hypertension', re: /\b(bp|blood pressure|hypertension|high pressure)\b/i, k: { Su: 1, Ma: 0.8, Sa: 0.4 }, h: [4, 5, 1], s: [4, 3], d: 'Pitta', ex: true,
+    { id: 'bp', n: 'High blood pressure', alt: 'BP, hypertension', adult: true, re: /\b(bp|blood pressure|hypertension|high pressure)\b/i, k: { Su: 1, Ma: 0.8, Sa: 0.4 }, h: [4, 5, 1], s: [4, 3], d: 'Pitta', ex: true,
       tests: ['BP check every month at home; doctor review every 3 months', 'Lipid profile, kidney function and ECG every year after 35'], doc: 'General physician or cardiologist',
       avoid: ['Extra salt, pickles, papad, chips and packaged food', 'Smoking, alcohol, energy drinks', 'Anger, overwork, skipping sleep', 'Stopping BP tablets on your own'],
       dos: ['30-minute brisk walk 5 days a week', 'Anulom-vilom and Bhramari 10 minutes daily', 'Keep weight in range', '7 hours of sleep'], food: 'more vegetables, fruit, curd, oats and dals; very little salt, fried and red meat', yoga: 'Shavasana, Anulom-vilom, Bhramari (avoid head-down poses and breath-holding)', alert: 'BP above 180/120, chest pain, sudden severe headache, blurred vision or weakness on one side: emergency.' },
-    { id: 'heart', n: 'Heart health', alt: 'palpitations, heart risk', re: /\b(heart|cardiac|palpitation|angina|chest pain)\b/i, k: { Su: 1, Mo: 0.5, Sa: 0.5 }, h: [4, 5], s: [4, 3], d: 'Pitta', ex: false,
+    { id: 'heart', n: 'Heart health', alt: 'palpitations, heart risk', adult: true, re: /\b(heart|cardiac|palpitation|angina|chest pain)\b/i, k: { Su: 1, Mo: 0.5, Sa: 0.5 }, h: [4, 5], s: [4, 3], d: 'Pitta', ex: false,
       tests: ['Lipid profile, sugar and ECG every year after 35', 'TMT or echo if the doctor advises, especially with family history'], doc: 'Cardiologist',
       avoid: ['Smoking (the biggest single risk)', 'Fried food, trans fats, excess sugar', 'Long sitting without movement', 'Ignoring breathlessness or chest tightness'],
       dos: ['Daily walk building up to 45 minutes', 'Weight and waist in range', 'Manage stress: prayer, breathing, rest', 'Morning sunlight'], food: 'oats, nuts in small amounts, fruit, vegetables, fish or dals; less ghee, butter and sweets', yoga: 'Slow Surya Namaskar (only if cleared), Anulom-vilom, Shavasana', alert: 'Chest pain or pressure spreading to arm, jaw or back, fainting, breathlessness at rest: emergency.' },
-    { id: 'sugar', n: 'Diabetes / blood sugar', alt: 'sugar, prediabetes', re: /\b(diabet\w*|sugar|hba1c|insulin|prediabet\w*)\b/i, k: { Ju: 1, Ve: 0.8, Mo: 0.3 }, h: [5, 6, 9], s: [8, 6], d: 'Kapha', ex: true,
+    { id: 'sugar', n: 'Diabetes / blood sugar', alt: 'sugar, prediabetes', adult: true, re: /\b(diabet\w*|sugar|hba1c|insulin|prediabet\w*)\b/i, k: { Ju: 1, Ve: 0.8, Mo: 0.3 }, h: [5, 6, 9], s: [8, 6], d: 'Kapha', ex: true,
       tests: ['Fasting sugar and HbA1c every 3 months if diabetic, yearly after 30 otherwise', 'Kidney, eye and foot check every year if diabetic'], doc: 'Physician or diabetologist',
       avoid: ['Sweets, sugary drinks, packaged juice', 'Large portions of white rice, maida and bakery items', 'Late heavy dinners', 'Fasting without the doctor\'s permission'],
       dos: ['10–15 minute walk after every meal', 'Fixed meal times', 'Medicines daily as prescribed', 'Lose 5% of weight if overweight'], food: 'millets (jowar, bajra, ragi), dals, vegetables, chana; Jupiter strengthened through turmeric and chana dal, not sweets', yoga: 'Ardha Matsyendrasana (seated twist), Mandukasana if the doctor allows, daily walking', alert: 'Extreme thirst and urination, confusion, a foot wound that does not heal, sugar below 70 with sweating: see a doctor urgently.' },
-    { id: 'chol', n: 'Cholesterol / fatty liver', alt: 'lipids, liver', re: /\b(cholesterol|lipid|fatty liver|liver|triglycer\w*|sgpt)\b/i, k: { Ju: 1, Ve: 0.5, Su: 0.3 }, h: [5, 9], s: [8], d: 'Kapha', ex: true,
+    { id: 'chol', n: 'Cholesterol / fatty liver', alt: 'lipids, liver', adult: true, re: /\b(cholesterol|lipid|fatty liver|liver|triglycer\w*|sgpt)\b/i, k: { Ju: 1, Ve: 0.5, Su: 0.3 }, h: [5, 9], s: [8], d: 'Kapha', ex: true,
       tests: ['Lipid profile and liver function every year after 30', 'Liver ultrasound if the doctor advises'], doc: 'Physician or gastroenterologist',
       avoid: ['Fried food, excess ghee and butter', 'Alcohol', 'Overeating and late dinners', 'Sugary drinks'],
       dos: ['Daily exercise 40 minutes', 'Early, light dinner', 'Weight loss if overweight'], food: 'fibre, oats, vegetables, fruit, turmeric, walnuts in small amounts', yoga: 'Ardha Matsyendrasana, Bhujangasana, brisk walking', alert: 'Yellow eyes or skin, upper-right abdominal pain with fever, swelling of the belly: see a doctor today.' },
@@ -31,7 +31,7 @@ function makeMedCase(J, C, MA) {
       tests: ['TSH every year (every 3–6 months if on medicine, as the doctor says)', 'Earlier if tired, gaining weight, cold, or with hair fall'], doc: 'Endocrinologist or physician',
       avoid: ['Changing or skipping thyroid medicine on your own', 'Crash diets', 'Irregular sleep and long stress', 'Taking the tablet with tea, milk or calcium'],
       dos: ['Tablet on an empty stomach at the same time daily', 'Morning sunlight walk', 'Gentle neck stretches', 'Regular sleep'], food: 'home-cooked balanced meals, iodised salt unless told otherwise, enough protein', yoga: 'Gentle neck stretches, Setu Bandhasana, Ujjayi breathing (Sarvangasana only if a teacher and doctor approve)', alert: 'A neck lump, trouble swallowing, racing heartbeat with weight loss, or extreme tiredness: see a doctor.' },
-    { id: 'weight', n: 'Weight gain / obesity', alt: 'overweight', re: /\b(weight|obes\w*|overweight|fat loss|belly fat)\b/i, k: { Ju: 1, Ve: 0.8, Mo: 0.5 }, h: [1, 5, 9], s: [8, 1], d: 'Kapha', ex: true,
+    { id: 'weight', n: 'Weight gain / obesity', alt: 'overweight', adult: true, re: /\b(weight|obes\w*|overweight|fat loss|belly fat)\b/i, k: { Ju: 1, Ve: 0.8, Mo: 0.5 }, h: [1, 5, 9], s: [8, 1], d: 'Kapha', ex: true,
       tests: ['Sugar, thyroid and lipid tests to find a cause', 'Waist measurement monthly'], doc: 'Physician and dietitian',
       avoid: ['Sweets, fried snacks, sugary drinks', 'Eating while watching screens', 'Late dinners and day sleep', 'Crash diets'],
       dos: ['10,000 steps a day', 'Strength training 2–3 days a week', 'Dinner before 8 pm', 'Portion control'], food: 'light warm meals, vegetables, dals, millets; less dairy, sugar and fried food', yoga: 'Surya Namaskar (as able), Bhujangasana, brisk walking', alert: 'Sudden weight gain with swelling or breathlessness: see a doctor.' },
@@ -59,7 +59,7 @@ function makeMedCase(J, C, MA) {
       tests: ['See a doctor for any bleeding; colonoscopy only if advised'], doc: 'Surgeon or gastroenterologist',
       avoid: ['Low water and low fibre', 'Delaying the urge', 'Long sitting on the toilet with the phone', 'Very spicy food'],
       dos: ['High fibre: vegetables, fruit, whole grains', '2.5–3 litres of water', 'Daily walk', 'Warm water in the morning'], food: 'fibre-rich vegetables, papaya, soaked raisins, whole grains, black sesame in small amounts', yoga: 'Malasana, Pawanmuktasana, Ashwini mudra', alert: 'Bleeding from the rectum, severe pain, or change in bowel habit for weeks: see a doctor.' },
-    { id: 'joints', n: 'Knee / joint pain, arthritis', alt: 'knees, joints', re: /\b(knee\w*|joint\w*|arthrit\w*|gout|uric)\b/i, k: { Sa: 1, Ma: 0.5, Su: 0.3 }, h: [10, 1], s: [9], d: 'Vata', ex: false,
+    { id: 'joints', n: 'Knee / joint pain, arthritis', alt: 'knees, joints', adult: true, re: /\b(knee\w*|joint\w*|arthrit\w*|gout|uric)\b/i, k: { Sa: 1, Ma: 0.5, Su: 0.3 }, h: [10, 1], s: [9], d: 'Vata', ex: false,
       tests: ['Vitamin D and B12 yearly after 35', 'Uric acid if joints swell', 'X-ray only if advised; bone density after 50'], doc: 'Orthopaedic doctor and physiotherapist',
       avoid: ['Long squatting and climbing many stairs when painful', 'Extra body weight', 'Cold and damp on the joints', 'Ignoring pain for months'],
       dos: ['Thigh (quadriceps) strengthening 3 times a week', 'Warm compress in winter', 'Supportive footwear', 'Keep weight in range'], food: 'calcium (milk, sesame, ragi), sunlight for vitamin D, warm soups; less sour and cold food', yoga: 'Pawanmuktasana joint series, Tadasana', alert: 'Hot, red, swollen joint with fever, knee locking or giving way, bone pain at night: see a doctor.' },
@@ -67,7 +67,7 @@ function makeMedCase(J, C, MA) {
       tests: ['Vitamin D and B12', 'MRI only if the doctor advises'], doc: 'Orthopaedic doctor or physiotherapist',
       avoid: ['Slouching at desks and phones', 'Lifting heavy weights with a bent back', 'Soft sagging mattress', 'Long drives without breaks'],
       dos: ['Core-strengthening exercises', 'Break every 45 minutes of sitting', 'Correct desk height'], food: 'calcium and protein, warm food, enough water', yoga: 'Bhujangasana, Marjariasana (cat-cow), Makarasana', alert: 'Back pain with numbness in the legs or loss of bladder control: emergency.' },
-    { id: 'sciatica', n: 'Hip pain / sciatica', alt: 'hips, sciatic', re: /\b(sciatic\w*|hip\w*|thigh)\b/i, k: { Ju: 0.8, Sa: 0.8 }, h: [9], s: [8], d: 'Vata', ex: false,
+    { id: 'sciatica', n: 'Hip pain / sciatica', alt: 'hips, sciatic', adult: true, re: /\b(sciatic\w*|hip\w*|thigh)\b/i, k: { Ju: 0.8, Sa: 0.8 }, h: [9], s: [8], d: 'Vata', ex: false,
       tests: ['Doctor and physiotherapy review; MRI only if advised'], doc: 'Orthopaedic doctor', avoid: ['Long sitting', 'Sudden twisting and heavy lifting'], dos: ['Hip and hamstring stretches daily', 'Warm up before sport', 'Walk daily'], food: 'warm, nourishing food; anti-inflammatory turmeric', yoga: 'Supta Padangusthasana with a strap, Setu Bandhasana', alert: 'Leg weakness or loss of bladder control: emergency.' },
     { id: 'migraine', n: 'Migraine / headache', alt: 'headache', re: /\b(migraine|headache\w*|head ache|sinus)\b/i, k: { Su: 0.8, Ma: 0.8, Ra: 0.6, Me: 0.4 }, h: [1], s: [0], d: 'Pitta', ex: true,
       tests: ['Neurologist review; keep a headache diary'], doc: 'Neurologist',
@@ -101,10 +101,13 @@ function makeMedCase(J, C, MA) {
       tests: ['Blood tests during fever as the doctor advises', 'Vaccinations up to date'], doc: 'Physician', avoid: ['Stopping antibiotics midway', 'Street water and stale food', 'Self-medicating'], dos: ['Hand-washing', 'Clean water and fresh food', 'Finish every course of medicine', 'Rest during fever'], food: 'fresh home food, warm soups, enough water', yoga: 'Yoga Nidra and rest; light breathing when well', alert: 'Fever over 3 days, fever with stiff neck, rash, confusion or bleeding: see a doctor urgently.' },
     { id: 'allergy', n: 'Allergies', alt: 'food or dust allergy', re: /\b(allerg\w*|sneez\w*|dust)\b/i, k: { Ra: 1, Me: 0.5, Mo: 0.3 }, h: [6, 8, 1], s: [], d: '', ex: true,
       tests: ['Allergy testing with an allergist'], doc: 'Allergist', avoid: ['Known triggers', 'Self-medication', 'Processed food'], dos: ['Symptom and food diary', 'Keep the home dust-free', 'Carry prescribed medicine'], food: 'fresh home-cooked food; note reactions', yoga: 'Bhramari, Nadi Shodhana', alert: 'Swelling of face, lips or tongue or trouble breathing: emergency.' },
+    { id: 'general', n: 'General health', alt: 'overall health', hidden: true, re: /\bgeneral health\b/i, k: { Su: 1, Mo: 1 }, h: [1, 6, 8], s: [], d: '', ex: false,
+      tests: ['A routine check-up: BP, sugar and a blood count'], doc: 'Family doctor', avoid: ['Skipping sleep and meals', 'Heavy exertion and risky travel', 'Ignoring a new symptom'], dos: ['Regular sleep and meals', 'Light daily exercise', 'Medicines on time'], food: 'light, fresh home food', yoga: 'Walking and Anulom Vilom', alert: 'Chest pain, breathlessness, fainting, a very high fever or sudden weakness: go to hospital at once.' },
     { id: 'surgery', n: 'Surgery / operation', alt: 'planned procedure', re: /\b(surger\w*|operation|operat\w*|procedure|hospital\w*)\b/i, k: { Ma: 1, Ke: 1, Sa: 0.3 }, h: [8, 6, 12], s: [], d: '', ex: false,
       tests: ['Pre-operative tests as the surgeon advises'], doc: 'Your surgeon', avoid: ['Delaying urgent surgery for a muhurta', 'Herbs or fasting before surgery without the surgeon'], dos: ['Choose the date only inside the surgeon\'s window (use Treatment dates)', 'Follow the recovery plan exactly', 'Walk as soon as allowed'], food: 'as the hospital advises; light nourishing food in recovery', yoga: 'Breathing and Yoga Nidra in recovery; poses only after clearance', alert: 'After surgery: fever, wound redness, severe pain or bleeding: contact the surgeon at once.' }
   ];
 
+  var QT = {"bp":[1.6,2.2,2.7],"heart":[1.4,2,2.5],"sugar":[1.9,2.5,3.1],"chol":[1.8,2.4,3],"thyroid":[1.5,1.8,2.3],"weight":[1.9,2.5,3],"pcos":[1.6,2,2.4],"fertility":[1.5,1.9,2.3],"kidney":[1.6,2.2,2.9],"acidity":[1.4,2,2.4],"ibs":[1.7,2.1,2.5],"piles":[1.4,2,2.6],"joints":[1.3,1.9,2.5],"back":[1.7,2.3,2.8],"sciatica":[1.6,2.3,2.9],"migraine":[1.5,1.9,2.2],"anxiety":[2,2.5,3],"depression":[1.4,2,2.4],"sleep":[1.8,2.3,2.7],"skin":[2.1,2.5,2.8],"asthma":[1.6,2.2,2.7],"eyes":[1.5,2.1,2.7],"teeth":[1.5,2.1,2.7],"anaemia":[1.2,1.8,2.6],"infection":[1.6,2,2.4],"allergy":[2.6,2.9,3.2],"surgery":[1.7,2.1,2.5]};
   function wsum(o) { return Object.keys(o).reduce(function (a, k) { return a + o[k]; }, 0); }
   function link(k, L, pr) {
     var pl = k.P[L], hs = J.lordsOf(k.ascSign, L).concat([pl.house]), s = 0, why = [];
@@ -158,7 +161,9 @@ function makeMedCase(J, C, MA) {
     var dm = pr.d && R.dosha.main === pr.d; if (dm) score += 0.7;
     var nL = ['sign', 'house', 'karaka'].filter(function (x) { return layers[x].length; }).length;
     var norm2 = score / Math.max(1.5, wsum(pr.k));
-    var tend = nL >= 3 && norm2 >= 1.8 ? 'Strong tendency' : nL >= 2 && norm2 >= 1.4 ? 'Moderate tendency' : nL >= 1 && norm2 >= 0.6 ? 'Mild tendency' : 'Low tendency';
+    /* 5.0: each problem is judged against how the same score falls across 700 charts (median, top 25%, top 10%), so no problem is flagged for everyone */
+    var q = QT[pr.id] || [1.6, 2.2, 2.7], sc1 = Math.round(norm2 * 10) / 10, pct = sc1 >= q[2] ? 90 : sc1 >= q[1] ? 75 : sc1 >= q[0] ? 50 : 0;
+    var tend = pct >= 90 && nL >= 2 ? 'Strong tendency' : pct >= 75 && nL >= 2 ? 'Moderate tendency' : pct >= 50 && nL >= 1 ? 'Mild tendency' : 'Low tendency';
     var tq = /Strong/.test(tend) ? 'b' : /Moderate/.test(tend) ? 'm' : 'g';
     /* timing: running dasha */
     var ch = J.dashaChain(c.maha, now, 3), runL = ch.map(function (d, i) { var l = link(k, d.lord, pr); return { lvl: i, lord: d.lord, start: d.start, end: d.end, s: l.s, why: l.why }; });
@@ -179,7 +184,8 @@ function makeMedCase(J, C, MA) {
     var trBad = trNow.filter(function (x) { return !x.good; }).length, trGood = trNow.some(function (x) { return x.good; });
     var agree = trNow.some(function (x) { return !x.good && runL.slice(0, 2).some(function (r) { return r.lord === x.p; }); });
     var nowScore = dashaHit + trBad * 0.8 - (trGood ? 0.6 : 0) + (agree ? 1 : 0);
-    var tw = /Strong|Moderate/.test(tend), nowWord = (nowScore >= 3.2 && tw) || (agree && tw) ? 'Active now' : nowScore >= 2.2 || (nowScore >= 1.5 && tw) ? 'Watch now' : 'Quiet now';
+    /* 5.0: 'Active now' only when the running sub-period lord is linked to the problem AND the same planet is over it in transit; most problems are quiet most of the time */
+    var tw = /Strong|Moderate/.test(tend), adL = runL[1] ? runL[1].s : 0, nowWord = tw && agree && adL > 0 ? 'Active now' : tw && (agree || (adL >= 2 && trBad > 0)) ? 'Watch now' : 'Quiet now', agreeAD = runL[1] && trNow.some(function (x) { return !x.good && x.p === runL[1].lord; }), knownWord = agreeAD && adL > 0 ? 'Active now' : (agree && adL > 0) || (adL >= 2 && trBad > 0) ? 'Watch now' : 'Quiet now';
     /* upcoming transit entries in the next 24 months */
     var ahead = [], prev = {};
     for (var d = 0; d <= 730; d += 7) {
@@ -222,12 +228,12 @@ function makeMedCase(J, C, MA) {
     var dosha = pr.d ? (R.dosha.main === pr.d ? 'Your ' + R.dosha.type + ' body type leans the same way as this problem (' + pr.d + '), so lifestyle matters a lot: ' + MA.DOSHA[pr.d].care + '.' : 'Your body type is ' + R.dosha.type + '; this problem is ' + pr.d + '-type, so treat it without over-correcting your base: ' + MA.DOSHA[pr.d].care + '.') : '';
     var bestMonths = R.calendar.filter(function (m) { return [3, 6, 11].indexOf(m.hm) >= 0; }).map(function (m) { return my(m.from); }).slice(0, 3);
     return { per: per, story: story, pr: pr, tend: tend, tq: tq, layers: layers, nL: nL, prot: uniq(prot), score: Math.round(norm2 * 10) / 10, dosha: dosha, recovery: R.lagna,
-      nowWord: nowWord, nowQ: nowWord === 'Active now' ? 'b' : nowWord === 'Watch now' ? 'm' : 'g', runL: runL, trNow: trNow, agree: agree, ahead: ahead.slice(0, 4), sens: sens, easy: easy, rem: rem, bestMonths: bestMonths };
+      nowWord: nowWord, knownWord: knownWord, nowQ: nowWord === 'Active now' ? 'b' : nowWord === 'Watch now' ? 'm' : 'g', runL: runL, trNow: trNow, agree: agree, ahead: ahead.slice(0, 4), sens: sens, easy: easy, rem: rem, bestMonths: bestMonths };
   }
   function rank(c, R, opt) {
-    return P.filter(function (p) { return !(p.fem && opt.gender !== 'F') && !(p.adult && opt.age < 16) && p.id !== 'surgery'; }).map(function (p) { var a = analyze(c, R, p.id, opt.now); return { id: p.id, n: p.n, tend: a.tend, tq: a.tq, now: a.nowWord, nq: a.nowQ, score: a.score + (a.nowWord === 'Active now' ? 0.6 : a.nowWord === 'Watch now' ? 0.3 : 0) }; }).sort(function (a, b) { return b.score - a.score; });
+    return P.filter(function (p) { return !p.hidden && !(p.fem && opt.gender !== 'F') && !(p.adult && opt.age < 16) && p.id !== 'surgery'; }).map(function (p) { var a = analyze(c, R, p.id, opt.now); return { id: p.id, n: p.n, tend: a.tend, tq: a.tq, now: a.nowWord, nq: a.nowQ, score: a.score + (a.nowWord === 'Active now' ? 0.6 : a.nowWord === 'Watch now' ? 0.3 : 0) }; }).sort(function (a, b) { return b.score - a.score; });
   }
-  function find(q) { return P.filter(function (p) { return p.re.test(q); }); }
+  function find(q) { return P.filter(function (p) { return !p.hidden && p.re.test(q); }); }
   function text(a, name) {
     var L = ['HEALTH PROBLEM CASE FILE: ' + a.pr.n + ' for ' + name];
     L.push('Chart: ' + a.tend + ' (' + a.nL + ' of 3 layers agree). ' + ['sign', 'house', 'karaka'].map(function (x) { return a.layers[x].length ? x.toUpperCase() + ': ' + a.layers[x].join('; ') : ''; }).filter(Boolean).join(' | ') + (a.prot.length ? ' Protection: ' + a.prot.join('; ') + '.' : '') + ' Recovery power ' + a.recovery.score + '/5. ' + a.dosha);

@@ -2,10 +2,10 @@
 var ALERT = makeAlerts(A, C, J, MC), AL_CACHE = {};
 function alertsOf(p, days) {
   var lim = days || 60; days = 120;
-  var key = p.id + '|' + p.date + '|' + p.time + '|' + DB.settings.ayan + '|' + new Date().toDateString() + '|' + days;
+  var key = p.id + '|' + p.date + '|' + p.time + '|' + condOf(p).join(',') + '|' + DB.settings.ayan + '|' + new Date().toDateString() + '|' + days;
   if (AL_CACHE[key]) return alCut(AL_CACHE[key], lim);
   var out = [];
-  try { var c = calcP(p), R = maOf(p), all = mcAll(p), from = todayStart(0), list = Object.keys(all).filter(function (id) { return /Strong|Moderate/.test(all[id].tend) && ['fertility', 'surgery'].indexOf(id) < 0; }); if (list.length) out = ALERT.forPerson(c, R, list, from, days); } catch (e) { if (window.console) console.error(e); }
+  try { var c = calcP(p), R = maOf(p), from = todayStart(0), known = condOf(p), list = known.concat(['general']); out = ALERT.forPerson(c, R, list, from, days, known); } catch (e) { if (window.console) console.error(e); }
   AL_CACHE[key] = out; return alCut(out, lim);
 }
 function alAlert(t) { return String(t).replace(/:?\s*(or )?(go to )?(an )?emergency\.?\s*$/i, '').replace(/[\s.:,]+$/, '').replace(/\s+or$/, ''); }
