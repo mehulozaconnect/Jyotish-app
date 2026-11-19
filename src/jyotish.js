@@ -61,7 +61,7 @@ function makeJyotish(A, C) {
   }
 
   /* ---------- divisional charts ---------- */
-  var VARGAS = [[1, 'Rashi', 'Body, overall life'], [2, 'Hora', 'Wealth'], [3, 'Drekkana', 'Siblings, courage'], [4, 'Chaturthamsha', 'Property, fortune'], [7, 'Saptamsha', 'Children'], [9, 'Navamsha', 'Spouse, dharma, inner strength'],
+  var VARGAS = [[1, 'Rashi', 'Body, overall life'], [2, 'Hora', 'Wealth'], [3, 'Drekkana', 'Siblings, courage'], [4, 'Chaturthamsha', 'Property, fortune'], [5, 'Panchamsha', 'Fame, power, authority'], [6, 'Shashtamsha', 'Health, disease, enemies'], [7, 'Saptamsha', 'Children'], [8, 'Ashtamsha', 'Sudden events, longevity'], [9, 'Navamsha', 'Spouse, dharma, inner strength'],
     [10, 'Dashamsha', 'Career, status'], [12, 'Dwadashamsha', 'Parents'], [16, 'Shodashamsha', 'Vehicles, comforts'], [20, 'Vimshamsha', 'Spiritual progress'], [24, 'Chaturvimshamsha', 'Education, learning'],
     [27, 'Bhamsha', 'Strength, stamina'], [30, 'Trimshamsha', 'Misfortune, illness'], [40, 'Khavedamsha', 'Maternal legacy'], [45, 'Akshavedamsha', 'Paternal legacy, character'], [60, 'Shashtiamsha', 'Past karma, overall']];
   var D30_ODD = [[5, 0], [10, 10], [18, 8], [25, 2], [30, 6]], D30_EVEN = [[5, 1], [12, 5], [20, 11], [25, 9], [30, 7]];
@@ -80,7 +80,10 @@ function makeJyotish(A, C) {
       case 2: sign = odd ? (part === 0 ? 4 : 3) : (part === 0 ? 3 : 4); break;
       case 3: sign = s + [0, 4, 8][part]; break;
       case 4: sign = s + 3 * part; break;
+      case 5: sign = odd ? [0, 10, 8, 2, 6][part] : [1, 5, 11, 9, 7][part]; break;
+      case 6: sign = (odd ? 0 : 6) + part; break;
       case 7: sign = (odd ? s : s + 6) + part; break;
+      case 8: sign = [0, 8, 4][mv] + part; break;
       case 9: sign = s * 9 + part; break;
       case 10: sign = (odd ? s : s + 8) + part; break;
       case 12: sign = s + part; break;
