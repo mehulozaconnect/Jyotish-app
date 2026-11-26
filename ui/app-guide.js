@@ -7,9 +7,9 @@ var G_DG = { 'Exalted': 'exalted: at its best', 'Moolatrikona': 'in moolatrikona
 function gNth(n) { return N.nth(n); }
 function gDig(x, q) { return x === 'Ra' || x === 'Ke' ? 'a shadow planet; it gives the results of its sign lord ' + CQ_PN[J.RULER[q.sign]] : (G_DG[q.dignity] || (q.dignity || 'neutral').toLowerCase()); }
 function gLordOf(A, h) { return J.RULER[(A + h - 1) % 12]; }
-function gModel(c, id, hp) {
+function gModel(c, id, hp, kch) {
   var m, k = c.k;
-  if (id === 'KP') { var kk = c.kp; m = { rows: [{ h: 1, code: 'Asc', deg: J.dm(kk.asc), cls: 'asc' }].concat(kk.planets.map(function (q) { return { h: q.bhava, code: q.code, deg: J.dm(q.lon), r: q.retro && q.code !== 'Ra' && q.code !== 'Ke' }; })), signs: kk.cusps.map(function (x) { return x.sign; }), title: 'KP chart (Placidus cusps, KP ayanamsa)' }; }
+  if (id === 'KP') { var kk = kch || c.kp; m = { rows: [{ h: 1, code: 'Asc', deg: J.dm(kk.asc), cls: 'asc' }].concat(kk.planets.map(function (q) { return { h: q.bhava, code: q.code, deg: J.dm(q.lon), r: q.retro && q.code !== 'Ra' && q.code !== 'Ke' }; })), signs: kk.cusps.map(function (x) { return x.sign; }), title: kch && kch !== c.kp ? 'Prashna kundli (KP horary)' : 'KP chart (Placidus cusps, KP ayanamsa)' }; }
   else if (id === 'TR') { var now = new Date(), A = k.ascSign, sg = []; for (var i = 0; i < 12; i++) sg.push((A + i) % 12);
     m = { rows: [{ h: 1, code: 'Asc', deg: '', cls: 'asc' }, { h: J.houseFrom(A, k.P.Mo.sign), code: 'nMo', deg: 'natal', cls: 'mo' }].concat(C.BODIES.map(function (x) { var lon = C.sidereal(x, now), s = Math.floor(((lon % 360) + 360) % 360 / 30); return { h: J.houseFrom(A, s), code: x, deg: J.dm(lon % 30), r: x !== 'Ra' && x !== 'Ke' && C.speed(x, now) < 0 }; })), signs: sg, title: 'Transits today on the birth chart' }; }
   else { m = chartModel(c, id); }
@@ -72,8 +72,10 @@ function gVedic(a, c, p) {
 
 /* ---------- KP steps ---------- */
 function gKP(a, c, p) {
-  var kk = c.kp, S = [], sig = c.sig;
-  S.push({ t: 'The KP chart', chart: { id: 'KP', hl: a.kp.checks.map(function (ch) { return ch.cusp; }), hp: [] }, learn: 'KP uses Placidus house cusps and the KP ayanamsa. Each cusp falls in a sign, a star (nakshatra) and a sub. The sub lord of the cusp decides whether that house\'s matter happens. An exact birth time matters: a few minutes can change a sub lord.',
+  var kk = a.kp.chart || c.kp, S = [], sig = a.kp.sig || c.sig, hz = a.kp.horary;
+  if (hz) S.push({ t: 'The Prashna kundli', chart: { id: 'KP', hl: [1], hp: ['Mo'] }, learn: 'In KP Prashna the customer\'s number (1 to 249) fixes the ascendant: the zodiac is divided into 249 parts by sign, star and sub, and the number picks one. The other cusps are worked out for the place and moment of the question, and the planets are taken as they are at that moment. The birth time is not needed, so Prashna works even when the birth time is doubtful.',
+    read: [{ k: 'i', t: 'Number ' + hz.n + ' falls in ' + J.SIGNS[hz.hr.sign] + ', star of ' + CQ_PN[hz.hr.star] + ', sub of ' + CQ_PN[hz.hr.sub] + '. The ascendant is set at ' + J.SIGNS[kk.ascSign] + ' ' + kk.ascDeg + '.' }, { k: 'i', t: 'Cast for ' + N.dmy(hz.at) + ', ' + N.hm(hz.at) + '. Moon is in ' + J.SIGNS[kk.P.Mo.sign] + ', star of ' + CQ_PN[kk.P.Mo.kp.star] + ': the Moon shows the mind of the person asking.' }] });
+  S.push({ t: hz ? 'The cusps that answer' : 'The KP chart', chart: { id: 'KP', hl: a.kp.checks.map(function (ch) { return ch.cusp; }), hp: [] }, learn: hz ? 'Each question is answered by one cusp: its sub lord is the judge. Here are the cusps for this question.' : 'KP uses Placidus house cusps and the KP ayanamsa. Each cusp falls in a sign, a star (nakshatra) and a sub. The sub lord of the cusp decides whether that house\'s matter happens. An exact birth time matters: a few minutes can change a sub lord.',
     read: a.kp.checks.map(function (ch) { var cu = kk.cusps[ch.cusp - 1]; return { k: 'i', t: gNth(ch.cusp) + ' cusp: ' + J.SIGNS[cu.sign] + ' ' + cu.deg + '. Sign lord ' + CQ_PN[cu.kp.sign] + ', star lord ' + CQ_PN[cu.kp.star] + ', sub lord ' + CQ_PN[cu.kp.sub] + '.' }; }) });
   a.kp.checks.forEach(function (ch) {
     var st = ch.st, q = kk.P[ch.csl];
@@ -95,19 +97,34 @@ function gKP(a, c, p) {
     read: main.windows.length ? main.windows.map(function (w) { return { k: w.rank === 2 ? 'g' : 'i', t: N.dmy(w.start) + ' to ' + N.dmy(w.end) + ': ' + CQ_PN[w.md] + '–' + CQ_PN[w.ad] + '–' + CQ_PN[w.pd] + (w.rp && w.rp.length ? ' (ruling planet ★)' : '') + '.' }; }) : [{ k: 'i', t: 'No period in the next 6 years where all three lords support it.' }] });
   return S;
 }
+function gTell(a, sys) {
+  var T = a.T, ev = T.ev, Ev = ev.charAt(0).toUpperCase() + ev.slice(1), t = '', soon = function (w) { return N.dmy(w.start) + ' to ' + N.dmy(w.end); };
+  if (sys === 'k') {
+    var ch = a.kp.checks[0], src = a.kp.horary ? 'KP Prashna' : 'KP';
+    if (T.surgery) { var r = a.kp.checks[1]; t = (ch.tone === 'bad' ? src + ' does not clearly show surgery; if it is not urgent, a second opinion is worth taking. ' : src + ' shows surgery; if the doctor advises it, going ahead is right. ') + (r && r.tone === 'good' ? 'Recovery is promised' : 'Recovery needs extra care') + (r && r.windows[0] ? '; better period: ' + soon(r.windows[0]) + '.' : '.'); }
+    else { var w = ch.windows[0]; t = (ch.tone === 'good' ? 'Yes. ' + src + ' promises ' + ev + '.' : ch.tone === 'bad' ? src + ' does not promise ' + ev + ' at present.' : Ev + ' is shown in ' + src + ', but with delay or obstacles.') + (w ? ' ' + (ch.tone === 'bad' ? 'Only chance' : 'Most likely') + ': ' + soon(w) + ' (' + CQ_PN[w.md] + '–' + CQ_PN[w.ad] + '–' + CQ_PN[w.pd] + ').' : ''); }
+    if (T.med && a.now.kp.status === 'off') t = 'Right now the period lords signify 6, 8 and 12, so health needs care now. ' + t;
+  } else {
+    var ve = a.ve, vw = ve.windows.filter(function (x) { return x.dt; })[0] || ve.windows[0];
+    if (T.surgery) t = 'Vedic: surgery is ' + ve.surg.iword.toLowerCase() + '; ' + ve.surg.rword.toLowerCase() + '.';
+    else t = ({ strong: 'Yes. The birth chart strongly promises ' + ev + '.', yes: 'Yes. The birth chart promises ' + ev + '.', effort: Ev + ' is promised, but needs effort and comes with delay.', weak: Ev + ' is weak in the birth chart; it needs strong effort and remedies.' })[ve.level] + (vw ? ' Best period: ' + CQ_PN[vw.md] + '–' + CQ_PN[vw.ad] + ', ' + (vw.dt ? 'especially ' + N.dmy(new Date(Math.max(vw.start, vw.dt.from))) + ' to ' + N.dmy(new Date(Math.min(vw.end, vw.dt.to.getTime() + 30 * 864e5))) + ' when Jupiter and Saturn both touch the house' : soon(vw)) + '.' : '');
+    if (T.med && a.now.ve.status === 'off') t = 'Right now the running dasha presses on health, so care is needed now. ' + t;
+  }
+  return t;
+}
 function gFinal(a, sys) {
   var rem = a.rem.planets.filter(function (r) { return r.why.some(function (w) { return w.indexOf(sys === 'v' ? 'Vedic' : 'KP') === 0; }); });
   if (!rem.length) rem = a.rem.planets;
-  return { t: 'Conclusion and remedy', final: true, learn: 'Put it together: the promise, the present period and the timing. Then pick remedies for the planet that blocks the matter and for the planet whose period brings the result.', so: a.tell.text, rem: rem, steps: a.rem.steps };
+  return { t: 'Conclusion and remedy', final: true, learn: 'Put it together: the promise, the present period and the timing. Then pick remedies for the planet that blocks the matter and for the planet whose period brings the result.', so: gTell(a, sys), rem: rem, steps: a.rem.steps };
 }
 
 function GuideScreen(id, sys, si) {
   var cs = caseById(id), p = cs && person(cs.pid); if (!cs || !p) return '<div class="empty"><h2>Not found</h2><button class="btn" data-go="q">Back</button></div>';
   var a = caseAnswer(cs), c = calcP(p), S = (sys === 'k' ? gKP(a, c, p) : gVedic(a, c, p)).concat([gFinal(a, sys)]), i = Math.max(0, Math.min(S.length - 1, +si || 0)), st = S[i];
-  var h = '<div class="v4sky slim">' + v4stars(40, 7) + '<div class="v4top"><div class="dt"><button class="cqback" data-go="q/' + id + '">‹ Answer</button><b class="nm">' + esc(a.T.l) + ' · ' + (sys === 'k' ? 'KP' : 'Vedic') + '</b><small>' + esc(p.name) + ' · step ' + (i + 1) + ' of ' + S.length + '</small></div></div>';
+  var h = '<div class="v4sky slim">' + v4stars(40, 7) + '<div class="v4top"><div class="dt"><button class="cqback" data-go="q/' + id + '">‹ Answer</button><b class="nm">' + esc(a.T.l) + ' · ' + (sys === 'k' ? (a.kp.horary ? 'KP Prashna ' + a.kp.horary.n : 'KP') : 'Vedic') + '</b><small>' + esc(p.name) + ' · step ' + (i + 1) + ' of ' + S.length + '</small></div></div>';
   h += '<div class="gdots">' + S.map(function (x, j) { return '<button data-go="q/' + id + '/' + sys + '/' + j + '" class="' + (j === i ? 'on' : j < i ? 'done' : '') + '" aria-label="Step ' + (j + 1) + '"></button>'; }).join('') + '</div></div><div class="pad">';
   h += '<h2 class="gt">' + (i + 1) + '. ' + esc(st.t) + '</h2>';
-  if (st.chart) { var m = gModel(c, st.chart.id, st.chart.hp); h += '<div class="card gchart">' + Charts.north(m.rows, m.signs, { hl: (st.chart.hl || []).filter(function (x, k2, arr) { return x && arr.indexOf(x) === k2; }) }) + '<div class="gcap">' + esc(m.title) + (st.chart.hl && st.chart.hl.length ? ' · highlighted: house ' + st.chart.hl.filter(function (x, k2, arr) { return x && arr.indexOf(x) === k2; }).join(', ') : '') + (st.chart.hp && st.chart.hp.length ? ' · planets in red: ' + st.chart.hp.filter(function (x, k2, arr) { return arr.indexOf(x) === k2; }).map(function (x) { return CQ_PN[x] || x; }).join(', ') : '') + '</div></div>'; }
+  if (st.chart) { var m = gModel(c, st.chart.id, st.chart.hp, a.kp.chart); h += '<div class="card gchart">' + Charts.north(m.rows, m.signs, { hl: (st.chart.hl || []).filter(function (x, k2, arr) { return x && arr.indexOf(x) === k2; }) }) + '<div class="gcap">' + esc(m.title) + (st.chart.hl && st.chart.hl.length ? ' · highlighted: house ' + st.chart.hl.filter(function (x, k2, arr) { return x && arr.indexOf(x) === k2; }).join(', ') : '') + (st.chart.hp && st.chart.hp.length ? ' · planets in red: ' + st.chart.hp.filter(function (x, k2, arr) { return arr.indexOf(x) === k2; }).map(function (x) { return CQ_PN[x] || x; }).join(', ') : '') + '</div></div>'; }
   h += '<div class="card glearn"><div class="lbl2">What to look at</div><p>' + esc(st.learn) + '</p></div>';
   if (st.read && st.read.length) h += '<div class="card"><div class="lbl2">In ' + esc(p.name.split(' ')[0]) + '\'s chart</div><ul class="cqwhy">' + st.read.map(function (r) { return '<li>' + cqIcon(r.k) + '<span>' + esc(r.t) + '</span></li>'; }).join('') + '</ul></div>';
   if (st.so) h += '<div class="card gso"><div class="lbl2">' + (st.final ? 'Tell the customer' : 'So') + '</div><p>' + esc(st.so) + '</p></div>';

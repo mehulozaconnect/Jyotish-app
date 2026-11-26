@@ -80,12 +80,18 @@ function makeConsult(J, C, N) {
     else level = 'no';
     return { cusp: cusp, csl: csl, st: st, pf: pf, pn: pn, of: of, on: on, level: level };
   }
-  function kpAnswer(c, T, now, lat, lon, tz) {
-    var maha = J.dashas(c.birth, c.kp.P.Mo.lon), rp = null;
+  /* KP on the birth chart, or KP Prashna (horary): the customer's number 1-249 fixes the ascendant at the start of that sub;
+     the other cusps come from the place and moment of the question, the planets are as at that moment, and the dasha runs
+     from the Moon at the question time. */
+  function kpAnswer(c, T, now, lat, lon, tz, hor) {
+    var chart = c.kp, sigAll = c.sig, maha, hr = null, years = 6;
+    if (hor && hor.n >= 1 && hor.n <= 249) { hr = J.horary(hor.n); chart = J.kundli(now, lat, lon, { ayan: 'kp', ascLon: hr.start + 1 / 3600 }); sigAll = J.kpSignificators(chart); maha = J.dashas(now, chart.P.Mo.lon); years = 2; }
+    else maha = J.dashas(c.birth, c.kp.P.Mo.lon);
+    var rp = null;
     try { rp = J.rulingPlanets(now, lat, lon, tz, 'kp'); } catch (e) { }
     var rps = rp ? rp.set : null;
     var checks = T.kp.map(function (x) {
-      var jm = N.judgeMatter(c.sig, x[0], maha, now, 6, rps), m = jm.m, js = kpJudge(c.sig, m.cusps[0], m), st = js.st, verd = N.VERD[js.level];
+      var jm = N.judgeMatter(sigAll, x[0], maha, now, years, rps), m = jm.m, js = kpJudge(sigAll, m.cusps[0], m), st = js.st, verd = N.VERD[js.level];
       var why = [];
       why.push({ k: 'i', t: nth(js.cusp) + ' cusp sub lord is ' + PN[js.csl] + ', in the star of ' + PN[st.star.lord] + '.' });
       var s12 = uniq(st.planet.houses.concat(st.star.houses));
@@ -93,15 +99,15 @@ function makeConsult(J, C, N) {
       if (js.pn.length) why.push({ k: 'b', t: 'It also signifies ' + js.pn.join(', ') + ', which work against it: expect delay, obstacles or a partial result.' });
       why.push({ k: js.of.length && !js.on.length ? 'g' : js.on.length ? 'b' : 'i', t: 'Result step: its sub lord ' + PN[st.sub.lord] + ' is in the star of ' + PN[st.subStar.lord] + ', which signifies ' + (st.subStar.houses.join(', ') || 'no houses') + (js.of.length && !js.on.length ? ': favourable.' : js.on.length ? ': resists the result.' : '.') });
       var wins = js.level === 'no' ? [] : T.med ? jm.timing.filter(function (w) { return w.rank >= 1; }).sort(function (a, b) { return a.start - b.start; }).slice(0, 3) : N.topWindows(jm.timing, 3);
-      return { key: x[0], label: x[1], cusp: js.cusp, level: js.level, verdict: verd[0], tone: verd[1], csl: js.csl, why: why, windows: wins, fav: m.fav, neg: m.neg, sig: c.sig, st: st };
+      return { key: x[0], label: x[1], cusp: js.cusp, level: js.level, verdict: verd[0], tone: verd[1], csl: js.csl, why: why, windows: wins, fav: m.fav, neg: m.neg, sig: sigAll, st: st };
     });
     var rpNote = null;
     if (rp) {
-      var main = checks[0], favRP = rp.set.filter(function (x) { var s = c.sig.sig[x] || []; return hit(main.fav, s).length > hit(main.neg, s).length; });
+      var main = checks[0], favRP = rp.set.filter(function (x) { var s = sigAll.sig[x] || []; return hit(main.fav, s).length > hit(main.neg, s).length; });
       rpNote = { set: rp.set, fav: favRP, t: 'Ruling planets at the time of the question: ' + rp.set.map(function (x) { return PN[x]; }).join(', ') + '. ' + (main.level === 'no' ? 'They cannot give what the cusp sub lord does not promise.' : favRP.length ? list(favRP.map(function (x) { return PN[x]; })) + (favRP.length > 1 ? ' signify' : ' signifies') + ' the supporting houses: windows in their periods (marked ★) are the most likely.' : 'None of them clearly signifies the supporting houses: the result is not ready yet; expect it later.') };
       checks.forEach(function (ch) { ch.windows.forEach(function (w) { w.rp = [w.ad, w.pd].filter(function (x) { return rp.set.indexOf(x) >= 0; }); }); });
     }
-    return { checks: checks, rp: rpNote, maha: maha };
+    return { checks: checks, rp: rpNote, maha: maha, chart: chart, sig: sigAll, horary: hr ? { n: hor.n, hr: hr, at: now, lat: lat, lon: lon } : null };
   }
 
   /* ---------- Vedic ---------- */
@@ -204,7 +210,7 @@ function makeConsult(J, C, N) {
   function lordsNow(maha, now) { var md = J.find(maha, now), ad = md ? J.find(J.subPeriods(md), now) : null, pd = ad ? J.find(J.subPeriods(ad), now) : null; return { md: md, ad: ad, pd: pd }; }
   function kpNow(c, kp, now) {
     var ch = kp.checks[kp.checks.length > 1 && /health|surg/.test(kp.checks[1].key) ? 1 : 0], L = lordsNow(kp.maha, now), rows = [], f = 0, n = 0;
-    ['md', 'ad', 'pd'].forEach(function (k, i) { var x = L[k]; if (!x) return; var sg = c.sig.sig[x.lord] || [], a = hit(ch.fav, sg), b = hit(ch.neg, sg), w = [0.5, 1, 1][i];
+    ['md', 'ad', 'pd'].forEach(function (k, i) { var x = L[k]; if (!x) return; var sg = kp.sig.sig[x.lord] || [], a = hit(ch.fav, sg), b = hit(ch.neg, sg), w = [0.5, 1, 1][i];
       f += a.length * w; n += b.length * w; rows.push({ lvl: ['Dasha', 'Bhukti', 'Antara'][i], lord: x.lord, end: x.end, sig: sg, fav: a, neg: b }); });
     var st = f > n * 1.2 ? 'on' : n > f * 1.2 ? 'off' : 'mixed';
     return { rows: rows, status: st, fav: ch.fav, neg: ch.neg, label: ch.label };
@@ -279,7 +285,7 @@ function makeConsult(J, C, N) {
 
   function answer(c, p, tid, now, place, dmy) {
     var T = topic(tid), lat = place && place.lat != null ? place.lat : +p.lat, lon = place && place.lon != null ? place.lon : +p.lon, tz = place && place.tz != null ? place.tz : +p.tz;
-    var kp = kpAnswer(c, T, now, lat, lon, tz), ve = vedicAnswer(c, T, p, now);
+    var kp = kpAnswer(c, T, now, lat, lon, tz, place && place.horary), ve = vedicAnswer(c, T, p, now);
     var out = { T: T, kp: kp, ve: ve, rem: remedies(T, kp, ve, p), now: { kp: kpNow(c, kp, now), ve: vedicNow(c, T, now), alerts: (place && place.alerts) || [] } };
     out.tell = combine(T, kp, ve, dmy, out.now);
     if (T.surgery) out.dates = goodDates(c, lat, lon, tz, now, 45);

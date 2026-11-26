@@ -7,10 +7,10 @@ function cases() { DB.cases = DB.cases || []; return DB.cases; }
 function caseById(id) { return cases().filter(function (x) { return x.id === id; })[0]; }
 var CQ_CACHE = {};
 function caseAnswer(cs) {
-  var p = person(cs.pid); if (!p) return null; var key = cs.id + '|' + p.date + '|' + p.time + '|' + p.lat;
+  var p = person(cs.pid); if (!p) return null; var key = cs.id + '|' + p.date + '|' + p.time + '|' + p.lat + '|' + (cs.n || '');
   if (!CQ_CACHE[key]) { var c = calcP(p), T = CONSULT.topic(cs.topic), al = [];
     if (T && T.med) try { al = ALERT.forPerson(c, maOf(p), chartTop(p, 2).filter(function (t) { return /Strong/.test(t.r.tend); }).map(function (t) { return t.id; }).concat(['general']), new Date(cs.at - 3 * 864e5), 60, []); } catch (e) { }
-    CQ_CACHE[key] = CONSULT.answer(c, p, cs.topic, new Date(cs.at), { alerts: al }, N.dmy); }
+    CQ_CACHE[key] = CONSULT.answer(c, p, cs.topic, new Date(cs.at), { alerts: al, horary: cs.n ? { n: cs.n } : null, lat: cs.qlat, lon: cs.qlon, tz: cs.qtz }, N.dmy); }
   return CQ_CACHE[key];
 }
 var CQ_PN = CONSULT.PN;
@@ -29,17 +29,30 @@ function CustomerScreen() {
     ts.map(function (t) { return '<button data-act="cqT" data-v="' + t.id + '" class="' + (t.id === sel ? 'on' : '') + '">' + esc(t.l) + '</button>'; }).join('') + '</div>' +
     (sel ? '<p class="cqq">' + esc(CONSULT.topic(sel).q) + '</p>' : '') + '</div>';
   h += '<div class="card"><div class="lbl2">In the customer\'s words (optional)</div><textarea class="inp" id="cqWords" rows="3" placeholder="e.g. Doctor says knee surgery. Should I do it now or wait?">' + esc(U.cqW || '') + '</textarea></div>';
-  h += '<button class="v4btn cqgo" data-act="cqGo"' + (sel ? '' : ' disabled') + '>Get the answer</button>';
+  if (sel) {
+    var L = DB.settings.loc || {};
+    h += '<div class="v4sec" style="padding-left:0"><h2>Read it with</h2></div>';
+    h += '<button class="card cqmode" data-act="cqGoV"><b>Vedic, step by step</b><small>Birth chart: lagna, houses, lord, karaka, divisional chart, dasha, transits, then the remedy</small><span>›</span></button>';
+    h += '<div class="card cqmode k"><b>KP Prashna, step by step</b><small>Ask ' + esc(p.name.split(' ')[0]) + ' to think of the question and say any number from 1 to 249. The Prashna kundli is cast for this moment' + (L.name ? ' at ' + esc(L.name) : '') + '.</small><div class="cqnum"><input class="inp" id="cqNum" type="number" inputmode="numeric" min="1" max="249" placeholder="1 – 249" value="' + esc(U.cqN || '') + '"><button class="v4btn" data-act="cqGoK">Cast Prashna ›</button></div><button class="v4link" data-act="cqGoKB" style="margin-top:6px">No number? Read KP from the birth chart ›</button></div>';
+    h += '<button class="v4link" data-act="cqGo" style="display:block;margin:4px auto 0">Quick answer: Vedic and KP together ›</button>';
+  } else h += '<p class="v4note" style="text-align:center;margin:6px 0 0">Pick the problem above to continue.</p>';
   var rec = cases().slice(-12).reverse().filter(function (x) { return person(x.pid); });
   if (rec.length) h += '<div class="v4sec" style="padding-left:0"><h2>Recent answers</h2></div><div class="card" style="padding:4px 14px">' + rec.map(function (x) { var T = CONSULT.topic(x.topic), q = person(x.pid); return '<button class="cqrow" data-go="q/' + x.id + '"><b>' + esc(q.name) + '</b><span>' + esc(T ? T.l : x.topic) + ' · ' + N.dmy(new Date(x.at)) + '</span></button>'; }).join('') + '</div>';
   return h + '</div><div style="height:80px"></div>';
 }
 ACT.cqT = function (el) { var t = $('#cqWords'); if (t) U.cqW = t.value; U.cqT = el.dataset.v; rerender(true); };
 ACT.cqNew = function () { U.fromQ = true; go('edit'); };
-ACT.cqGo = function () {
-  var p = curP(); if (!p || !U.cqT) return; var t = $('#cqWords'), w = t ? t.value.trim() : '';
+function cqNew(extra) {
+  var p = curP(); if (!p || !U.cqT) return null; var t = $('#cqWords'), w = t ? t.value.trim() : '', L = DB.settings.loc || {};
   var cs = { id: 'q' + Date.now().toString(36), pid: p.id, topic: U.cqT, words: w, at: Date.now() };
-  cases().push(cs); while (DB.cases.length > 300) DB.cases.shift(); U.cqW = ''; save(); go('q/' + cs.id);
+  if (extra && extra.n) { cs.n = extra.n; cs.qlat = L.lat; cs.qlon = L.lon; cs.qtz = locOff(); cs.qplace = L.name || ''; }
+  cases().push(cs); while (DB.cases.length > 300) DB.cases.shift(); U.cqW = ''; U.cqN = ''; save(); return cs;
+}
+ACT.cqGoV = function () { var cs = cqNew(); if (cs) go('q/' + cs.id + '/v/0'); };
+ACT.cqGoKB = function () { var cs = cqNew(); if (cs) go('q/' + cs.id + '/k/0'); };
+ACT.cqGoK = function () { var el = $('#cqNum'), n = parseInt(el && el.value, 10); if (!(n >= 1 && n <= 249)) { toast('Enter a number from 1 to 249'); return; } var cs = cqNew({ n: n }); if (cs) go('q/' + cs.id + '/k/0'); };
+ACT.cqGo = function () {
+  var cs = cqNew(); if (!cs) return; go('q/' + cs.id);
   if (ltProv()) setTimeout(function () { cqAI(cs.id); }, 80);
 };
 
@@ -58,7 +71,7 @@ function AnswerScreen(id) {
   else if (ltProv()) h += '<button class="v4link" data-act="cqAI" data-id="' + cs.id + '">Write it in simple words with AI ›</button>';
   h += '</div>';
   /* KP */
-  h += '<div class="card"><div class="lbl2">KP says</div>' + a.kp.checks.map(function (ch, i) {
+  h += '<div class="card"><div class="lbl2">' + (a.kp.horary ? 'KP Prashna says (number ' + a.kp.horary.n + ', cast ' + N.dmy(a.kp.horary.at) + ' ' + N.hm(a.kp.horary.at) + (cs.qplace ? ', ' + esc(cs.qplace) : '') + ')' : 'KP says (birth chart)') + '</div>' + a.kp.checks.map(function (ch, i) {
     return (i ? '<hr class="cqhr">' : '') + '<div class="cqck"><b>' + esc(ch.label) + '</b><span class="chip ' + cqTone(ch.tone) + '">' + esc(ch.verdict) + '</span></div><ul class="cqwhy">' + ch.why.map(function (w) { return '<li>' + cqIcon(w.k) + '<span>' + esc(w.t) + '</span></li>'; }).join('') + '</ul>' +
       (ch.windows.length ? '<div class="lbl3">When (Dasha · Bhukti · Antara)</div>' + ch.windows.map(function (w) { return '<div class="cqwin"><b>' + cqWin(w) + '</b><span>' + CQ_PN[w.md] + ' › ' + CQ_PN[w.ad] + ' › ' + CQ_PN[w.pd] + (w.rp && w.rp.length ? ' · ruling planet ★' : '') + '</span><em class="chip ' + (w.rank === 2 ? 'g' : w.rank === 1 ? 'w' : '') + '">' + (w.rank === 2 ? 'Strongest' : w.rank === 1 ? 'Good' : 'Possible') + '</em></div>'; }).join('') : '<p class="sm">No period in the next 6 years where all the period lords support this.</p>');
   }).join('') + (a.kp.rp ? '<p class="cqnote">' + esc(a.kp.rp.t) + '</p>' : '') + '<p class="cqnote">KP depends on an exact birth time: a 4-minute error can change a sub lord.</p></div>';
@@ -126,7 +139,7 @@ ACT.cqFollow = function (el) { var cs = caseById(el.dataset.id), a = caseAnswer(
 ACT.cqDel = function (el) { DB.cases = cases().filter(function (x) { return x.id !== el.dataset.id; }); save(); go('q'); };
 
 /* ---------- routing ---------- */
-NAVS = [['q', 'Customer'], ['astro', 'Kundli'], ['dasha', 'Dasha'], ['ai', 'Ask'], ['people', 'People']];
+NAVS = [['q', 'Customer'], ['astro', 'Kundli'], ['dasha', 'Dasha'], ['sky', 'Sky'], ['people', 'People']];
 (function () {
   var r0 = render;
   render = function () {
