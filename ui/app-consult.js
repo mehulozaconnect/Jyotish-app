@@ -145,7 +145,7 @@ NAVS = [['q', 'Customer'], ['astro', 'Kundli'], ['dasha', 'Dasha'], ['sky', 'Sky
   render = function () {
     var pr = parts();
     if (pr[0] === 'p' && U.fromQ && person(pr[1])) { U.fromQ = false; U.cur = pr[1]; location.hash = '#/q'; return; }
-    if (!pr.length) { location.hash = me() || (DB.people || []).length ? '#/q' : '#/people'; return; }
+    if (!pr.length) { location.hash = me() || (DB.people || []).length ? '#/astro' : '#/people'; return; }
     if (pr[0] !== 'q') {
       if (pr[0] === 'ai' && U.ltPend && /\nMy follow-up: $/.test(U.ltPend)) { var q = U.ltPend; U.ltPend = null; r0(); var t = $('#ltIn'); if (t) { t.value = q; t.focus(); } return; }
       return r0();
