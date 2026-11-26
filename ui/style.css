@@ -659,3 +659,12 @@ body[data-scr="q"] .chip.g{background:#E3F2E8;color:#2E7D4F}body[data-scr="q"] .
 .cqmore summary{font-size:13.5px;color:var(--acc);font-weight:600;padding:6px 0;cursor:pointer;background:none}.cqmore{background:none}
 .cqrem{padding:4px 0 10px;border-bottom:1px solid #F0EEF6;margin-bottom:6px}.cqrem .why{font-size:13px;color:#6B6884;margin:0 0 4px;line-height:1.45}
 .cqbtns{display:flex;gap:10px}.cqbtns button{flex:1;border:0;border-radius:14px;padding:14px;font:600 15px var(--sans);background:#fff;color:var(--acc)}.cqbtns .wa{background:#25D366;color:#fff}
+/* 7.1 guided reading */
+.kchart .hlh{fill:rgba(58,55,145,.08)}.kchart .hlh.main{fill:rgba(242,174,60,.28)}.kchart .hlp{fill:#C0392B!important;font-weight:700}
+.gdots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:12px 14px 2px}.gdots button{width:22px;height:6px;border-radius:3px;border:0;background:rgba(255,255,255,.25);padding:0}.gdots button.done{background:rgba(255,255,255,.6)}.gdots button.on{background:#F2AE3C;width:30px}
+.gt{font:600 21px var(--serif);margin:4px 2px 12px;color:#1B1A33}
+.gchart{padding:10px}.gcap{font-size:12.5px;color:#6B6884;margin-top:8px;line-height:1.4}
+.glearn{background:#EEEDF8}.glearn p{margin:0;font-size:14.5px;line-height:1.55}
+.gso{border:2px solid var(--acc)}.gso p{margin:0;font:600 16px/1.45 var(--serif)}
+.gnav{display:flex;gap:10px}.gnav button{flex:1;border:0;border-radius:14px;padding:14px;font:600 15px var(--sans);background:#fff;color:var(--acc)}.gnav .nx{background:var(--acc);color:#fff}
+.gpick{display:flex;gap:10px;margin-bottom:10px}.gpick button{flex:1;text-align:left;border:0;border-radius:16px;padding:13px;background:var(--acc);color:#fff;font:inherit}.gpick b{display:block;font-size:15px}.gpick small{display:block;opacity:.8;font-size:11.5px;line-height:1.35;margin-top:4px}

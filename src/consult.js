@@ -92,7 +92,7 @@ function makeConsult(J, C, N) {
       why.push({ k: js.pf.length ? 'g' : 'b', t: PN[js.csl] + ' signifies houses ' + s12.join(', ') + '. ' + (js.pf.length ? 'Supporting houses for this matter: ' + js.pf.join(', ') + '.' : 'None of the supporting houses (' + m.fav.join(', ') + ') are signified.') });
       if (js.pn.length) why.push({ k: 'b', t: 'It also signifies ' + js.pn.join(', ') + ', which work against it: expect delay, obstacles or a partial result.' });
       why.push({ k: js.of.length && !js.on.length ? 'g' : js.on.length ? 'b' : 'i', t: 'Result step: its sub lord ' + PN[st.sub.lord] + ' is in the star of ' + PN[st.subStar.lord] + ', which signifies ' + (st.subStar.houses.join(', ') || 'no houses') + (js.of.length && !js.on.length ? ': favourable.' : js.on.length ? ': resists the result.' : '.') });
-      var wins = js.level === 'no' ? [] : N.topWindows(jm.timing, 3);
+      var wins = js.level === 'no' ? [] : T.med ? jm.timing.filter(function (w) { return w.rank >= 1; }).sort(function (a, b) { return a.start - b.start; }).slice(0, 3) : N.topWindows(jm.timing, 3);
       return { key: x[0], label: x[1], cusp: js.cusp, level: js.level, verdict: verd[0], tone: verd[1], csl: js.csl, why: why, windows: wins, fav: m.fav, neg: m.neg, sig: c.sig, st: st };
     });
     var rpNote = null;
@@ -199,6 +199,37 @@ function makeConsult(J, C, N) {
     return out;
   }
 
+
+  /* ---------- right now: are the running period lords switching the matter on or off? ---------- */
+  function lordsNow(maha, now) { var md = J.find(maha, now), ad = md ? J.find(J.subPeriods(md), now) : null, pd = ad ? J.find(J.subPeriods(ad), now) : null; return { md: md, ad: ad, pd: pd }; }
+  function kpNow(c, kp, now) {
+    var ch = kp.checks[kp.checks.length > 1 && /health|surg/.test(kp.checks[1].key) ? 1 : 0], L = lordsNow(kp.maha, now), rows = [], f = 0, n = 0;
+    ['md', 'ad', 'pd'].forEach(function (k, i) { var x = L[k]; if (!x) return; var sg = c.sig.sig[x.lord] || [], a = hit(ch.fav, sg), b = hit(ch.neg, sg), w = [0.5, 1, 1][i];
+      f += a.length * w; n += b.length * w; rows.push({ lvl: ['Dasha', 'Bhukti', 'Antara'][i], lord: x.lord, end: x.end, sig: sg, fav: a, neg: b }); });
+    var st = f > n * 1.2 ? 'on' : n > f * 1.2 ? 'off' : 'mixed';
+    return { rows: rows, status: st, fav: ch.fav, neg: ch.neg, label: ch.label };
+  }
+  function vedicNow(c, T, now) {
+    var k = c.k, A = k.ascSign, L = lordsNow(c.maha, now), rows = [], H = T.h, bad = 0, good = 0, med = !!T.med;
+    ['md', 'ad', 'pd'].forEach(function (key, i) { var x = L[key]; if (!x) return; var pl = x.lord, rules = J.lordsOf ? J.lordsOf(A, pl) : [], q = k.P[pl], notes = [], w = [0.5, 1, 0.7][i];
+      if (pl !== 'Ra' && pl !== 'Ke') rules = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(function (h) { return J.RULER[(A + h - 1) % 12] === pl; });
+      if (rules.indexOf(H) >= 0) { notes.push('rules the ' + nth(H) + ' house of this matter'); good += w; }
+      if (q.house === H) { notes.push('sits in the ' + nth(H) + ' house'); good += w * 0.8; }
+      if (J.aspectedHouses(pl, q.house).indexOf(H) >= 0) { notes.push('aspects the ' + nth(H) + ' house'); good += w * 0.4; }
+      var d = rules.filter(function (h) { return [6, 8, 12].indexOf(h) >= 0; }); if (d.length && H !== 6 && H !== 8 && H !== 12) { notes.push('rules the ' + d.map(nth).join(' and ') + ' (illness, obstacles, loss)'); bad += w; }
+      if ([6, 8, 12].indexOf(q.house) >= 0 && H !== q.house) { notes.push('sits in the ' + nth(q.house) + ' house'); bad += w * 0.8; }
+      if (med && (pl === 'Ra' || pl === 'Ke' || pl === 'Ma' || pl === 'Sa') && (q.house === 1 || q.house === 6 || q.house === 8)) { notes.push('a malefic in the ' + nth(q.house) + ': physical strain'); bad += w * 0.5; }
+      rows.push({ lvl: ['Mahadasha', 'Antardasha', 'Pratyantar'][i], lord: pl, end: x.end, notes: notes });
+    });
+    /* slow transits over the lagna, the Moon and the matter's house */
+    var tr = []; ['Sa', 'Ra', 'Ke', 'Ma', 'Ju'].forEach(function (x) { var sg = sgOf(x, now), hL = J.houseFrom(A, sg), hM = J.houseFrom(k.P.Mo.sign, sg);
+      if (x === 'Ju') { if (hL === H || J.aspectedHouses('Ju', hL).indexOf(H) >= 0) tr.push({ s: 1, t: 'Jupiter (transit) ' + (hL === H ? 'in' : 'aspects') + ' the ' + nth(H) + ' house: protection.' }); return; }
+      if (hL === 1 || hM === 1) { tr.push({ s: -1, t: PN[x] + ' (transit) is over the ' + (hL === 1 ? 'lagna' : 'natal Moon') + ': pressure on body and mind.' }); bad += 0.5; }
+      if (hL === H && H !== 1) tr.push({ s: -0.5, t: PN[x] + ' (transit) is in the ' + nth(H) + ' house.' });
+      if (med && (hL === 8 || hM === 8)) { tr.push({ s: -1, t: PN[x] + ' (transit) is 8th from the ' + (hL === 8 ? 'lagna' : 'Moon') + ': a sensitive time for health.' }); bad += 0.5; } });
+    var st = med ? (bad >= 1.2 ? 'off' : bad >= 0.6 ? 'mixed' : 'on') : (good > bad + 0.5 ? 'on' : bad > good + 0.5 ? 'off' : 'mixed');
+    return { rows: rows, tr: tr, status: st, good: good, bad: bad };
+  }
   /* ---------- remedies with reasons ---------- */
   function remedies(T, kp, ve, p) {
     var out = [], seen = {};
@@ -216,7 +247,7 @@ function makeConsult(J, C, N) {
 
   /* ---------- the answer to tell the customer ---------- */
   function fmtW(w, dmy) { return dmy(w.start) + ' to ' + dmy(w.end); }
-  function combine(T, kp, ve, dmy) {
+  function combine(T, kp, ve, dmy, nw) {
     var main = kp.checks[0], kv = { strong: 1, yes: 0.85, open: 0.6, mixed: 0.6, blocked: 0.4, no: 0.1 }[main.level], vv = { strong: 1, yes: 0.8, effort: 0.5, weak: 0.2 }[ve.level];
     var agree = (kv >= 0.6 && vv >= 0.5) || (kv < 0.5 && vv < 0.5), conf = agree ? (Math.min(kv, vv) >= 0.8 || Math.max(kv, vv) < 0.3 ? 'High' : 'Medium') : 'Low';
     /* best window: the first KP window that overlaps a Vedic window, else the first KP window, else the first Vedic window */
@@ -231,16 +262,26 @@ function makeConsult(J, C, N) {
       t = (kShown && vShown ? 'Surgery is clearly shown in the chart, so if the doctor advises it, going ahead is right. ' : kShown || vShown ? 'Surgery is possible in the chart; if the doctor advises it, go ahead, and a second opinion is fine if there is time. ' : 'The chart does not strongly show surgery: if it is not urgent, take a second opinion on other treatment first. ') +
         (rGood === 2 ? 'Recovery looks good. ' : rGood === 1 ? 'Recovery should be fine with proper care. ' : 'Recovery needs extra care and patience. ') +
         (rWin ? 'If it is not urgent, the better time is ' + fmtW(rWin, dmy) + ', on one of the good dates listed.' : 'If it is not urgent, pick one of the good dates listed.') + ' The doctor\'s advice always comes first.';
+    } else if (T.id === 'health') {
+      var w0 = main.windows[0]; best = w0 ? { start: w0.start, end: w0.end, kp: w0 } : best;
+      t = (kv >= 0.6 && vv >= 0.5 ? 'Recovery is promised in the chart. ' : kv < 0.5 && vv < 0.5 ? 'Recovery is slow in this chart; steady long-term care is needed. ' : 'Recovery comes, but slowly and with ups and downs. ') + (w0 ? 'Clear improvement is shown from ' + dmy(w0.start) + ' (' + PN[w0.ad] + '–' + PN[w0.pd] + ' period).' : '');
     } else if (kv >= 0.6 && vv >= 0.5) t = 'Yes, ' + ev + ' is shown in the chart' + (kv >= 0.85 && vv >= 0.8 ? ' clearly' : ', with some effort') + '. ' + (best ? 'Best time: ' + fmtW(best, dmy) + '.' : 'Timing depends on effort; no strong window in the next 6 years.');
     else if (kv < 0.5 && vv < 0.5) t = ev.charAt(0).toUpperCase() + ev.slice(1) + ' does not come easily in this chart. ' + (best ? 'The best chance is ' + fmtW(best, dmy) + ', with effort and the remedies below.' : 'Steady effort and the remedies below are needed.');
     else t = ev.charAt(0).toUpperCase() + ev.slice(1) + ' is possible but comes with delay or obstacles: KP and Vedic do not fully agree. ' + (best ? 'Best chance: ' + fmtW(best, dmy) + '.' : '');
+    if (T.med && nw) {
+      var al = nw.alerts.filter(function (w) { return w.start <= new Date(Date.now() + 3 * DAY) && w.end >= new Date(Date.now() - 2 * DAY); })[0], kOff = nw.kp.status === 'off', vOff = nw.ve.status === 'off';
+      if (al || (kOff && vOff)) t = 'Right now health needs real care: ' + (al ? 'a ' + (al.level === 'high' ? 'high-care' : 'watch') + ' window runs ' + dmy(al.start) + ' to ' + dmy(al.end) + ', and ' : '') + (kOff ? 'the running period lords signify the illness houses (6, 8, 12)' : 'the running period is linked to the illness houses') + '. Follow the doctor fully and avoid strain until this passes. ' + t;
+      else if (kOff || vOff) t = 'Right now: mild caution; one of the two systems shows a sensitive period, so keep the routine and do not ignore symptoms. ' + t;
+      else if (nw.kp.status === 'on' && nw.ve.status === 'on') t = 'Right now the period supports health. ' + t;
+    }
     return { text: t, conf: conf, agree: agree, best: best };
   }
 
   function answer(c, p, tid, now, place, dmy) {
-    var T = topic(tid), lat = place ? place.lat : +p.lat, lon = place ? place.lon : +p.lon, tz = place ? place.tz : +p.tz;
+    var T = topic(tid), lat = place && place.lat != null ? place.lat : +p.lat, lon = place && place.lon != null ? place.lon : +p.lon, tz = place && place.tz != null ? place.tz : +p.tz;
     var kp = kpAnswer(c, T, now, lat, lon, tz), ve = vedicAnswer(c, T, p, now);
-    var out = { T: T, kp: kp, ve: ve, rem: remedies(T, kp, ve, p), tell: combine(T, kp, ve, dmy) };
+    var out = { T: T, kp: kp, ve: ve, rem: remedies(T, kp, ve, p), now: { kp: kpNow(c, kp, now), ve: vedicNow(c, T, now), alerts: (place && place.alerts) || [] } };
+    out.tell = combine(T, kp, ve, dmy, out.now);
     if (T.surgery) out.dates = goodDates(c, lat, lon, tz, now, 45);
     return out;
   }

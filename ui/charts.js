@@ -12,10 +12,13 @@ var Charts = (function () {
     return s;
   }
   /* rows: [{h, code, deg, cls, r, mark}], signs: array[12] of sign index (0-11) for houses 1..12 */
+  var HPOLY = { 1: '200,200 100,100 200,1 300,100', 2: '1,1 200,1 100,100', 3: '1,1 100,100 1,200', 4: '200,200 100,100 1,200 100,300', 5: '1,200 100,300 1,399', 6: '1,399 100,300 200,399', 7: '200,200 100,300 200,399 300,300', 8: '200,399 300,300 399,399', 9: '399,399 300,300 399,200', 10: '200,200 300,300 399,200 300,100', 11: '399,200 300,100 399,1', 12: '399,1 300,100 200,1' };
   function north(rows, signs, opts) {
     opts = opts || {};
     var byH = {}; rows.forEach(function (r) { (byH[r.h] = byH[r.h] || []).push(r); });
-    var s = '<svg class="kchart" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><rect class="frame" x="1" y="1" width="398" height="398" rx="6"/><path class="ln" d="M1 1L399 399M399 1L1 399M200 1L399 200L200 399L1 200Z"/>';
+    var s = '<svg class="kchart" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><rect class="frame" x="1" y="1" width="398" height="398" rx="6"/>';
+    (opts.hl || []).forEach(function (h, i) { var pts = HPOLY[h]; if (pts) s += '<polygon class="hlh' + (i === 0 ? ' main' : '') + '" points="' + pts + '"/>'; });
+    s += '<path class="ln" d="M1 1L399 399M399 1L1 399M200 1L399 200L200 399L1 200Z"/>';
     for (var h = 1; h <= 12; h++) {
       var g = KH[h];
       s += '<text class="sn" x="' + g[3] + '" y="' + g[4] + '" text-anchor="middle">' + (signs[h - 1] + 1) + '</text>';

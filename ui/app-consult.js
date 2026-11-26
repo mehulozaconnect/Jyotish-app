@@ -8,7 +8,9 @@ function caseById(id) { return cases().filter(function (x) { return x.id === id;
 var CQ_CACHE = {};
 function caseAnswer(cs) {
   var p = person(cs.pid); if (!p) return null; var key = cs.id + '|' + p.date + '|' + p.time + '|' + p.lat;
-  if (!CQ_CACHE[key]) CQ_CACHE[key] = CONSULT.answer(calcP(p), p, cs.topic, new Date(cs.at), null, N.dmy);
+  if (!CQ_CACHE[key]) { var c = calcP(p), T = CONSULT.topic(cs.topic), al = [];
+    if (T && T.med) try { al = ALERT.forPerson(c, maOf(p), chartTop(p, 2).filter(function (t) { return /Strong/.test(t.r.tend); }).map(function (t) { return t.id; }).concat(['general']), new Date(cs.at - 3 * 864e5), 60, []); } catch (e) { }
+    CQ_CACHE[key] = CONSULT.answer(c, p, cs.topic, new Date(cs.at), { alerts: al }, N.dmy); }
   return CQ_CACHE[key];
 }
 var CQ_PN = CONSULT.PN;
@@ -142,3 +144,17 @@ NAVS = [['q', 'Customer'], ['astro', 'Kundli'], ['dasha', 'Dasha'], ['ai', 'Ask'
   var tb = window.trikaalBack; window.trikaalBack = function () { var p = parts(); if (p[0] === 'q' && p.length < 2) return $('#scrim') ? tb() : 'false'; return tb(); };
 })();
 render();
+/* the chat also gets the computed "right now" health picture, so it cannot call a hospital period steady */
+(function () {
+  var pk = packOf; packOf = function (p) {
+    var s = pk(p);
+    try { var cs = { id: 'pack' + p.id + new Date().toISOString().slice(0, 13), pid: p.id, topic: 'health', at: Date.now() }, had = caseById(cs.id); if (!had) { cases().push(cs); }
+      var a = caseAnswer(cs); DB.cases = cases().filter(function (x) { return x.id !== cs.id; });
+      s += '\n\n=== RIGHT NOW: HEALTH TRIGGERS (computed by rule) ===\n' + 'KP running lords: ' + a.now.kp.rows.map(function (r) { return r.lvl + ' ' + CQ_PN[r.lord] + ' signifies ' + r.sig.join(',') + (r.neg.length ? ' (illness houses ' + r.neg.join(',') + ')' : ''); }).join('; ') + '. Status: ' + (a.now.kp.status === 'off' ? 'ILLNESS ACTIVE NOW' : a.now.kp.status === 'on' ? 'recovery supported' : 'mixed') + '.\n' +
+        'Vedic running lords: ' + a.now.ve.rows.map(function (r) { return r.lvl + ' ' + CQ_PN[r.lord] + ': ' + (r.notes.join('; ') || 'no link'); }).join(' | ') + '. ' + a.now.ve.tr.map(function (x) { return x.t; }).join(' ') + '\n' +
+        'Health alert windows (next 60 days): ' + (a.now.alerts.length ? a.now.alerts.map(function (w) { return w.level + ' ' + ltD(w.start) + ' to ' + ltD(w.end); }).join(', ') : 'none') + '.\n' +
+        'Rule: when the status is ILLNESS ACTIVE NOW or an alert window is running, say clearly that health needs care now; never call it steady.';
+    } catch (e) { }
+    return s;
+  };
+})();

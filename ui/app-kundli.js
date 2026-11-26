@@ -73,7 +73,7 @@ function chartModel(c, id) {
   k.planets.forEach(function (p) { var v = J.varga(p.lon, n), dg = J.dignity(p.code, v.sign * 30 + v.deg), r = { h: J.houseFrom(av.sign, v.sign), code: p.code, deg: J.dm(v.deg), r: p.retro && p.code !== 'Ra' && p.code !== 'Ke', mark: digMark(dg), cls: p.code === 'Mo' ? 'mo' : '', sign: v.sign, dig: dg, vg: v.sign === p.sign }; rows.push(r); items.push({ s: v.sign, code: p.code, deg: r.deg, r: r.r, mark: r.mark, cls: r.cls }); });
   return { title: meta[1] + ' (D' + n + ')', sub: meta[2], signs: signs, rows: rows, items: items, ascSign: av.sign, n: n, ascV: av };
 }
-function drawChart(m, style) { return style === 'south' ? Charts.south(m.items, m.ascSign, m.title.split(' (')[0]) : Charts.north(m.rows, m.signs); }
+function drawChart(m, style, opts) { return style === 'south' ? Charts.south(m.items, m.ascSign, m.title.split(' (')[0]) : Charts.north(m.rows, m.signs, opts); }
 TABF.charts = function (p, c) {
   if (!U.chart || !/^(D\d+|CH|MO|SU)$/.test(U.chart)) U.chart = 'D1';
   var id = U.chart, style = U.style || DB.settings.style, m = chartModel(c, id), k = c.k;
